@@ -1,0 +1,117 @@
+import express from 'express';
+import { protect, moduleAccess, checkPermission } from '../middleware/auth.js';
+import {
+  getEmployees,
+  getEmployee,
+  createEmployee,
+  updateEmployee,
+  deleteEmployee,
+  markAttendance,
+  getAttendanceHistory,
+  applyLeave,
+  updateLeaveStatus,
+  processSalary,
+  getSalaryHistory,
+  addWorkUpdate,
+  getWorkUpdates,
+  updateEmployeeRole,
+  assignProjectToEmployee,
+  getEmployeeProjects,
+  getEmployeesByRole,
+  getSupervisorTeam,
+  getMyProfile,
+  geocodeLocation,
+  generatePayslip,
+  generateMyPayslip,
+  // Employee Self-Service
+  markMyAttendance,
+  getMyAttendance,
+  getMySalary,
+  getMyProjects,
+  submitMyWorkUpdate,
+  applyMyLeave,
+  getMyLeaves,
+  getMyReminders,
+  createReminder,
+  updateReminder,
+  resetMyReminders,
+  resetAllReminders
+} from '../controllers/employeeController.js';
+
+const router = express.Router();
+
+// Geocoding (Public utility endpoint - no authentication required)
+router.get('/geocode', geocodeLocation);
+
+// All routes require authentication
+router.use(protect);
+
+// ============= EMPLOYEE SELF-SERVICE ROUTES (No module restriction) =============
+// These routes are accessible to ALL authenticated users
+
+// My Profile
+router.get('/my-profile', getMyProfile);
+
+// My Attendance
+router.post('/my-attendance', markMyAttendance);
+router.get('/my-attendance', getMyAttendance);
+
+// My Salary
+router.get('/my-salary', getMySalary);
+
+// My Projects
+router.get('/my-projects', getMyProjects);
+
+// My Work Updates
+router.post('/my-work-update', submitMyWorkUpdate);
+
+// My Leave Requests
+router.post('/my-leave', applyMyLeave);
+router.get('/my-leaves', getMyLeaves);
+
+// My Calendar Reminders
+router.get('/my-reminders', getMyReminders);
+router.post('/my-reminder', createReminder);
+router.put('/my-reminder/:id', updateReminder);
+router.delete('/my-reminders/reset', resetMyReminders);
+
+// My Payslip (Employee Self-Service)
+router.get('/my-payslip/:month', generateMyPayslip);
+
+// ============= ADMIN EMPLOYEE MANAGEMENT ROUTES =============
+// These routes require 'employee' or 'all' module access
+router.use(moduleAccess('employee', 'all'));
+
+// Employees
+router.get('/', getEmployees);
+router.get('/by-role/:role', getEmployeesByRole);
+router.post('/', checkPermission('canCreate'), createEmployee);
+router.get('/:id', getEmployee);
+router.get('/:id/projects', getEmployeeProjects);
+router.get('/:id/team', getSupervisorTeam);
+router.put('/:id', checkPermission('canEdit'), updateEmployee);
+router.put('/:id/role', checkPermission('canEdit'), updateEmployeeRole);
+router.post('/:id/assign-project', checkPermission('canEdit'), assignProjectToEmployee);
+router.delete('/:id', checkPermission('canDelete'), deleteEmployee);
+
+// Admin reset all reminders
+router.delete('/reminders/reset', checkPermission('canDelete'), resetAllReminders);
+
+// Attendance (Admin)
+router.post('/:id/attendance', markAttendance);
+router.get('/:id/attendance', getAttendanceHistory);
+
+// Leave Management (Admin)
+router.post('/:id/leave', applyLeave);
+router.put('/leave/:leaveId', checkPermission('canEdit'), updateLeaveStatus);
+
+// Salary (Admin)
+router.post('/:id/salary', checkPermission('canHandleAccounts'), processSalary);
+router.get('/:id/salary-history', getSalaryHistory);
+router.get('/:id/payslip/:month', generatePayslip);
+
+// Work Updates (Admin)
+router.post('/:id/work-update', addWorkUpdate);
+router.get('/:id/work-updates', getWorkUpdates);
+
+export default router;

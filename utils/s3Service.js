@@ -1,0 +1,80 @@
+import AWS from 'aws-sdk';
+import fs from 'fs';
+
+// Configure AWS
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION
+});
+
+// Upload file to S3
+export const uploadToS3 = async (file, folder = 'general') => {
+  try {
+    const fileContent = fs.readFileSync(file.path);
+    
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: `${folder}/${Date.now()}-${file.originalname}`,
+      Body: fileContent,
+      ContentType: file.mimetype,
+      ACL: 'public-read'
+    };
+
+    const result = await s3.upload(params).promise();
+    
+    // Delete local file after upload
+    fs.unlinkSync(file.path);
+    
+    return {
+      url: result.Location,
+      key: result.Key
+    };
+  } catch (error) {
+    console.error('S3 Upload Error:', error);
+    throw new Error('Failed to upload file to S3');
+  }
+};
+
+// Upload multiple files
+export const uploadMultipleToS3 = async (files, folder = 'general') => {
+  try {
+    const uploadPromises = files.map(file => uploadToS3(file, folder));
+    return await Promise.all(uploadPromises);
+  } catch (error) {
+    console.error('S3 Multiple Upload Error:', error);
+    throw new Error('Failed to upload files to S3');
+  }
+};
+
+// Delete file from S3
+export const deleteFromS3 = async (fileKey) => {
+  try {
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: fileKey
+    };
+
+    await s3.deleteObject(params).promise();
+    return true;
+  } catch (error) {
+    console.error('S3 Delete Error:', error);
+    throw new Error('Failed to delete file from S3');
+  }
+};
+
+// Get signed URL (for private files)
+export const getSignedUrl = (fileKey, expiresIn = 3600) => {
+  try {
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: fileKey,
+      Expires: expiresIn
+    };
+
+    return s3.getSignedUrl('getObject', params);
+  } catch (error) {
+    console.error('S3 Signed URL Error:', error);
+    throw new Error('Failed to generate signed URL');
+  }
+};
