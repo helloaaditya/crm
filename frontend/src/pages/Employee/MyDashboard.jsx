@@ -1,67 +1,58 @@
-import { useState, useEffect } from 'react'
-import { FiClock, FiMapPin, FiCheckCircle, FiCalendar, FiBriefcase, FiDollarSign, FiGift } from 'react-icons/fi'
+import { useState, useEffect, useMemo } from 'react'
+import { FiClock, FiBriefcase, FiCalendar, FiCheckCircle, FiMapPin, FiGift, FiSearch, FiFilter, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
 import Confetti from 'react-confetti'
 
-function MyDashboard() {
+const MyDashboard = () => {
   const { user } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const [todayAttendance, setTodayAttendance] = useState(null)
   const [projects, setProjects] = useState([])
   const [leaves, setLeaves] = useState([])
   const [reminders, setReminders] = useState([])
+  const [todayAttendance, setTodayAttendance] = useState(null)
+  const [loading, setLoading] = useState(false)
   const [location, setLocation] = useState(null)
-  const [isBirthday, setIsBirthday] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
-  const [employeeData, setEmployeeData] = useState(null)
+  const [isBirthday, setIsBirthday] = useState(false)
+  
+  // Filter and search states for projects
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filters, setFilters] = useState({
+    status: '',
+    role: ''
+  })
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
+    // Check if today is user's birthday
+    if (user?.dateOfBirth) {
+      const dob = new Date(user.dateOfBirth)
+      const today = new Date()
+      if (dob.getMonth() === today.getMonth() && dob.getDate() === today.getDate()) {
+        setIsBirthday(true)
+        setShowConfetti(true)
+        // Stop confetti after 5 seconds
+        setTimeout(() => setShowConfetti(false), 5000)
+      }
+    }
+    
     fetchDashboardData()
     getCurrentLocation()
-    checkBirthday()
-  }, [])
-
-  const checkBirthday = async () => {
-    try {
-      // Use the new myProfile endpoint to get current employee data
-      const response = await API.employees.myProfile()
-      const currentEmployee = response.data.data
-      
-      if (currentEmployee) {
-        setEmployeeData(currentEmployee)
-        
-        if (currentEmployee.dateOfBirth) {
-          const today = new Date()
-          const dob = new Date(currentEmployee.dateOfBirth)
-          
-          if (today.getMonth() === dob.getMonth() && today.getDate() === dob.getDate()) {
-            setIsBirthday(true)
-            setShowConfetti(true)
-            
-            // Stop confetti after 10 seconds
-            setTimeout(() => setShowConfetti(false), 10000)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking birthday:', error)
-    }
-  }
+  }, [user])
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setLocation({
+            type: 'Point',
             coordinates: [position.coords.longitude, position.coords.latitude],
-            address: `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
+            address: `Lat: ${position.coords.latitude.toFixed(4)}, Lng: ${position.coords.longitude.toFixed(4)}`
           })
         },
         (error) => {
-          console.error('Error getting location:', error)
-          toast.error('Please enable location access')
+          console.log('Location error:', error)
         }
       )
     }
@@ -72,14 +63,17 @@ function MyDashboard() {
       setLoading(true)
       const [projectsRes, leavesRes, remindersRes, attendanceRes] = await Promise.all([
         API.employees.myProjects(),
-        API.employees.getMyLeaves(),
-        API.employees.getMyReminders({ status: 'pending' }),
+        API.employees.myLeave.get(),
+        API.employees.myReminders.get({ status: 'pending' }),
         API.employees.myAttendance.get({
           month: new Date().getMonth() + 1,
           year: new Date().getFullYear()
         })
       ])
 
+      // Add debugging to see what data is being returned
+      console.log('Projects data:', projectsRes.data.data.activeProjects);
+      
       setProjects(projectsRes.data.data.activeProjects || [])
       setLeaves(leavesRes.data.data || [])
       setReminders(remindersRes.data.data || [])
@@ -139,6 +133,49 @@ function MyDashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Get unique values for filter options
+  const uniqueStatuses = useMemo(() => {
+    const statuses = projects.map(p => p.project?.status).filter(Boolean)
+    return [...new Set(statuses)]
+  }, [projects])
+
+  const uniqueRoles = useMemo(() => {
+    const roles = projects.map(p => p.role).filter(Boolean)
+    return [...new Set(roles)]
+  }, [projects])
+
+  // Filter projects
+  const filteredProjects = useMemo(() => {
+    let result = [...projects]
+    
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      result = result.filter(p => 
+        (p.project?.projectId && p.project.projectId.toLowerCase().includes(term)) ||
+        (p.project?.description && p.project.description.toLowerCase().includes(term))
+      )
+    }
+    
+    // Apply filters
+    if (filters.status) {
+      result = result.filter(p => p.project?.status === filters.status)
+    }
+    if (filters.role) {
+      result = result.filter(p => p.role === filters.role)
+    }
+    
+    return result
+  }, [projects, searchTerm, filters])
+
+  const clearFilters = () => {
+    setFilters({
+      status: '',
+      role: ''
+    })
+    setSearchTerm('')
   }
 
   return (
@@ -261,27 +298,123 @@ function MyDashboard() {
       {projects.length > 0 && (
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold text-gray-800">My Projects</h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {projects.slice(0, 5).map((ap) => (
-                <div key={ap._id} className="flex items-center justify-between p-4 bg-gray-50 rounded">
-                  <div>
-                    <h3 className="font-medium text-gray-800">{ap.project?.projectId}</h3>
-                    <p className="text-sm text-gray-600">{ap.project?.description}</p>
-                    <p className="text-xs text-gray-500 mt-1">Role: {ap.role}</p>
-                  </div>
-                  <span className={`px-3 py-1 text-xs rounded-full ${
-                    ap.project?.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    ap.project?.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {ap.project?.status}
-                  </span>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <h2 className="text-lg font-semibold text-gray-800">My Projects</h2>
+              
+              {/* Search and Filter Controls */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                {/* Search */}
+                <div className="relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search projects..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  />
                 </div>
-              ))}
+                
+                {/* Filter Toggle */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                >
+                  <FiFilter size={14} />
+                  Filters
+                  {(filters.status || filters.role) && (
+                    <span className="bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {Object.values(filters).filter(Boolean).length}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
+            
+            {/* Filter Panel */}
+            {showFilters && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Filter Projects</span>
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs text-primary hover:text-primary-dark flex items-center gap-1"
+                  >
+                    <FiX size={12} />
+                    Clear
+                  </button>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {/* Status Filter */}
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">All Statuses</option>
+                    {uniqueStatuses.map(status => (
+                      <option key={status} value={status}>
+                        {status?.replace('_', ' ')}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {/* Role Filter */}
+                  <select
+                    value={filters.role}
+                    onChange={(e) => setFilters({...filters, role: e.target.value})}
+                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">All Roles</option>
+                    {uniqueRoles.map(role => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="p-6">
+            {filteredProjects.length > 0 ? (
+              <div className="space-y-4">
+                {filteredProjects.slice(0, 5).map((ap) => (
+                  <div key={ap._id} className="flex items-center justify-between p-4 bg-gray-50 rounded">
+                    <div>
+                      <h3 className="font-medium text-gray-800">{ap.project?.projectId}</h3>
+                      <p className="text-sm text-gray-600">{ap.project?.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">Role: {ap.role}</p>
+                    </div>
+                    <span className={`px-3 py-1 text-xs rounded-full ${
+                      ap.project?.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      ap.project?.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {ap.project?.status?.replace('_', ' ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-600">
+                  {searchTerm || filters.status || filters.role
+                    ? 'No projects match your filters'
+                    : 'No projects found'}
+                </p>
+                {(searchTerm || filters.status || filters.role) && (
+                  <button
+                    onClick={clearFilters}
+                    className="mt-2 text-primary hover:text-primary-dark text-sm"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

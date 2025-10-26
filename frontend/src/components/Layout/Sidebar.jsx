@@ -89,7 +89,7 @@ const Sidebar = () => {
       >
         {/* Logo */}
         <div className="flex items-center justify-center h-20 border-b">
-          <h1 className="text-2xl font-bold text-primary">Sanjana CRM</h1>
+          <img src="https://www.sanjanawaterproofing.com/assets/sanjana-enterprises-Ihc86Ddy.png" alt="Sanjana Logo" style={{ width: '180px', height: 'auto' }} />
         </div>
 
         {/* Navigation */}

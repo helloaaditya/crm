@@ -75,6 +75,9 @@ router.post('/my-reminder', createReminder);
 router.put('/my-reminder/:id', updateReminder);
 router.delete('/my-reminders/reset', resetMyReminders);
 
+// Get employees by role (needed for project assignment)
+router.get('/by-role/:role', getEmployeesByRole);
+
 // My Payslip (Employee Self-Service)
 router.get('/my-payslip/:month', generateMyPayslip);
 
@@ -84,7 +87,6 @@ router.use(moduleAccess('employee', 'all'));
 
 // Employees
 router.get('/', getEmployees);
-router.get('/by-role/:role', getEmployeesByRole);
 router.post('/', checkPermission('canCreate'), createEmployee);
 router.get('/:id', getEmployee);
 router.get('/:id/projects', getEmployeeProjects);

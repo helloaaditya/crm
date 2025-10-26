@@ -355,13 +355,64 @@ export const generateWarranty = asyncHandler(async (req, res) => {
 export const assignEmployee = asyncHandler(async (req, res) => {
   const { employeeId, role } = req.body; // role: 'supervisor' or 'worker'
 
+  console.log('Assigning employee to project:', { projectId: req.params.id, employeeId, role });
+
   const project = await Project.findById(req.params.id);
   if (!project) {
+    console.log('Project not found:', req.params.id);
     return res.status(404).json({ message: 'Project not found' });
+  }
+
+  // Check if employee is already assigned
+  const isAlreadyAssigned = project.supervisors.some(s => s.employee.toString() === employeeId) ||
+                          project.workers.some(w => w.employee.toString() === employeeId);
+  
+  if (isAlreadyAssigned) {
+    console.log('Employee already assigned to project:', { projectId: project._id, employeeId });
+    return res.status(400).json({ message: 'Employee already assigned to this project' });
   }
 
   project.assignEmployee(employeeId, role, req.user._id);
   await project.save();
+  console.log('Project updated with employee assignment');
+
+  // Also update employee's assignedProjects array
+  const employee = await Employee.findById(employeeId);
+  if (employee) {
+    console.log('Employee found:', employee._id);
+    console.log('Employee userId:', employee.userId);
+    // Check if project is already in employee's assignedProjects
+    const projectAlreadyAssigned = employee.assignedProjects.some(ap => 
+      ap.project.toString() === project._id.toString() && ap.status === 'active'
+    );
+    
+    if (!projectAlreadyAssigned) {
+      const assignment = {
+        project: project._id,
+        role: role,
+        assignedBy: req.user._id,
+        status: 'active'
+      };
+      
+      employee.assignedProjects.push(assignment);
+      console.log('Added project to employee assignedProjects:', assignment);
+      
+      // If supervisor, also add to managedProjects
+      if (role === 'supervisor') {
+        if (!employee.managedProjects.includes(project._id)) {
+          employee.managedProjects.push(project._id);
+          console.log('Added project to employee managedProjects:', project._id);
+        }
+      }
+      
+      await employee.save();
+      console.log('Employee saved with assigned project');
+    } else {
+      console.log('Project already assigned to employee in assignedProjects array');
+    }
+  } else {
+    console.log('Employee not found:', employeeId);
+  }
 
   const populated = await Project.findById(project._id)
     .populate('supervisors.employee', 'name employeeId')
@@ -375,54 +426,59 @@ export const assignEmployee = asyncHandler(async (req, res) => {
 });
 
 // @desc    Remove employee from project
-// @route   DELETE /api/projects/:id/remove-employee/:employeeId
+// @route   POST /api/projects/:id/remove-employee
 // @access  Private
 export const removeEmployee = asyncHandler(async (req, res) => {
-  const { employeeId } = req.params;
-  
+  const { employeeId } = req.body;
+
+  console.log('Removing employee from project:', { projectId: req.params.id, employeeId });
+
   const project = await Project.findById(req.params.id);
   if (!project) {
+    console.log('Project not found:', req.params.id);
     return res.status(404).json({ message: 'Project not found' });
   }
-  
-  // Remove employee from project's supervisors or workers
-  const supervisorIndex = project.supervisors.findIndex(s => s.employee.toString() === employeeId);
-  const workerIndex = project.workers.findIndex(w => w.employee.toString() === employeeId);
-  
-  let removedRole = '';
-  
-  if (supervisorIndex !== -1) {
-    removedRole = project.supervisors[supervisorIndex].role || 'supervisor';
-    project.supervisors.splice(supervisorIndex, 1);
-  } else if (workerIndex !== -1) {
-    removedRole = project.workers[workerIndex].role || 'worker';
-    project.workers.splice(workerIndex, 1);
+
+  // Remove from project
+  project.removeEmployee(employeeId);
+  await project.save();
+  console.log('Employee removed from project');
+
+  // Also update employee's assignedProjects status
+  const employee = await Employee.findById(employeeId);
+  if (employee) {
+    console.log('Employee found for removal:', employee._id);
+    const projectAssignment = employee.assignedProjects.find(
+      ap => ap.project.toString() === project._id.toString() && ap.status === 'active'
+    );
+    
+    if (projectAssignment) {
+      projectAssignment.status = 'removed';
+      projectAssignment.completionDate = new Date();
+      console.log('Updated employee project assignment status to removed');
+      
+      // If this was a managed project, remove it
+      employee.managedProjects = employee.managedProjects.filter(
+        mp => mp.toString() !== project._id.toString()
+      );
+      console.log('Removed project from managedProjects if it was there');
+      
+      await employee.save();
+      console.log('Employee saved after project removal');
+    } else {
+      console.log('Project assignment not found in employee record');
+    }
   } else {
-    return res.status(404).json({ message: 'Employee not assigned to this project' });
+    console.log('Employee not found for removal:', employeeId);
   }
-  
-  // Save project changes
-  await project.save();
-  
-  // Also remove project from employee's assignedProjects
-  await Employee.updateOne(
-    { _id: employeeId },
-    { $pull: { assignedProjects: { project: project._id } } }
-  );
-  
-  // Log activity
-  project.activityHistory.push({
-    action: 'employee_removed',
-    description: `Removed employee from project as ${removedRole}`,
-    performedBy: req.user._id,
-    details: { employeeId, role: removedRole },
-    date: new Date()
-  });
-  
-  await project.save();
-  
+
+  const populated = await Project.findById(project._id)
+    .populate('supervisors.employee', 'name employeeId')
+    .populate('workers.employee', 'name employeeId');
+
   res.json({
     success: true,
+    data: populated,
     message: 'Employee removed from project successfully'
   });
 });
@@ -618,8 +674,14 @@ export const markProjectComplete = asyncHandler(async (req, res) => {
   }
 
   // Check if user is assigned to this project
-  const isAssigned = project.supervisors.some(sup => sup.employee.toString() === req.user._id.toString()) ||
-                    project.workers.some(worker => worker.employee.toString() === req.user._id.toString());
+  // We need to find the employee record for this user first
+  const employee = await Employee.findOne({ userId: req.user._id });
+  if (!employee) {
+    return res.status(403).json({ message: 'Employee record not found' });
+  }
+
+  const isAssigned = project.supervisors.some(sup => sup.employee.toString() === employee._id.toString()) ||
+                    project.workers.some(worker => worker.employee.toString() === employee._id.toString());
   
   if (!isAssigned) {
     return res.status(403).json({ message: 'You are not assigned to this project' });

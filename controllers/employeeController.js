@@ -465,13 +465,17 @@ export const updateEmployeeRole = asyncHandler(async (req, res) => {
 export const assignProjectToEmployee = asyncHandler(async (req, res) => {
   const { projectId, role } = req.body; // role: supervisor, engineer, worker, helper
 
+  console.log('Assigning project to employee:', { employeeId: req.params.id, projectId, role });
+
   const employee = await Employee.findById(req.params.id);
   if (!employee) {
+    console.log('Employee not found:', req.params.id);
     return res.status(404).json({ message: 'Employee not found' });
   }
 
   const project = await Project.findById(projectId);
   if (!project) {
+    console.log('Project not found:', projectId);
     return res.status(404).json({ message: 'Project not found' });
   }
 
@@ -481,32 +485,41 @@ export const assignProjectToEmployee = asyncHandler(async (req, res) => {
   );
 
   if (existing) {
+    console.log('Project already assigned to employee:', { projectId, employeeId: employee._id });
     return res.status(400).json({ message: 'Already assigned to this project' });
   }
 
   // Add to employee's assigned projects
-  employee.assignedProjects.push({
+  const assignment = {
     project: projectId,
     role: role || employee.role,
     assignedBy: req.user._id,
     status: 'active'
-  });
+  };
+  
+  employee.assignedProjects.push(assignment);
+  console.log('Added project to employee assignedProjects:', assignment);
 
   // If supervisor, add to managed projects
   if (role === 'supervisor' || employee.role === 'supervisor') {
     if (!employee.managedProjects.includes(projectId)) {
       employee.managedProjects.push(projectId);
+      console.log('Added project to employee managedProjects:', projectId);
     }
   }
 
   await employee.save();
+  console.log('Employee saved with assigned project');
 
   // Update project with employee assignment
   project.assignEmployee(employee._id, role || employee.role, req.user._id);
   await project.save();
+  console.log('Project updated with employee assignment');
 
   const populated = await Employee.findById(employee._id)
     .populate('assignedProjects.project', 'projectId description status');
+
+  console.log('Populated employee data:', JSON.stringify(populated.assignedProjects, null, 2));
 
   res.json({
     success: true,
@@ -799,15 +812,33 @@ export const getMyProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/employees/my-projects
 // @access  Private (Employee)
 export const getMyProjects = asyncHandler(async (req, res) => {
+  console.log('Fetching projects for user:', req.user._id);
+  
+  // First, let's try to find any employee record with this userId
+  const anyEmployee = await Employee.findOne({ userId: req.user._id });
+  console.log('Any employee with this userId:', anyEmployee ? anyEmployee._id : 'None found');
+  
   const employee = await Employee.findOne({ userId: req.user._id })
     .populate('assignedProjects.project', 'projectId description status category customer startDate expectedEndDate')
     .populate('assignedProjects.assignedBy', 'name');
 
   if (!employee) {
+    console.log('Employee not found for userId:', req.user._id);
+    // Let's also check all employees to see if we can find a match
+    const allEmployees = await Employee.find({}, 'userId name employeeId');
+    console.log('All employees:', allEmployees.map(e => ({ id: e._id, userId: e.userId, name: e.name, employeeId: e.employeeId })));
     return res.status(404).json({ message: 'Employee record not found' });
   }
 
+  console.log('Employee found:', employee._id);
+  console.log('Employee userId:', employee.userId);
+  console.log('Employee assignedProjects length:', employee.assignedProjects.length);
+  console.log('Employee assignedProjects:', JSON.stringify(employee.assignedProjects, null, 2));
+
   const activeProjects = employee.assignedProjects.filter(ap => ap.status === 'active');
+  
+  console.log('Active projects count:', activeProjects.length);
+  console.log('Active projects:', JSON.stringify(activeProjects, null, 2));
 
   res.json({
     success: true,

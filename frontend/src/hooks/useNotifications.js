@@ -13,7 +13,7 @@ export const useNotifications = () => {
 
   const fetchNotificationCounts = async () => {
     try {
-      const response = await API.dashboard.getNotifications();
+      const response = await API.dashboard.getNotificationCounts();
       setCounts(response.data.data);
     } catch (error) {
       console.error('Failed to fetch notification counts:', error);

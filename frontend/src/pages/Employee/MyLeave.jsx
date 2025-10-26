@@ -30,7 +30,7 @@ function MyLeave() {
   const fetchLeaves = async () => {
     try {
       setLoading(true)
-      const response = await API.employees.getMyLeaves()
+      const response = await API.employees.myLeave.get()
       setLeaveRequests(response.data.data || [])
     } catch (error) {
       console.error('Error fetching leaves:', error)
