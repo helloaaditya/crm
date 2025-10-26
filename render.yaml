@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sanjana-crm
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: http://localhost:3000
+      - key: FRONTEND_URL_PROD
+        value: https://crm-chi-rouge.vercel.app
+      # Add your other environment variables here
+      # Make sure to set these in Render dashboard for security:
+      # - MONGODB_URI
+      # - JWT_SECRET
+      # - AWS_ACCESS_KEY_ID
+      # - AWS_SECRET_ACCESS_KEY
+      # - RAZORPAY_KEY_ID
+      # - RAZORPAY_KEY_SECRET
+      # - EMAIL_HOST
+      # - EMAIL_PORT
+      # - EMAIL_USER
+      # - EMAIL_PASSWORD

@@ -37,10 +37,29 @@ app.use(helmet());
 app.use(compression());
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://crm-chi-rouge.vercel.app',
+      process.env.FRONTEND_URL,
+      process.env.FRONTEND_URL_PROD
+    ].filter(Boolean); // Remove any falsy values
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Body parser middleware
 app.use(express.json({ limit: '50mb' }));
@@ -69,7 +88,25 @@ app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Server is running' });
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    origin: req.get('origin')
+  });
+});
+
+// CORS preflight test endpoint
+app.get('/cors-test', (req, res) => {
+  res.status(200).json({ 
+    status: 'CORS OK', 
+    message: 'CORS is properly configured',
+    origin: req.get('origin'),
+    allowedOrigins: [
+      'http://localhost:3000',
+      'https://crm-chi-rouge.vercel.app'
+    ]
+  });
 });
 
 // Error handler middleware (must be last)
