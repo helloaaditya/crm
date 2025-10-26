@@ -148,6 +148,25 @@ export const createInvoice = asyncHandler(async (req, res) => {
 
   const invoiceNumber = `INV${year}${month}${nextNumber.toString().padStart(4, '0')}`;
 
+  // Get default terms from settings if not provided
+  let invoiceTerms = terms;
+  if (!invoiceTerms) {
+    try {
+      const invoiceSettings = await InvoiceSettings.getSettings();
+      invoiceTerms = invoiceSettings.invoiceDefaults?.terms || 
+        '1. Payment terms are 30 days from invoice date.\n' +
+        '2. Interest @ 24% per annum will be charged on overdue amounts.\n' +
+        '3. All disputes subject to Bangalore jurisdiction.';
+    } catch (error) {
+      console.error('Error getting invoice settings:', error);
+      // Use default terms if settings unavailable
+      invoiceTerms = 
+        '1. Payment terms are 30 days from invoice date.\n' +
+        '2. Interest @ 24% per annum will be charged on overdue amounts.\n' +
+        '3. All disputes subject to Bangalore jurisdiction.';
+    }
+  }
+
   // Create invoice
   const invoice = await Invoice.create({
     invoiceNumber,
@@ -164,7 +183,7 @@ export const createInvoice = asyncHandler(async (req, res) => {
     discount,
     totalAmount,
     dueDate,
-    terms,
+    terms: invoiceTerms,
     notes,
     createdBy: req.user._id
   });
@@ -290,7 +309,27 @@ export const updateInvoice = asyncHandler(async (req, res) => {
   invoice.discount = discount || invoice.discount;
   invoice.totalAmount = totalAmount || invoice.totalAmount;
   invoice.dueDate = dueDate || invoice.dueDate;
-  invoice.terms = terms || invoice.terms;
+  
+  // Use default terms from settings if not provided
+  if (terms !== undefined) {
+    invoice.terms = terms;
+  } else if (!invoice.terms) {
+    try {
+      const invoiceSettings = await InvoiceSettings.getSettings();
+      invoice.terms = invoiceSettings.invoiceDefaults?.terms || 
+        '1. Payment terms are 30 days from invoice date.\n' +
+        '2. Interest @ 24% per annum will be charged on overdue amounts.\n' +
+        '3. All disputes subject to Bangalore jurisdiction.';
+    } catch (error) {
+      console.error('Error getting invoice settings:', error);
+      // Use default terms if settings unavailable
+      invoice.terms = 
+        '1. Payment terms are 30 days from invoice date.\n' +
+        '2. Interest @ 24% per annum will be charged on overdue amounts.\n' +
+        '3. All disputes subject to Bangalore jurisdiction.';
+    }
+  }
+  
   invoice.notes = notes || invoice.notes;
 
   await invoice.save();
@@ -376,7 +415,7 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
     customerPhone: invoice.customer.contactNumber,
     customerEmail: invoice.customer.email,
     customerAddress: invoice.customer.address,
-    invoiceDate: invoice.invoiceDate,
+    invoiceDate: invoice.invoiceDate || new Date(),
     dueDate: invoice.dueDate,
     items: invoice.items,
     subtotal: invoice.subtotal,
@@ -387,7 +426,7 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
     totalAmount: invoice.totalAmount,
     isGST: invoice.isGST,
     gstNumber: invoice.gstNumber,
-    terms: invoice.terms
+    terms: invoice.terms || invoiceSettings.invoiceDefaults?.terms
   };
 
   const pdf = await generateInvoicePDF(invoiceData, 'invoice');

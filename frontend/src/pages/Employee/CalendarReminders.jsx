@@ -396,7 +396,7 @@ function CalendarReminders() {
           {loading ? (
             <p className="text-center text-gray-600">Loading reminders...</p>
           ) : allUpcomingItems.length === 0 ? (
-            <p className="text-center text-gray-600">No upcoming reminders or birthdays</p>
+            <p className="text-center text-gray-600">No upcoming reminders</p>
           ) : (
             <div className="space-y-4">
               {allUpcomingItems.map((item) => (

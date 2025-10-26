@@ -3,14 +3,13 @@ import fs from 'fs';
 import path from 'path';
 import QRCode from 'qrcode';
 
-// Generate Professional Invoice/Quotation PDF
+// Generate Simple Invoice PDF (Single Page)
 export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ 
-        margin: 40, 
-        size: 'A4',
-        bufferPages: true
+        margin: 30, 
+        size: 'A4'
       });
       const filename = `${type}-${invoiceData.invoiceNumber}-${Date.now()}.pdf`;
       const filepath = path.join('uploads', 'invoices', filename);
@@ -29,250 +28,202 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
 
       // ================== HEADER SECTION ==================
       
-      // Top border accent
-      doc.rect(40, 40, pageWidth - 80, 3)
-         .fill('#2563eb');
-
       // Company Name - Large and Bold
-      doc.fontSize(28)
+      doc.fontSize(24)
          .font('Helvetica-Bold')
          .fillColor('#1e40af')
-         .text(companyInfo.name || 'SANJANA ENTERPRISES', 40, 55, {
+         .text(companyInfo.name || 'SANJANA ENTERPRISES', 30, 30, {
            width: 300
          });
 
-      // Company tagline or type
-      doc.fontSize(10)
+      // Company Address
+      doc.fontSize(8)
          .font('Helvetica')
          .fillColor('#6b7280')
-         .text('WATERPROOFING & CONSTRUCTION SERVICES', 40, 92);
+         .text(`${companyInfo.address || '# 786/1/30&31, 3rd main, 2nd cross, telecom layout'}`, 30, 60)
+         .text(`${companyInfo.city || 'Bangalore'}, ${companyInfo.state || 'Karnataka'} - ${companyInfo.pincode || '561203'}`, 30, 70)
+         .text(`📞 ${companyInfo.phone || '+91 9916290799'} | 📧 ${companyInfo.email || 'sanjana.waterproofing@gmail.com'}`, 30, 80);
 
       // ================== INVOICE TYPE BOX ==================
       const invoiceTitle = type === 'quotation' ? 'QUOTATION' : 'TAX INVOICE';
-      const boxX = 380;
-      const boxY = 50;
+      const boxX = 400;
+      const boxY = 30;
       
-      // Invoice type box with gradient effect
-      doc.rect(boxX, boxY, 175, 80)
+      // Invoice type box
+      doc.rect(boxX, boxY, 165, 60)
          .fillAndStroke('#eff6ff', '#2563eb');
 
-      doc.fontSize(18)
+      doc.fontSize(14)
          .font('Helvetica-Bold')
          .fillColor('#1e40af')
-         .text(invoiceTitle, boxX + 10, boxY + 12, {
+         .text(invoiceTitle, boxX + 5, boxY + 5, {
            width: 155,
            align: 'center'
          });
 
       // Invoice details in box
-      doc.fontSize(9)
+      doc.fontSize(7)
          .font('Helvetica')
          .fillColor('#374151')
-         .text(`${type === 'quotation' ? 'Quotation' : 'Invoice'} No:`, boxX + 10, boxY + 38)
+         .text(`${type === 'quotation' ? 'Quotation' : 'Invoice'} No:`, boxX + 5, boxY + 25)
          .font('Helvetica-Bold')
-         .text(invoiceData.invoiceNumber, boxX + 75, boxY + 38);
+         .text(invoiceData.invoiceNumber, boxX + 65, boxY + 25);
 
       doc.font('Helvetica')
-         .text('Date:', boxX + 10, boxY + 52)
+         .text('Date:', boxX + 5, boxY + 35)
          .font('Helvetica-Bold')
-         .text(new Date(invoiceData.invoiceDate).toLocaleDateString('en-IN'), boxX + 75, boxY + 52);
+         .text(new Date(invoiceData.invoiceDate).toLocaleDateString('en-IN'), boxX + 65, boxY + 35);
 
       doc.font('Helvetica')
-         .text('Due Date:', boxX + 10, boxY + 66)
+         .text('Due Date:', boxX + 5, boxY + 45)
          .font('Helvetica-Bold')
-         .text(invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString('en-IN') : 'On Receipt', boxX + 75, boxY + 66);
-
-      // ================== COMPANY DETAILS SECTION ==================
-      let yPos = 120;
-
-      // Company details box
-      doc.fontSize(9)
-         .font('Helvetica')
-         .fillColor('#4b5563');
-
-      const companyDetails = [
-        companyInfo.address || '# 786/1/30&31, 3rd main, 2nd cross, telecom layout',
-        'Beside Muneshwara Temple, Srirampura, Jakkur Post',
-        `${companyInfo.city || 'Bangalore'}, ${companyInfo.state || 'Karnataka'} - ${companyInfo.pincode || '561203'}`,
-        '',
-        `📞 ${companyInfo.phone || '+91 9916290799'}`,
-        `📧 ${companyInfo.email || 'sanjana.waterproofing@gmail.com'}`,
-        '',
-        `GSTIN: ${companyInfo.gstin || '29XXXXX1234X1ZX'} | PAN: ${companyInfo.pan || 'XXXXX1234X'}`
-      ];
-
-      companyDetails.forEach(line => {
-        if (line) {
-          doc.text(line, 40, yPos);
-          yPos += 12;
-        }
-      });
+         .text(invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString('en-IN') : 'On Receipt', boxX + 65, boxY + 45);
 
       // ================== BILL TO / BILL FROM SECTION ==================
-      yPos = 240;
+      let yPos = 110;
 
       // Draw separator line
-      doc.moveTo(40, yPos - 10)
-         .lineTo(pageWidth - 40, yPos - 10)
+      doc.moveTo(30, yPos - 10)
+         .lineTo(pageWidth - 30, yPos - 10)
          .stroke('#e5e7eb');
 
       // FROM section
-      doc.rect(40, yPos, 250, 120)
-         .fillAndStroke('#f9fafb', '#e5e7eb');
-
-      doc.fontSize(11)
-         .font('Helvetica-Bold')
-         .fillColor('#1f2937')
-         .text('FROM', 50, yPos + 10);
-
       doc.fontSize(9)
          .font('Helvetica-Bold')
-         .fillColor('#374151')
-         .text(companyInfo.name || 'Sanjana Enterprises', 50, yPos + 28, { width: 230 });
+         .fillColor('#1f2937')
+         .text('FROM:', 30, yPos);
 
-      doc.font('Helvetica')
-         .fillColor('#4b5563')
-         .text(companyInfo.address || '# 786/1/30&31, 3rd main, 2nd cross', 50, yPos + 42, { width: 230 })
-         .text(`${companyInfo.city || 'Bangalore'}, ${companyInfo.state || 'Karnataka'} - ${companyInfo.pincode || '561203'}`, 50, yPos + 68, { width: 230 })
-         .text(`Ph: ${companyInfo.phone || '+91 9916290799'}`, 50, yPos + 82)
-         .text(`GSTIN: ${companyInfo.gstin || '29XXXXX1234X1ZX'}`, 50, yPos + 96);
+      doc.fontSize(8)
+         .font('Helvetica')
+         .fillColor('#374151')
+         .text(companyInfo.name || 'Sanjana Enterprises', 30, yPos + 15)
+         .text(`GSTIN: ${companyInfo.gstin || '29XXXXX1234X1ZX'} | PAN: ${companyInfo.pan || 'XXXXX1234X'}`, 30, yPos + 25);
 
       // BILL TO section
-      doc.rect(305, yPos, 250, 120)
-         .fillAndStroke('#eff6ff', '#bfdbfe');
-
-      doc.fontSize(11)
-         .font('Helvetica-Bold')
-         .fillColor('#1e40af')
-         .text('BILL TO', 315, yPos + 10);
-
       doc.fontSize(9)
          .font('Helvetica-Bold')
          .fillColor('#1f2937')
-         .text(invoiceData.customerName, 315, yPos + 28, { width: 230 });
+         .text('BILL TO:', 300, yPos);
+
+      doc.fontSize(8)
+         .font('Helvetica')
+         .fillColor('#374151')
+         .text(invoiceData.customerName, 300, yPos + 15);
 
       if (invoiceData.customerAddress) {
-        doc.font('Helvetica')
-           .fillColor('#374151')
-           .text(invoiceData.customerAddress, 315, yPos + 42, { width: 230 });
+        doc.text(invoiceData.customerAddress, 300, yPos + 25, { width: 250 });
       }
 
-      let customerYPos = invoiceData.customerAddress ? yPos + 68 : yPos + 42;
+      let customerYPos = invoiceData.customerAddress ? yPos + 35 : yPos + 25;
       
       if (invoiceData.customerPhone) {
-        doc.text(`Phone: ${invoiceData.customerPhone}`, 315, customerYPos);
-        customerYPos += 14;
+        doc.text(`Phone: ${invoiceData.customerPhone}`, 300, customerYPos);
+        customerYPos += 10;
       }
       
       if (invoiceData.customerEmail) {
-        doc.text(`Email: ${invoiceData.customerEmail}`, 315, customerYPos);
-        customerYPos += 14;
+        doc.text(`Email: ${invoiceData.customerEmail}`, 300, customerYPos);
+        customerYPos += 10;
       }
       
       if (invoiceData.isGST && invoiceData.gstNumber) {
         doc.font('Helvetica-Bold')
-           .text(`GSTIN: ${invoiceData.gstNumber}`, 315, customerYPos);
+           .text(`GSTIN: ${invoiceData.gstNumber}`, 300, customerYPos);
       }
 
       // ================== ITEMS TABLE ==================
-      yPos = 380;
+      yPos = 190;
 
       // Table header background
-      doc.rect(40, yPos, pageWidth - 80, 25)
+      doc.rect(30, yPos, pageWidth - 60, 20)
          .fill('#1e40af');
 
       // Table headers
-      doc.fontSize(9)
+      doc.fontSize(8)
          .font('Helvetica-Bold')
          .fillColor('#ffffff')
-         .text('#', 50, yPos + 8, { width: 20 })
-         .text('DESCRIPTION', 75, yPos + 8, { width: 200 })
-         .text('QTY', 290, yPos + 8, { width: 40, align: 'center' })
-         .text('UNIT', 335, yPos + 8, { width: 45, align: 'center' })
-         .text('RATE (Rs.)', 385, yPos + 8, { width: 70, align: 'right' })
-         .text('AMOUNT (Rs.)', 465, yPos + 8, { width: 85, align: 'right' });
+         .text('#', 35, yPos + 6, { width: 15 })
+         .text('DESCRIPTION', 55, yPos + 6, { width: 180 })
+         .text('QTY', 240, yPos + 6, { width: 30, align: 'center' })
+         .text('UNIT', 275, yPos + 6, { width: 35, align: 'center' })
+         .text('RATE', 315, yPos + 6, { width: 50, align: 'right' })
+         .text('AMOUNT', 375, yPos + 6, { width: 60, align: 'right' })
+         .text('GST', 440, yPos + 6, { width: 30, align: 'right' })
+         .text('TOTAL', 480, yPos + 6, { width: 70, align: 'right' });
 
-      yPos += 25;
+      yPos += 20;
 
-      // Table items
-      invoiceData.items.forEach((item, index) => {
-        // Check for page break
-        if (yPos > 680) {
-          doc.addPage();
-          yPos = 50;
-          
-          // Repeat header on new page
-          doc.rect(40, yPos, pageWidth - 80, 25)
-             .fill('#1e40af');
-          
-          doc.fontSize(9)
-             .font('Helvetica-Bold')
-             .fillColor('#ffffff')
-             .text('#', 50, yPos + 8, { width: 20 })
-             .text('DESCRIPTION', 75, yPos + 8, { width: 200 })
-             .text('QTY', 290, yPos + 8, { width: 40, align: 'center' })
-             .text('UNIT', 335, yPos + 8, { width: 45, align: 'center' })
-             .text('RATE', 385, yPos + 8, { width: 70, align: 'right' })
-             .text('AMOUNT', 465, yPos + 8, { width: 85, align: 'right' });
-          
-          yPos += 25;
-        }
-
+      // Table items (limited to fit on one page)
+      const maxItems = 12; // Limit items to fit on one page
+      const itemsToShow = invoiceData.items.slice(0, maxItems);
+      
+      itemsToShow.forEach((item, index) => {
         // Alternate row colors
         if (index % 2 === 0) {
-          doc.rect(40, yPos, pageWidth - 80, 24)
+          doc.rect(30, yPos, pageWidth - 60, 18)
              .fill('#f9fafb');
         }
 
-        doc.fontSize(8)
+        doc.fontSize(7)
            .font('Helvetica')
            .fillColor('#1f2937')
-           .text(index + 1, 50, yPos + 8, { width: 20 })
-           .text(item.description, 75, yPos + 8, { width: 200 })
-           .text(item.quantity.toString(), 290, yPos + 8, { width: 40, align: 'center' })
-           .text(item.unit || 'Nos', 335, yPos + 8, { width: 45, align: 'center' })
-           .text(`₹${item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 385, yPos + 8, { width: 70, align: 'right' })
-           .text(`₹${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 465, yPos + 8, { width: 85, align: 'right' });
+           .text(index + 1, 35, yPos + 5, { width: 15 })
+           .text(item.description, 55, yPos + 5, { width: 180 })
+           .text(item.quantity.toString(), 240, yPos + 5, { width: 30, align: 'center' })
+           .text(item.unit || 'Nos', 275, yPos + 5, { width: 35, align: 'center' })
+           .text(`₹${item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 315, yPos + 5, { width: 50, align: 'right' })
+           .text(`₹${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 375, yPos + 5, { width: 60, align: 'right' })
+           .text(invoiceData.isGST ? `${(invoiceData.cgst / invoiceData.subtotal * 100).toFixed(1)}%` : 'N/A', 440, yPos + 5, { width: 30, align: 'right' })
+           .text(`₹${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 480, yPos + 5, { width: 70, align: 'right' });
 
-        yPos += 24;
+        yPos += 18;
       });
 
+      // If there are more items than we can show
+      if (invoiceData.items.length > maxItems) {
+        doc.fontSize(7)
+           .font('Helvetica-Oblique')
+           .fillColor('#6b7280')
+           .text(`+${invoiceData.items.length - maxItems} more items...`, 55, yPos + 5);
+        yPos += 18;
+      }
+
       // Bottom border of table
-      doc.moveTo(40, yPos)
-         .lineTo(pageWidth - 40, yPos)
+      doc.moveTo(30, yPos)
+         .lineTo(pageWidth - 30, yPos)
          .stroke('#e5e7eb');
 
       // ================== TOTALS SECTION ==================
-      yPos += 15;
+      yPos += 10;
 
-      const totalsX = 360;
-      const amountX = 465;
+      const totalsX = 400;
+      const amountX = 480;
 
-      doc.fontSize(9)
+      doc.fontSize(8)
          .font('Helvetica')
          .fillColor('#374151');
 
       // Subtotal
       doc.text('Subtotal:', totalsX, yPos)
-         .text(`₹${invoiceData.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, amountX, yPos, { width: 85, align: 'right' });
-      yPos += 18;
+         .text(`₹${invoiceData.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, amountX, yPos, { width: 70, align: 'right' });
+      yPos += 15;
 
       // GST Details
       if (invoiceData.isGST) {
         if (invoiceData.cgst > 0) {
-          doc.text(`CGST (${(invoiceData.cgst / invoiceData.subtotal * 100).toFixed(1)}%):`, totalsX, yPos)
-             .text(`₹${invoiceData.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, amountX, yPos, { width: 85, align: 'right' });
-          yPos += 15;
+          doc.text(`CGST:`, totalsX, yPos)
+             .text(`₹${invoiceData.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, amountX, yPos, { width: 70, align: 'right' });
+          yPos += 12;
           
-          doc.text(`SGST (${(invoiceData.sgst / invoiceData.subtotal * 100).toFixed(1)}%):`, totalsX, yPos)
-             .text(`₹${invoiceData.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, amountX, yPos, { width: 85, align: 'right' });
-          yPos += 18;
+          doc.text(`SGST:`, totalsX, yPos)
+             .text(`₹${invoiceData.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, amountX, yPos, { width: 70, align: 'right' });
+          yPos += 12;
         }
         
         if (invoiceData.igst > 0) {
-          doc.text(`IGST (${(invoiceData.igst / invoiceData.subtotal * 100).toFixed(1)}%):`, totalsX, yPos)
-             .text(`₹${invoiceData.igst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, amountX, yPos, { width: 85, align: 'right' });
-          yPos += 18;
+          doc.text(`IGST:`, totalsX, yPos)
+             .text(`₹${invoiceData.igst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, amountX, yPos, { width: 70, align: 'right' });
+          yPos += 12;
         }
       }
 
@@ -280,90 +231,76 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       if (invoiceData.discount > 0) {
         doc.fillColor('#dc2626')
            .text('Discount:', totalsX, yPos)
-           .text(`-₹${invoiceData.discount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, amountX, yPos, { width: 85, align: 'right' });
-        yPos += 18;
+           .text(`-₹${invoiceData.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, amountX, yPos, { width: 70, align: 'right' });
+        yPos += 15;
       }
 
       // Total box
-      doc.rect(totalsX - 10, yPos, 200, 30)
+      doc.rect(totalsX - 20, yPos, 170, 25)
          .fillAndStroke('#1e40af', '#1e40af');
-
-      doc.fontSize(12)
-         .font('Helvetica-Bold')
-         .fillColor('#ffffff')
-         .text('TOTAL AMOUNT:', totalsX, yPos + 8)
-         .fontSize(14)
-         .text(`₹${invoiceData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, amountX, yPos + 8, { width: 85, align: 'right' });
-
-      yPos += 40;
-
-      // Amount in words box
-      const amountInWords = convertNumberToWords(invoiceData.totalAmount);
-      doc.rect(40, yPos, pageWidth - 80, 35)
-         .fillAndStroke('#f9fafb', '#e5e7eb');
-
-      doc.fontSize(8)
-         .font('Helvetica-Bold')
-         .fillColor('#374151')
-         .text('Amount in Words:', 50, yPos + 8)
-         .font('Helvetica')
-         .fontSize(9)
-         .text(`${amountInWords} Rupees Only`, 50, yPos + 20, { width: pageWidth - 100 });
-
-      yPos += 50;
-
-      // ================== PAYMENT INFO & QR CODE ==================
-      if (yPos > 620) {
-        doc.addPage();
-        yPos = 50;
-      }
-
-      const bankDetails = invoiceData.bankDetails || {};
-      
-      // Payment information box
-      doc.rect(40, yPos, 300, 110)
-         .fillAndStroke('#fffbeb', '#fbbf24');
 
       doc.fontSize(10)
          .font('Helvetica-Bold')
-         .fillColor('#92400e')
-         .text('PAYMENT INFORMATION', 50, yPos + 10);
+         .fillColor('#ffffff')
+         .text('TOTAL AMOUNT:', totalsX - 15, yPos + 7)
+         .fontSize(12)
+         .text(`₹${invoiceData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, amountX, yPos + 7, { width: 70, align: 'right' });
 
+      yPos += 35;
+
+      // Amount in words
+      const amountInWords = convertNumberToWords(invoiceData.totalAmount);
       doc.fontSize(8)
          .font('Helvetica')
-         .fillColor('#78350f')
-         .text(`Bank: ${bankDetails.bankName || 'State Bank of India'}`, 50, yPos + 28)
-         .text(`A/c Name: ${bankDetails.accountName || 'Sanjana Enterprises'}`, 50, yPos + 40)
-         .text(`A/c No: ${bankDetails.accountNumber || '1234567890'}`, 50, yPos + 52)
-         .text(`IFSC: ${bankDetails.ifscCode || 'SBIN0001234'}`, 50, yPos + 64)
-         .text(`Branch: ${bankDetails.branch || 'Bangalore Main'}`, 50, yPos + 76)
-         .text(`UPI ID: ${bankDetails.upiId || 'sanjana@sbi'}`, 50, yPos + 88);
+         .fillColor('#374151')
+         .text(`Amount in Words: ${amountInWords} Rupees Only`, 30, yPos, { width: 350 });
+
+      yPos += 25;
+
+      // ================== PAYMENT INFO & QR CODE ==================
+      const bankDetails = invoiceData.bankDetails || {};
+      
+      // Payment information
+      doc.fontSize(8)
+         .font('Helvetica-Bold')
+         .fillColor('#1e40af')
+         .text('BANK DETAILS:', 30, yPos);
+
+      doc.fontSize(7)
+         .font('Helvetica')
+         .fillColor('#374151')
+         .text(`Bank: ${bankDetails.bankName || 'State Bank of India'}`, 30, yPos + 12)
+         .text(`A/c Name: ${bankDetails.accountName || 'Sanjana Enterprises'}`, 30, yPos + 22)
+         .text(`A/c No: ${bankDetails.accountNumber || '1234567890'}`, 30, yPos + 32)
+         .text(`IFSC: ${bankDetails.ifscCode || 'SBIN0001234'}`, 30, yPos + 42)
+         .text(`Branch: ${bankDetails.branch || 'Bangalore Main'}`, 180, yPos + 12)
+         .text(`UPI ID: ${bankDetails.upiId || 'sanjana@sbi'}`, 180, yPos + 22);
 
       // QR Code section
       if (invoiceData.qrCode?.enabled !== false) {
         const upiString = `upi://pay?pa=${bankDetails.upiId || 'sanjana@sbi'}&pn=${encodeURIComponent(companyInfo.name || 'Sanjana Enterprises')}&am=${invoiceData.totalAmount}&cu=INR`;
         
-        QRCode.toDataURL(upiString, { width: 100, margin: 1 }, (err, url) => {
+        QRCode.toDataURL(upiString, { width: 80, margin: 1 }, (err, url) => {
           if (!err) {
             // QR Code box
-            doc.rect(360, yPos, 195, 110)
+            doc.rect(400, yPos, 165, 80)
                .fillAndStroke('#f0fdf4', '#22c55e');
-
-            doc.fontSize(9)
-               .font('Helvetica-Bold')
-               .fillColor('#166534')
-               .text('SCAN TO PAY', 360, yPos + 10, { width: 195, align: 'center' });
-
-            // QR Code placeholder (in real implementation, use doc.image())
-            doc.rect(420, yPos + 25, 70, 70)
-               .stroke('#22c55e');
-
-            doc.fontSize(7)
-               .text('QR Code', 420, yPos + 50, { width: 70, align: 'center' });
 
             doc.fontSize(8)
                .font('Helvetica-Bold')
-               .text(`₹${invoiceData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 360, yPos + 98, { width: 195, align: 'center' });
+               .fillColor('#166534')
+               .text('SCAN TO PAY', 400, yPos + 5, { width: 165, align: 'center' });
+
+            // QR Code placeholder (in real implementation, use doc.image())
+            doc.rect(440, yPos + 20, 80, 40)
+               .stroke('#22c55e');
+
+            doc.fontSize(6)
+               .text('QR Code', 440, yPos + 35, { width: 80, align: 'center' });
+
+            doc.fontSize(8)
+               .font('Helvetica-Bold')
+               .text(`₹${invoiceData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 400, yPos + 65, { width: 165, align: 'center' });
 
             continueWithTermsAndFooter();
           } else {
@@ -375,54 +312,37 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       }
 
       function continueWithTermsAndFooter() {
-        yPos += 130;
+        yPos += 90;
 
         // ================== TERMS & CONDITIONS ==================
         const terms = invoiceData.invoiceDefaults?.terms || 
           '1. Payment terms are 30 days from invoice date.\n' +
           '2. Interest @ 24% per annum will be charged on overdue amounts.\n' +
-          '3. All disputes subject to Bangalore jurisdiction.\n' +
-          '4. Goods once sold will not be taken back.';
+          '3. All disputes subject to Bangalore jurisdiction.';
 
-        doc.fontSize(9)
-           .font('Helvetica-Bold')
-           .fillColor('#1f2937')
-           .text('TERMS & CONDITIONS', 40, yPos);
-
-        doc.fontSize(7)
-           .font('Helvetica')
-           .fillColor('#4b5563')
-           .text(terms, 40, yPos + 15, { width: pageWidth - 80, lineGap: 3 });
-
-        // ================== FOOTER ==================
-        // Signature section
         doc.fontSize(8)
            .font('Helvetica-Bold')
            .fillColor('#1f2937')
-           .text('For ' + (companyInfo.name || 'SANJANA ENTERPRISES'), pageWidth - 180, pageHeight - 100);
+           .text('Terms & Conditions:', 30, yPos);
 
-        doc.moveTo(pageWidth - 180, pageHeight - 50)
-           .lineTo(pageWidth - 50, pageHeight - 50)
-           .stroke('#9ca3af');
+        doc.fontSize(6)
+           .font('Helvetica')
+           .fillColor('#4b5563')
+           .text(terms, 30, yPos + 12, { width: 350, lineGap: 1 });
 
+        // ================== FOOTER ==================
+        // Signature section
         doc.fontSize(7)
            .font('Helvetica')
            .fillColor('#6b7280')
-           .text('Authorized Signatory', pageWidth - 180, pageHeight - 40);
-
-        // Bottom decorative line
-        doc.rect(40, pageHeight - 70, pageWidth - 80, 2)
-           .fill('#e5e7eb');
+           .text('For ' + (companyInfo.name || 'SANJANA ENTERPRISES'), pageWidth - 150, pageHeight - 60)
+           .text('Authorized Signatory', pageWidth - 150, pageHeight - 30);
 
         // Footer text
-        doc.fontSize(7)
+        doc.fontSize(6)
            .fillColor('#9ca3af')
-           .text('This is a computer-generated document. No signature required.', 40, pageHeight - 55, { 
-             width: pageWidth - 80, 
-             align: 'center' 
-           })
-           .text('Thank you for your business!', 40, pageHeight - 43, { 
-             width: pageWidth - 80, 
+           .text('This is a computer-generated document. No signature required.', 30, pageHeight - 30, { 
+             width: pageWidth - 60, 
              align: 'center' 
            });
 

@@ -46,9 +46,26 @@ const InvoiceSettings = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await API.settings.getSettings();
-      if (response.data.data.invoiceSettings) {
-        setSettings(response.data.data.invoiceSettings);
+      // Use the correct API endpoint for invoice settings
+      const response = await API.settings.getAll();
+      if (response.data.data) {
+        // Extract invoice settings from the main settings object
+        const invoiceSettings = {
+          companyInfo: response.data.data.company || {},
+          bankDetails: response.data.data.invoice?.bankDetails || {},
+          invoiceDefaults: {
+            terms: response.data.data.invoice?.terms || '',
+            notes: '',
+            prefix: response.data.data.invoice?.prefix || 'INV',
+            dateFormat: 'DD/MM/YYYY'
+          },
+          qrCode: {
+            enabled: true,
+            size: 100,
+            includeAmount: true
+          }
+        };
+        setSettings(invoiceSettings);
       }
     } catch (error) {
       console.error('Error fetching invoice settings:', error);
@@ -85,7 +102,16 @@ const InvoiceSettings = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      await API.settings.updateSettings({ invoiceSettings: settings });
+      // Format the data to match the backend settings structure
+      const settingsData = {
+        company: settings.companyInfo,
+        invoice: {
+          bankDetails: settings.bankDetails,
+          terms: settings.invoiceDefaults?.terms,
+          prefix: settings.invoiceDefaults?.prefix
+        }
+      };
+      await API.settings.update(settingsData);
       toast.success('Invoice settings updated successfully');
     } catch (error) {
       console.error('Error updating invoice settings:', error);

@@ -7,6 +7,7 @@ import Confetti from 'react-confetti'
 
 const MyDashboard = () => {
   const { user } = useAuth()
+  const [employee, setEmployee] = useState(null) // Add employee state
   const [projects, setProjects] = useState([])
   const [leaves, setLeaves] = useState([])
   const [reminders, setReminders] = useState([])
@@ -26,17 +27,42 @@ const MyDashboard = () => {
 
   useEffect(() => {
     // Check if today is user's birthday
-    if (user?.dateOfBirth) {
-      const dob = new Date(user.dateOfBirth)
-      const today = new Date()
-      if (dob.getMonth() === today.getMonth() && dob.getDate() === today.getDate()) {
-        setIsBirthday(true)
-        setShowConfetti(true)
-        // Stop confetti after 5 seconds
-        setTimeout(() => setShowConfetti(false), 5000)
+    const checkBirthday = (dob) => {
+      if (dob) {
+        const dobDate = new Date(dob);
+        const today = new Date();
+        
+        // Compare month and date, ignoring year and time
+        const isTodayBirthday = 
+          dobDate.getMonth() === today.getMonth() && 
+          dobDate.getDate() === today.getDate();
+          
+        if (isTodayBirthday) {
+          setIsBirthday(true)
+          setShowConfetti(true)
+          // Stop confetti after 5 seconds
+          setTimeout(() => setShowConfetti(false), 5000)
+        }
       }
     }
     
+    // Fetch employee profile and check birthday
+    const fetchEmployeeProfile = async () => {
+      try {
+        const response = await API.employees.myProfile()
+        const employeeData = response.data.data
+        setEmployee(employeeData)
+        
+        // Check birthday with employee's date of birth
+        checkBirthday(employeeData.dateOfBirth)
+      } catch (error) {
+        console.error('Error fetching employee profile:', error)
+        // Fallback to user data if employee profile fails
+        checkBirthday(user?.dateOfBirth)
+      }
+    }
+    
+    fetchEmployeeProfile()
     fetchDashboardData()
     getCurrentLocation()
   }, [user])

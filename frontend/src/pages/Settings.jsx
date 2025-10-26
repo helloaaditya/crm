@@ -89,48 +89,48 @@ const Settings = () => {
         const safeSettingsData = {
           ...settingsData,
           company: {
-            ...settingsData.company,
+            name: settingsData.company?.name || 'Sanjana Enterprises',
+            logo: settingsData.company?.logo || '',
             address: {
-              street: '',
-              city: '',
-              state: '',
-              pincode: '',
-              country: 'India',
-              ...settingsData.company?.address
-            }
+              street: settingsData.company?.address?.street || '',
+              city: settingsData.company?.address?.city || 'Bangalore',
+              state: settingsData.company?.address?.state || 'Karnataka',
+              pincode: settingsData.company?.address?.pincode || '561203',
+              country: settingsData.company?.address?.country || 'India'
+            },
+            phone: settingsData.company?.phone || '+91 9916290799',
+            email: settingsData.company?.email || 'sanjana.waterproofing@gmail.com',
+            website: settingsData.company?.website || '',
+            gstNumber: settingsData.company?.gstNumber || '',
+            panNumber: settingsData.company?.panNumber || ''
           },
           invoice: {
-            prefix: 'INV',
-            startNumber: 1,
-            terms: '',
-            defaultDueDays: 30,
-            ...settingsData.invoice,
+            prefix: settingsData.invoice?.prefix || 'INV',
+            startNumber: settingsData.invoice?.startNumber || 1,
+            terms: settingsData.invoice?.terms || '',
+            defaultDueDays: settingsData.invoice?.defaultDueDays || 30,
             bankDetails: {
-              bankName: '',
-              accountNumber: '',
-              ifscCode: '',
-              accountHolderName: '',
-              branch: '',
-              ...settingsData.invoice?.bankDetails
+              bankName: settingsData.invoice?.bankDetails?.bankName || 'State Bank of India',
+              accountNumber: settingsData.invoice?.bankDetails?.accountNumber || '123456789012',
+              ifscCode: settingsData.invoice?.bankDetails?.ifscCode || 'SBIN0001234',
+              accountHolderName: settingsData.invoice?.bankDetails?.accountHolderName || 'Sanjana Enterprises',
+              branch: settingsData.invoice?.bankDetails?.branch || 'Main Branch, Bangalore'
             }
           },
           tax: {
-            defaultGST: 18,
-            cgst: 9,
-            sgst: 9,
-            igst: 18,
-            ...settingsData.tax
+            defaultGST: settingsData.tax?.defaultGST || 18,
+            cgst: settingsData.tax?.cgst || 9,
+            sgst: settingsData.tax?.sgst || 9,
+            igst: settingsData.tax?.igst || 18
           },
           theme: {
-            primaryColor: '#3b82f6',
-            secondaryColor: '#10b981',
-            mode: 'light',
-            ...settingsData.theme
+            primaryColor: settingsData.theme?.primaryColor || '#3b82f6',
+            secondaryColor: settingsData.theme?.secondaryColor || '#10b981',
+            mode: settingsData.theme?.mode || 'light'
           },
           backup: {
-            enabled: true,
-            frequency: 'daily',
-            ...settingsData.backup
+            enabled: settingsData.backup?.enabled !== undefined ? settingsData.backup.enabled : true,
+            frequency: settingsData.backup?.frequency || 'daily'
           }
         };
         
@@ -219,8 +219,30 @@ const Settings = () => {
     
     try {
       setLoading(true);
-      await API.settings.update(formData);
+      // Ensure proper data structure before sending
+      const settingsData = {
+        ...formData,
+        company: {
+          ...formData.company,
+          address: {
+            ...formData.company.address
+          }
+        },
+        invoice: {
+          ...formData.invoice,
+          bankDetails: {
+            ...formData.invoice.bankDetails
+          }
+        }
+      };
+      await API.settings.update(settingsData);
       toast.success('System settings updated successfully');
+      
+      // Also update invoice settings for backward compatibility
+      // This ensures both systems are in sync
+      setTimeout(() => {
+        fetchSettings();
+      }, 500);
     } catch (error) {
       console.error('Error updating settings:', error);
       toast.error('Failed to update system settings');
@@ -534,8 +556,9 @@ const Settings = () => {
                 <textarea
                   value={formData.invoice?.terms || ''}
                   onChange={(e) => handleInputChange('invoice', 'terms', e.target.value)}
-                  rows={3}
+                  rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter default terms and conditions for invoices"
                 />
               </div>
 
