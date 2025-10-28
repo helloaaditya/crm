@@ -673,3 +673,108 @@ function convertNumberToWords(num) {
   
   return result.trim();
 }
+
+// Generate Warranty Certificate PDF
+export const generateWarrantyCertificate = async (warrantyData) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ 
+        margin: 30, 
+        size: 'A4'
+      });
+      
+      const filename = `warranty-${warrantyData.projectId}-${Date.now()}.pdf`;
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'certificates');
+      const filepath = path.join(uploadsDir, filename);
+      
+      // Ensure directory exists
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const stream = fs.createWriteStream(filepath);
+      doc.pipe(stream);
+
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+
+      // Header
+      doc.fontSize(24)
+         .font('Helvetica-Bold')
+         .fillColor('#1e40af')
+         .text('WARRANTY CERTIFICATE', 0, 50, { align: 'center' });
+
+      // Company info
+      doc.fontSize(16)
+         .font('Helvetica-Bold')
+         .fillColor('#1f2937')
+         .text(warrantyData.companyName || 'Company Name', 0, 100, { align: 'center' });
+
+      doc.fontSize(12)
+         .font('Helvetica')
+         .fillColor('#6b7280')
+         .text('This is to certify that the following work has been completed', 0, 130, { align: 'center' });
+
+      // Certificate details
+      const detailsY = 180;
+      doc.fontSize(14)
+         .font('Helvetica-Bold')
+         .fillColor('#1f2937')
+         .text('Project Details:', 50, detailsY);
+
+      doc.fontSize(12)
+         .font('Helvetica')
+         .fillColor('#374151')
+         .text(`Project ID: ${warrantyData.projectId}`, 50, detailsY + 30)
+         .text(`Customer: ${warrantyData.customerName}`, 50, detailsY + 50)
+         .text(`Project Type: ${warrantyData.projectType}`, 50, detailsY + 70)
+         .text(`Completion Date: ${new Date(warrantyData.completionDate).toLocaleDateString('en-IN')}`, 50, detailsY + 90)
+         .text(`Warranty Period: ${warrantyData.warrantyPeriod} months`, 50, detailsY + 110)
+         .text(`Warranty Expiry: ${new Date(warrantyData.warrantyExpiry).toLocaleDateString('en-IN')}`, 50, detailsY + 130);
+
+      // Warranty terms
+      const termsY = detailsY + 170;
+      doc.fontSize(14)
+         .font('Helvetica-Bold')
+         .fillColor('#1f2937')
+         .text('Warranty Terms:', 50, termsY);
+
+      doc.fontSize(11)
+         .font('Helvetica')
+         .fillColor('#4b5563')
+         .text('This warranty covers defects in materials and workmanship for the specified period.', 50, termsY + 25, { width: pageWidth - 100 })
+         .text('Any defects found during the warranty period will be rectified free of charge.', 50, termsY + 45, { width: pageWidth - 100 })
+         .text('This warranty does not cover damage due to misuse, negligence, or natural disasters.', 50, termsY + 65, { width: pageWidth - 100 });
+
+      // Signature section
+      const signatureY = pageHeight - 120;
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .fillColor('#1f2937')
+         .text('Authorized Signature', pageWidth - 200, signatureY);
+
+      doc.moveTo(pageWidth - 200, signatureY + 30)
+         .lineTo(pageWidth - 50, signatureY + 30)
+         .stroke('#1f2937');
+
+      // Footer
+      doc.fontSize(10)
+         .font('Helvetica')
+         .fillColor('#9ca3af')
+         .text('This is a computer-generated certificate.', 0, pageHeight - 30, { align: 'center' });
+
+      doc.end();
+
+      stream.on('finish', () => {
+        resolve({ filename, filepath });
+      });
+
+      stream.on('error', (error) => {
+        reject(error);
+      });
+
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
