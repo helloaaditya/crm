@@ -280,13 +280,13 @@ function CalendarReminders() {
   const pendingRemindersCount = reminders.filter(r => r.status === 'pending').length;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Calendar Reminders</h1>
-          <p className="text-gray-600 mt-1">Manage payments, bills & important dates</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Calendar Reminders</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage payments, bills & important dates</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={handleResetReminders}
             className="flex items-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
@@ -307,55 +307,55 @@ function CalendarReminders() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Reminders</p>
-              <p className="text-2xl font-bold text-gray-800">{reminders.length}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Total Reminders</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-800">{reminders.length}</p>
             </div>
-            <FiBell className="text-blue-500" size={32} />
+            <FiBell className="text-blue-500" size={20} />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Upcoming</p>
-              <p className="text-2xl font-bold text-blue-800">{allUpcomingItems.length}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Upcoming</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-800">{allUpcomingItems.length}</p>
             </div>
-            <FiClock className="text-blue-500" size={32} />
+            <FiClock className="text-blue-500" size={20} />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Overdue</p>
-              <p className="text-2xl font-bold text-red-800">{overdueReminders.length}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Overdue</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-800">{overdueReminders.length}</p>
             </div>
-            <FiBell className="text-red-500" size={32} />
+            <FiBell className="text-red-500" size={20} />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-green-800">
+              <p className="text-xs sm:text-sm text-gray-600">Completed</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-800">
                 {reminders.filter(r => r.status === 'completed').length}
               </p>
             </div>
-            <FiCheck className="text-green-500" size={32} />
+            <FiCheck className="text-green-500" size={20} />
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex items-center gap-4">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <FiFilter className="text-gray-500" />
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 border rounded-lg"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
           >
             <option value="">All Types</option>
             {reminderTypes.map(type => (
@@ -367,7 +367,7 @@ function CalendarReminders() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border rounded-lg"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
           >
             <option value="">All Status</option>
             <option value="pending">Pending</option>
@@ -477,18 +477,18 @@ function CalendarReminders() {
 
       {/* Create Reminder Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Create Reminder</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto mobile-modal">
+            <h2 className="text-lg sm:text-xl font-bold mb-4">Create Reminder</h2>
             <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
+              <div className="space-y-4 mobile-modal-content">
                 <div>
                   <label className="block text-sm font-medium mb-1">Title *</label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
                     required
                   />
                 </div>
@@ -498,7 +498,7 @@ function CalendarReminders() {
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
                     required
                   >
                     {reminderTypes.map(type => (
@@ -515,7 +515,7 @@ function CalendarReminders() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
                     required
                   />
                 </div>
@@ -526,7 +526,7 @@ function CalendarReminders() {
                     type="number"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
                     placeholder="Enter amount"
                   />
                 </div>
@@ -536,7 +536,7 @@ function CalendarReminders() {
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -552,7 +552,7 @@ function CalendarReminders() {
                     type="text"
                     value={formData.googleMeetLink}
                     onChange={(e) => setFormData({ ...formData, googleMeetLink: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
                     placeholder="https://meet.google.com/xxx-xxxx-xxx"
                   />
                 </div>
@@ -562,7 +562,7 @@ function CalendarReminders() {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
                     rows="3"
                   />
                 </div>
@@ -598,18 +598,18 @@ function CalendarReminders() {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-6">
+              <div className="flex flex-col sm:flex-row gap-2 mt-6">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50"
+                  className="w-full sm:flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 min-h-44"
                 >
                   Create
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  className="w-full sm:flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 min-h-44"
                 >
                   Cancel
                 </button>

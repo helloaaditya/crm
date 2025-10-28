@@ -160,19 +160,19 @@ const Payments = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Payments</h1>
-          <p className="text-gray-600 mt-1">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Payments</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             {totalCount} payments • Total: ₹{summary.totalAmount?.toLocaleString() || '0'}
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
           <button 
             onClick={handleExportCSV}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base"
             disabled={payments.length === 0}
           >
             <FiDownload className="mr-2" />
@@ -180,7 +180,7 @@ const Payments = () => {
           </button>
           <button 
             onClick={handleAdd}
-            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
           >
             <FiPlus className="mr-2" />
             Record Payment
@@ -189,8 +189,8 @@ const Payments = () => {
       </div>
 
       {/* Advanced Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
           {/* Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

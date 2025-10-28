@@ -253,22 +253,22 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
   const { subtotal, cgst, sgst, totalAmount } = calculateTotals()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto mobile-modal">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold text-gray-800">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white z-10">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">
             {isViewMode ? 'View Invoice' : (invoice ? 'Edit Invoice' : 'Create New Invoice')}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <FiX size={24} />
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
+            <FiX size={20} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 mobile-modal-content">
           {/* Customer & Project Selection */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Customer <span className="text-red-500">*</span>

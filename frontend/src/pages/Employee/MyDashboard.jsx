@@ -205,7 +205,7 @@ const MyDashboard = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Birthday Confetti */}
       {showConfetti && (
         <Confetti
@@ -216,35 +216,35 @@ const MyDashboard = () => {
         />
       )}
 
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">My Dashboard</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">My Dashboard</h1>
 
       {/* Birthday Wish Card */}
       {isBirthday && (
-        <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white rounded-lg p-6 mb-6 shadow-lg animate-pulse">
-          <div className="flex items-center">
-            <FiGift className="text-5xl mr-4" />
+        <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg animate-pulse">
+          <div className="flex flex-col sm:flex-row sm:items-center">
+            <FiGift className="text-4xl sm:text-5xl mr-0 sm:mr-4 mb-2 sm:mb-0" />
             <div>
-              <h2 className="text-2xl font-bold">🎉 Happy Birthday, {user?.name}! 🎂</h2>
-              <p className="text-lg mt-2">Wishing you a fantastic day filled with joy and success!</p>
-              <p className="text-sm mt-1 opacity-90">- Team Sanjana CRM</p>
+              <h2 className="text-xl sm:text-2xl font-bold">🎉 Happy Birthday, {user?.name}! 🎂</h2>
+              <p className="text-base sm:text-lg mt-2">Wishing you a fantastic day filled with joy and success!</p>
+              <p className="text-xs sm:text-sm mt-1 opacity-90">- Team Sanjana CRM</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Welcome Card */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold">Welcome back, {user?.name}!</h2>
-        <p className="text-blue-100 mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-semibold">Welcome back, {user?.name}!</h2>
+        <p className="text-blue-100 mt-1 text-sm sm:text-base">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
         {/* Attendance Card */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Today's Attendance</h3>
-            <FiClock className="text-blue-500" size={24} />
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-xs sm:text-sm font-medium text-gray-600">Today's Attendance</h3>
+            <FiClock className="text-blue-500" size={20} />
           </div>
           {todayAttendance ? (
             <div>

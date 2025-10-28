@@ -73,44 +73,54 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Toggle */}
+      {/* Mobile Toggle - Hidden on desktop */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-primary text-white rounded-md"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-primary text-white rounded-md shadow-lg"
       >
-        {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+        {isOpen ? <FiX size={20} /> : <FiMenu size={20} />}
       </button>
 
       {/* Sidebar */}
       <aside
         className={`${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0`}
+        } fixed lg:static inset-y-0 left-0 z-40 w-64 sm:w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center h-20 border-b">
-          <img src="https://www.sanjanawaterproofing.com/assets/sanjana-enterprises-Ihc86Ddy.png" alt="Sanjana Logo" style={{ width: '180px', height: 'auto' }} />
+        <div className="flex items-center justify-center h-16 lg:h-20 border-b px-4">
+          <img 
+            src="https://www.sanjanawaterproofing.com/assets/sanjana-enterprises-Ihc86Ddy.png" 
+            alt="Sanjana Logo" 
+            className="w-32 sm:w-40 lg:w-44 h-auto" 
+          />
         </div>
 
         {/* Navigation */}
-        <nav className="mt-6 px-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-          <div className="space-y-2">
+        <nav className="mt-4 lg:mt-6 px-3 sm:px-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+          <div className="space-y-1">
             {filteredMenuItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={() => {
+                  // Close sidebar on mobile when navigating
+                  if (window.innerWidth < 1024) {
+                    setIsOpen(false)
+                  }
+                }}
                 className={({ isActive }) =>
-                  `flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  `flex items-center px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg transition-colors text-sm sm:text-base ${
                     isActive
                       ? 'bg-primary text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`
                 }
               >
-                <item.icon className="mr-3" size={20} />
-                <span className="font-medium">{item.name}</span>
+                <item.icon className="mr-2 sm:mr-3 flex-shrink-0" size={18} />
+                <span className="font-medium truncate">{item.name}</span>
                 {item.notificationCount > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center flex-shrink-0">
                     {item.notificationCount}
                   </span>
                 )}
@@ -119,8 +129,8 @@ const Sidebar = () => {
           </div>
         </nav>
 
-        {/* User Info */}
-        <div className="absolute bottom-0 w-full p-4 border-t">
+        {/* User Info - Hidden on mobile, shown on desktop */}
+        <div className="hidden lg:block absolute bottom-0 w-full p-4 border-t">
           <div className="flex items-center">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold">
               {user?.name?.charAt(0).toUpperCase()}

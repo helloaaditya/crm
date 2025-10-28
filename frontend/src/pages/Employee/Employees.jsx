@@ -96,13 +96,13 @@ const Employees = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Employees</h1>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Employees</h1>
         <button 
           onClick={handleAdd}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
         >
           <FiPlus className="mr-2" />
           Add Employee
@@ -111,7 +111,7 @@ const Employees = () => {
 
       {/* Filter */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <label className="text-sm font-medium text-gray-700">Filter by Role:</label>
           <select
             value={filterRole}
@@ -138,93 +138,161 @@ const Employees = () => {
           </div>
         ) : employees.length > 0 ? (
           <>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salary</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {employees.map((employee) => (
-                  <tr key={employee._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {employee.employeeId}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {employee.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {employee.phone}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salary</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {employees.map((employee) => (
+                    <tr key={employee._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {employee.employeeId}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {employee.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {employee.phone}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2 py-1 text-xs rounded-full ${getRoleBadgeColor(employee.role || employee.designation)}`}>
+                          {employee.role || employee.designation}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {employee.designation}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₹{employee.basicSalary?.toLocaleString() || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleUpdateRole(employee)}
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded"
+                            title="Update Role"
+                          >
+                            <FiUserCheck />
+                          </button>
+                          <button 
+                            onClick={() => handleAssignProject(employee)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Assign Project"
+                          >
+                            <FiBriefcase />
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(employee)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Edit"
+                          >
+                            <FiEdit />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(employee._id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Deactivate"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden">
+              {employees.map((employee) => (
+                <div key={employee._id} className="p-4 border-b border-gray-200 last:border-b-0">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900">{employee.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1">ID: {employee.employeeId}</p>
+                      <p className="text-xs text-gray-500">{employee.phone}</p>
+                    </div>
+                    <div className="text-right">
                       <span className={`px-2 py-1 text-xs rounded-full ${getRoleBadgeColor(employee.role || employee.designation)}`}>
                         {employee.role || employee.designation}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {employee.designation}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₹{employee.basicSalary?.toLocaleString() || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleUpdateRole(employee)}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded"
-                          title="Update Role"
-                        >
-                          <FiUserCheck />
-                        </button>
-                        <button 
-                          onClick={() => handleAssignProject(employee)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Assign Project"
-                        >
-                          <FiBriefcase />
-                        </button>
-                        <button 
-                          onClick={() => handleEdit(employee)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="Edit"
-                        >
-                          <FiEdit />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(employee._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title="Deactivate"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Designation:</span>
+                      <span className="font-medium">{employee.designation}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Salary:</span>
+                      <span className="font-medium">₹{employee.basicSalary?.toLocaleString() || 'N/A'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      onClick={() => handleUpdateRole(employee)}
+                      className="flex items-center justify-center px-2 py-2 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"
+                    >
+                      <FiUserCheck className="mr-1" size={12} />
+                      Role
+                    </button>
+                    <button 
+                      onClick={() => handleAssignProject(employee)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiBriefcase className="mr-1" size={12} />
+                      Project
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <button 
+                      onClick={() => handleEdit(employee)}
+                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
+                    >
+                      <FiEdit className="mr-1" size={12} />
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(employee._id)}
+                      className="flex items-center justify-center px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs"
+                    >
+                      <FiTrash2 className="mr-1" size={12} />
+                      Deactivate
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {/* Pagination */}
-            <div className="px-6 py-4 flex items-center justify-between border-t">
-              <div className="text-sm text-gray-600">Page {page} of {totalPages}</div>
-              <div className="flex space-x-2">
+            <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t gap-3">
+              <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">Page {page} of {totalPages}</div>
+              <div className="flex space-x-2 justify-center sm:justify-end">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50 text-sm"
                 >
                   Previous
                 </button>
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50 text-sm"
                 >
                   Next
                 </button>

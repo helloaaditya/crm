@@ -112,22 +112,22 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
-          <h2 className="text-xl font-bold text-gray-800">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">
             {customer ? 'Edit Customer' : 'Add New Customer'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <FiX size={24} />
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
+            <FiX size={20} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 mobile-modal-content">
           {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Name <span className="text-red-500">*</span>
@@ -138,7 +138,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
             </div>
 
@@ -155,7 +155,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 pattern="[0-9]{10}"
                 maxLength="10"
                 placeholder="10-digit mobile number"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
             </div>
 
@@ -170,7 +170,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 onChange={handleChange}
                 pattern="[0-9]{10}"
                 maxLength="10"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
             </div>
 
@@ -183,7 +183,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
             </div>
 
@@ -195,7 +195,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 name="callType"
                 value={formData.callType}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               >
                 <option value="personal">Personal</option>
                 <option value="official">Official</option>
@@ -210,7 +210,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 name="dataSource"
                 value={formData.dataSource}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               >
                 <option value="website">Website</option>
                 <option value="referral">Referral</option>
@@ -229,7 +229,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 name="leadStatus"
                 value={formData.leadStatus}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               >
                 <option value="new">New</option>
                 <option value="contacted">Contacted</option>
@@ -245,7 +245,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
           {/* Address */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-gray-700">Address</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-2">
                 <input
                   type="text"
@@ -253,7 +253,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                   value={formData.address.street}
                   onChange={handleChange}
                   placeholder="Street Address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
                 />
               </div>
               <input
@@ -262,7 +262,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 value={formData.address.city}
                 onChange={handleChange}
                 placeholder="City"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
               <input
                 type="text"
@@ -270,7 +270,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 value={formData.address.state}
                 onChange={handleChange}
                 placeholder="State"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
               <input
                 type="text"
@@ -280,7 +280,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 placeholder="Pincode"
                 pattern="[0-9]{6}"
                 maxLength="6"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
             </div>
           </div>
@@ -314,18 +314,18 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 min-h-44"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-44"
             >
               {loading ? 'Saving...' : customer ? 'Update' : 'Create'}
             </button>

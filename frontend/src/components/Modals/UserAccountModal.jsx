@@ -141,21 +141,21 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold text-gray-800">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white z-10">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">
             {user ? 'Edit User Account' : 'Create User Account'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <FiX size={24} />
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
+            <FiX size={20} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 mobile-modal-content">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Name */}
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -166,7 +166,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
               />
             </div>
 
@@ -180,7 +180,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
               />
             </div>
 
@@ -193,7 +193,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
               />
             </div>
 
@@ -209,7 +209,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                   required={!user}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
                 />
                 <button
                   type="button"
@@ -230,7 +230,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                 required
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
               >
                 <option value="employee">Employee</option>
                 <option value="supervisor">Supervisor</option>
@@ -411,17 +411,17 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-end gap-2 mt-6">
+          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 min-h-44"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+              className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 min-h-44"
             >
               {user ? 'Update' : 'Create'} Account
             </button>

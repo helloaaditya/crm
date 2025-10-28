@@ -203,20 +203,20 @@ const Materials = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Materials Inventory</h1>
-          <p className="text-gray-600 mt-1">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Materials Inventory</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             {totalCount} materials • Total Value: ₹{summary.totalValue?.toLocaleString() || '0'} • 
             Low Stock: {summary.lowStockCount || 0}
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
           <button 
             onClick={handleExportCSV}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base"
             disabled={materials.length === 0}
           >
             <FiDownload className="mr-2" />
@@ -224,7 +224,7 @@ const Materials = () => {
           </button>
           <button 
             onClick={handleAdd}
-            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
           >
             <FiPlus className="mr-2" />
             Add Material
@@ -233,8 +233,8 @@ const Materials = () => {
       </div>
 
       {/* Advanced Search & Filter */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
           {/* Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -246,7 +246,7 @@ const Materials = () => {
               placeholder="Search materials..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
             />
           </div>
 
@@ -256,7 +256,7 @@ const Materials = () => {
             <select 
               value={category}
               onChange={(e) => { setCategory(e.target.value); setPage(1); }}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
             >
               <option value="">All Categories</option>
               <option value="waterproofing">Waterproofing</option>
@@ -275,7 +275,7 @@ const Materials = () => {
             <select 
               value={stockFilter}
               onChange={(e) => { setStockFilter(e.target.value); setPage(1); }}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
             >
               <option value="">All Stock</option>
               <option value="low">Low Stock</option>
@@ -288,7 +288,7 @@ const Materials = () => {
           <div className="flex items-end">
             <button
               onClick={handleClearFilters}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm sm:text-base"
             >
               Clear All Filters
             </button>
@@ -296,7 +296,7 @@ const Materials = () => {
         </div>
 
         {/* Date Range */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <FiCalendar className="inline mr-1" />
@@ -306,7 +306,7 @@ const Materials = () => {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
             />
           </div>
           
@@ -319,12 +319,12 @@ const Materials = () => {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
             />
           </div>
           
           <div className="flex items-end">
-            <div className="text-sm text-gray-600">
+            <div className="text-xs sm:text-sm text-gray-600">
               Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} materials
             </div>
           </div>
@@ -339,37 +339,135 @@ const Materials = () => {
           </div>
         ) : materials.length > 0 ? (
           <>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Brand</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sale Cost</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {materials.map((material) => (
-                  <tr key={material._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {material.materialId}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div>{material.name}</div>
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Brand</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sale Cost</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {materials.map((material) => (
+                    <tr key={material._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {material.materialId}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        <div>{material.name}</div>
+                        {material.product && (
+                          <div className="text-xs text-gray-500">{material.product}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {material.category}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {material.brand || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex items-center">
+                          <span className={`font-medium ${
+                            material.quantity <= material.minStockLevel 
+                              ? 'text-red-600' 
+                              : 'text-gray-900'
+                          }`}>
+                            {material.quantity} {material.unit}
+                          </span>
+                          {material.quantity <= material.minStockLevel && (
+                            <FiAlertCircle className="ml-2 text-red-600" title="Low Stock" />
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Min: {material.minStockLevel} {material.unit}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₹{material.saleCost}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleViewHistory(material)}
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded" 
+                            title="View History"
+                          >
+                            <FiClock />
+                          </button>
+                          <button 
+                            onClick={() => handleInward(material)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded" 
+                            title="Add Stock"
+                          >
+                            <FiArrowDown />
+                          </button>
+                          <button 
+                            onClick={() => handleOutward(material)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded" 
+                            title="Deduct Stock"
+                          >
+                            <FiArrowUp />
+                          </button>
+                          <button 
+                            onClick={() => handleReturn(material)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
+                            title="Return Stock"
+                          >
+                            <FiRotateCcw />
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(material)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Edit"
+                          >
+                            <FiEdit />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(material._id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Delete"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden">
+              {materials.map((material) => (
+                <div key={material._id} className="p-4 border-b border-gray-200 last:border-b-0">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900">{material.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1">ID: {material.materialId}</p>
                       {material.product && (
-                        <div className="text-xs text-gray-500">{material.product}</div>
+                        <p className="text-xs text-gray-500">{material.product}</p>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {material.category}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {material.brand || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-900">₹{material.saleCost}</div>
+                      <div className="text-xs text-gray-500">{material.category}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Brand:</span>
+                      <span className="font-medium">{material.brand || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Stock:</span>
                       <div className="flex items-center">
                         <span className={`font-medium ${
                           material.quantity <= material.minStockLevel 
@@ -379,77 +477,77 @@ const Materials = () => {
                           {material.quantity} {material.unit}
                         </span>
                         {material.quantity <= material.minStockLevel && (
-                          <FiAlertCircle className="ml-2 text-red-600" title="Low Stock" />
+                          <FiAlertCircle className="ml-2 text-red-600" size={14} />
                         )}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        Min: {material.minStockLevel} {material.unit}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₹{material.saleCost}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleViewHistory(material)}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded" 
-                          title="View History"
-                        >
-                          <FiClock />
-                        </button>
-                        <button 
-                          onClick={() => handleInward(material)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded" 
-                          title="Add Stock"
-                        >
-                          <FiArrowDown />
-                        </button>
-                        <button 
-                          onClick={() => handleOutward(material)}
-                          className="p-2 text-orange-600 hover:bg-orange-50 rounded" 
-                          title="Deduct Stock"
-                        >
-                          <FiArrowUp />
-                        </button>
-                        <button 
-                          onClick={() => handleReturn(material)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
-                          title="Return Stock"
-                        >
-                          <FiRotateCcw />
-                        </button>
-                        <button 
-                          onClick={() => handleEdit(material)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Edit"
-                        >
-                          <FiEdit />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(material._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Min Level:</span>
+                      <span className="font-medium">{material.minStockLevel} {material.unit}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                    <button 
+                      onClick={() => handleInward(material)}
+                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
+                    >
+                      <FiArrowDown className="mr-1" size={12} />
+                      Add
+                    </button>
+                    <button 
+                      onClick={() => handleOutward(material)}
+                      className="flex items-center justify-center px-2 py-2 text-orange-600 hover:bg-orange-50 rounded-lg text-xs"
+                    >
+                      <FiArrowUp className="mr-1" size={12} />
+                      Deduct
+                    </button>
+                    <button 
+                      onClick={() => handleViewHistory(material)}
+                      className="flex items-center justify-center px-2 py-2 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"
+                    >
+                      <FiClock className="mr-1" size={12} />
+                      History
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    <button 
+                      onClick={() => handleReturn(material)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiRotateCcw className="mr-1" size={12} />
+                      Return
+                    </button>
+                    <button 
+                      onClick={() => handleEdit(material)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiEdit className="mr-1" size={12} />
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(material._id)}
+                      className="flex items-center justify-center px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs"
+                    >
+                      <FiTrash2 className="mr-1" size={12} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {/* Pagination */}
-            <div className="px-6 py-4 flex items-center justify-between border-t bg-gray-50">
-              <div className="text-sm text-gray-600">
+            <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t bg-gray-50 gap-3">
+              <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
                 Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} materials
               </div>
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 justify-center sm:justify-end">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
                 >
                   Previous
                 </button>
@@ -459,7 +557,7 @@ const Materials = () => {
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
                 >
                   Next
                 </button>

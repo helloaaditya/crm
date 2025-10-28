@@ -117,15 +117,15 @@ const LeaveManagement = () => {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Leave Management</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Leave Management</h1>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Employee</label>
             <select
@@ -224,79 +224,155 @@ const LeaveManagement = () => {
           </div>
         ) : filteredLeaveRequests.length > 0 ? (
           <>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dates</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredLeaveRequests.map((request) => {
-                  const statusConfig = getStatusBadge(request.status)
-                  const StatusIcon = statusConfig.icon
-                  const color = getLeaveTypeColor(request.leaveType)
-                  
-                  return (
-                    <tr key={request._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="font-medium text-gray-900">{request.employee.name}</div>
-                        <div className="text-gray-500 text-xs">{request.employee.employeeId}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dates</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredLeaveRequests.map((request) => {
+                    const statusConfig = getStatusBadge(request.status)
+                    const StatusIcon = statusConfig.icon
+                    const color = getLeaveTypeColor(request.leaveType)
+                    
+                    return (
+                      <tr key={request._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="font-medium text-gray-900">{request.employee.name}</div>
+                          <div className="text-gray-500 text-xs">{request.employee.employeeId}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2 py-1 text-xs rounded-full bg-${color}-100 text-${color}-800`}>
+                            {leaveTypes.find(lt => lt.value === request.leaveType)?.label || request.leaveType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {request.numberOfDays} day{request.numberOfDays > 1 ? 's' : ''}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 max-w-xs truncate">
+                          {request.reason}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2 py-1 text-xs rounded-full flex items-center ${statusConfig.bg}`}>
+                            <StatusIcon className="mr-1" size={14} />
+                            {request.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {request.status === 'pending' ? (
+                            <div className="flex space-x-2">
+                              <button 
+                                onClick={() => handleApprove(request._id, request.employee._id)}
+                                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center"
+                              >
+                                <FiCheckCircle className="mr-1" size={14} />
+                                Approve
+                              </button>
+                              <button 
+                                onClick={() => handleReject(request._id, request.employee._id)}
+                                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
+                              >
+                                <FiXCircle className="mr-1" size={14} />
+                                Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500 text-sm">
+                              {request.status === 'approved' ? 'Approved' : 'Rejected'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden">
+              {filteredLeaveRequests.map((request) => {
+                const statusConfig = getStatusBadge(request.status)
+                const StatusIcon = statusConfig.icon
+                const color = getLeaveTypeColor(request.leaveType)
+                
+                return (
+                  <div key={request._id} className="p-4 border-b border-gray-200 last:border-b-0">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">{request.employee.name}</h3>
+                        <p className="text-xs text-gray-500">{request.employee.employeeId}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded-full flex items-center ${statusConfig.bg}`}>
+                        <StatusIcon className="mr-1" size={12} />
+                        {request.status}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Leave Type:</span>
                         <span className={`px-2 py-1 text-xs rounded-full bg-${color}-100 text-${color}-800`}>
                           {leaveTypes.find(lt => lt.value === request.leaveType)?.label || request.leaveType}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.numberOfDays} day{request.numberOfDays > 1 ? 's' : ''}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 max-w-xs truncate">
-                        {request.reason}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 text-xs rounded-full flex items-center ${statusConfig.bg}`}>
-                          <StatusIcon className="mr-1" size={14} />
-                          {request.status}
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Dates:</span>
+                        <span className="font-medium text-right">
+                          {new Date(request.startDate).toLocaleDateString()}<br/>
+                          <span className="text-xs">to {new Date(request.endDate).toLocaleDateString()}</span>
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {request.status === 'pending' ? (
-                          <div className="flex space-x-2">
-                            <button 
-                              onClick={() => handleApprove(request._id, request.employee._id)}
-                              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center"
-                            >
-                              <FiCheckCircle className="mr-1" size={14} />
-                              Approve
-                            </button>
-                            <button 
-                              onClick={() => handleReject(request._id, request.employee._id)}
-                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
-                            >
-                              <FiXCircle className="mr-1" size={14} />
-                              Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-gray-500 text-sm">
-                            {request.status === 'approved' ? 'Approved' : 'Rejected'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Days:</span>
+                        <span className="font-medium">{request.numberOfDays} day{request.numberOfDays > 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-gray-600">Reason: </span>
+                        <span>{request.reason}</span>
+                      </div>
+                    </div>
+                    
+                    {request.status === 'pending' ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => handleApprove(request._id, request.employee._id)}
+                          className="flex items-center justify-center px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xs"
+                        >
+                          <FiCheckCircle className="mr-1" size={12} />
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => handleReject(request._id, request.employee._id)}
+                          className="flex items-center justify-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs"
+                        >
+                          <FiXCircle className="mr-1" size={12} />
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-2">
+                        <span className="text-gray-500 text-sm">
+                          {request.status === 'approved' ? 'Approved' : 'Rejected'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </>
         ) : (
           <div className="text-center py-12">

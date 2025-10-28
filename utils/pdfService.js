@@ -71,7 +71,7 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       }
       
       if (companyInfo.email) {
-        doc.text(`Email: ${companyInfo.email}`, 30, yPos);
+        doc.text(`Email: ${companyInfo.email}`, 32, yPos);
         yPos += 12;
       }
       
@@ -79,19 +79,19 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       yPos += 5;
       if (companyInfo.gstin) {
         doc.font('Helvetica-Bold')
-           .text(`GSTIN: ${companyInfo.gstin}`, 30, yPos);
+           .text(`GSTIN: ${companyInfo.gstin}`, 32, yPos);
         yPos += 12;
       }
       
       if (companyInfo.pan) {
         doc.font('Helvetica')
-           .text(`PAN: ${companyInfo.pan}`, 30, yPos);
+           .text(`PAN: ${companyInfo.pan}`, 32, yPos);
       }
       
       // ================== INVOICE INFO BOX - Right Side ==================
-      const boxX = 300;
+      const boxX = 350;
       const boxY = 35;
-      const boxWidth = 185;
+      const boxWidth = 205;
       
       // Invoice type header
       const invoiceTitle = type === 'quotation' ? 'QUOTATION' : 'TAX INVOICE';

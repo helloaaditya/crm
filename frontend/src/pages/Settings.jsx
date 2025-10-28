@@ -344,12 +344,12 @@ const Settings = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Settings</h1>
         <div className="flex items-center space-x-2">
           <FiSettings className="text-gray-500" />
-          <span className="text-sm text-gray-500">
+          <span className="text-xs sm:text-sm text-gray-500">
             {isAdmin ? 'Admin Access' : 'User Access'}
           </span>
         </div>
@@ -357,7 +357,7 @@ const Settings = () => {
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex flex-wrap space-x-2 sm:space-x-8">
           <button
             onClick={() => setActiveTab('profile')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${

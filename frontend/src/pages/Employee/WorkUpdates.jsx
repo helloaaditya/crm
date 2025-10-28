@@ -292,11 +292,11 @@ function WorkUpdates() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Work Updates</h1>
-          <p className="text-gray-600 mt-1">Submit your daily work progress</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Work Updates</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Submit your daily work progress</p>
         </div>
         
         {/* Search and Filter Controls */}

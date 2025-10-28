@@ -14,6 +14,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
 /* Custom Scrollbar */
@@ -37,7 +39,7 @@ body {
 
 /* Loading Spinner */
 .spinner {
-  border: 3px solid #f3f3f3;
+  border: 3px solid #f3f1f1;
   border-top: 3px solid #3b82f6;
   border-radius: 50%;
   width: 40px;
@@ -48,4 +50,83 @@ body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Ensure touch targets are at least 44px */
+  button, input, select, textarea {
+    min-height: 44px;
+  }
+  
+  /* Improve text readability on mobile */
+  body {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  /* Better spacing for mobile */
+  .mobile-padding {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Mobile-friendly table cells */
+  .mobile-table-cell {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Touch-friendly buttons */
+  .touch-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem;
+  }
+}
+
+/* Tablet improvements */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Smooth transitions for mobile interactions */
+.transition-mobile {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Mobile modal improvements */
+@media (max-width: 640px) {
+  .mobile-modal {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+  
+  .mobile-modal-content {
+    padding: 1rem;
+  }
+}
+
+/* Prevent text selection on mobile for better UX */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Mobile-friendly form inputs */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px; /* Prevent zoom on iOS */
+    border-radius: 8px;
+  }
+  
+  /* Better focus states for mobile */
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
 }

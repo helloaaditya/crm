@@ -265,21 +265,21 @@ Sanjana CRM Team`
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Invoices</h1>
-          <p className="text-gray-600 mt-1">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Invoices</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             {totalCount} invoices • Total: ₹{summary.totalAmount?.toLocaleString() || '0'} • 
             Paid: ₹{summary.paidAmount?.toLocaleString() || '0'} • 
             Pending: ₹{summary.pendingAmount?.toLocaleString() || '0'}
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
           <button 
             onClick={handleExportCSV}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base"
             disabled={invoices.length === 0}
           >
             <FiDownload className="mr-2" />
@@ -287,7 +287,7 @@ Sanjana CRM Team`
           </button>
           <button 
             onClick={handleAdd}
-            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
           >
             <FiPlus className="mr-2" />
             Create Invoice
@@ -296,8 +296,8 @@ Sanjana CRM Team`
       </div>
 
       {/* Advanced Search and Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
           {/* Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -402,119 +402,220 @@ Sanjana CRM Team`
           </div>
         ) : invoices.length > 0 ? (
           <>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {invoices.map((invoice) => (
-                  <tr key={invoice._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {invoice.invoiceNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {invoice.customer?.name}<br/>
-                      <span className="text-xs text-gray-500">{invoice.customer?.contactNumber}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {invoice.invoiceType.replace('_', ' ')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {new Date(invoice.invoiceDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ₹{invoice.totalAmount.toLocaleString()}
-                      <div className="text-xs text-gray-500 mt-1">
-                        Paid: ₹{invoice.paidAmount.toLocaleString()}
-                        <br />
-                        Due: ₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        invoice.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                        invoice.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {invoice.paymentStatus}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
-                        invoice.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleRecordPayment(invoice)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="Record Payment"
-                          disabled={invoice.status === 'cancelled'}
-                        >
-                          <FiDollarSign />
-                        </button>
-                        <button 
-                          onClick={() => handleGeneratePDF(invoice._id)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
-                          title="Download PDF"
-                        >
-                          <FiDownload />
-                        </button>
-                        <button 
-                          onClick={() => handleSendEmail(invoice._id)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="Send Email"
-                          disabled={invoice.status === 'cancelled'}
-                        >
-                          <FiMail />
-                        </button>
-                        <button 
-                          onClick={() => handleWhatsAppReminder(invoice)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="WhatsApp Reminder"
-                          disabled={invoice.status === 'cancelled'}
-                        >
-                          <FaWhatsapp className="text-lg" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(invoice._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title="Cancel Invoice"
-                          disabled={invoice.status === 'cancelled'}
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </div>
-                    </td>
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {invoices.map((invoice) => (
+                    <tr key={invoice._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {invoice.invoiceNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {invoice.customer?.name}<br/>
+                        <span className="text-xs text-gray-500">{invoice.customer?.contactNumber}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {invoice.invoiceType.replace('_', ' ')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(invoice.invoiceDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ₹{invoice.totalAmount.toLocaleString()}
+                        <div className="text-xs text-gray-500 mt-1">
+                          Paid: ₹{invoice.paidAmount.toLocaleString()}
+                          <br />
+                          Due: ₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          invoice.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                          invoice.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {invoice.paymentStatus}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                          invoice.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {invoice.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleRecordPayment(invoice)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Record Payment"
+                            disabled={invoice.status === 'cancelled'}
+                          >
+                            <FiDollarSign />
+                          </button>
+                          <button 
+                            onClick={() => handleGeneratePDF(invoice._id)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
+                            title="Download PDF"
+                          >
+                            <FiDownload />
+                          </button>
+                          <button 
+                            onClick={() => handleSendEmail(invoice._id)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Send Email"
+                            disabled={invoice.status === 'cancelled'}
+                          >
+                            <FiMail />
+                          </button>
+                          <button 
+                            onClick={() => handleWhatsAppReminder(invoice)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="WhatsApp Reminder"
+                            disabled={invoice.status === 'cancelled'}
+                          >
+                            <FaWhatsapp className="text-lg" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(invoice._id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Cancel Invoice"
+                            disabled={invoice.status === 'cancelled'}
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden">
+              {invoices.map((invoice) => (
+                <div key={invoice._id} className="p-4 border-b border-gray-200 last:border-b-0">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900">{invoice.invoiceNumber}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{invoice.customer?.name}</p>
+                      <p className="text-xs text-gray-500">{invoice.customer?.contactNumber}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-900">₹{invoice.totalAmount.toLocaleString()}</div>
+                      <div className="flex space-x-1 mt-1">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          invoice.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                          invoice.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {invoice.paymentStatus}
+                        </span>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                          invoice.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Type:</span>
+                      <span className="font-medium">{invoice.invoiceType.replace('_', ' ')}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Date:</span>
+                      <span className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Paid:</span>
+                      <span className="font-medium">₹{invoice.paidAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Due:</span>
+                      <span className="font-medium">₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                    <button 
+                      onClick={() => handleRecordPayment(invoice)}
+                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
+                      disabled={invoice.status === 'cancelled'}
+                    >
+                      <FiDollarSign className="mr-1" size={12} />
+                      Payment
+                    </button>
+                    <button 
+                      onClick={() => handleGeneratePDF(invoice._id)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiDownload className="mr-1" size={12} />
+                      PDF
+                    </button>
+                    <button 
+                      onClick={() => handleSendEmail(invoice._id)}
+                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
+                      disabled={invoice.status === 'cancelled'}
+                    >
+                      <FiMail className="mr-1" size={12} />
+                      Email
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <button 
+                      onClick={() => handleWhatsAppReminder(invoice)}
+                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
+                      disabled={invoice.status === 'cancelled'}
+                    >
+                      <FaWhatsapp className="mr-1" size={12} />
+                      WhatsApp
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(invoice._id)}
+                      className="flex items-center justify-center px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs"
+                      disabled={invoice.status === 'cancelled'}
+                    >
+                      <FiTrash2 className="mr-1" size={12} />
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {/* Pagination */}
-            <div className="px-6 py-4 flex items-center justify-between border-t bg-gray-50">
-              <div className="text-sm text-gray-600">
+            <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between border-t bg-gray-50 gap-3">
+              <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
                 Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} invoices
               </div>
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 justify-center sm:justify-end">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
                 >
                   Previous
                 </button>
@@ -524,7 +625,7 @@ Sanjana CRM Team`
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
                 >
                   Next
                 </button>

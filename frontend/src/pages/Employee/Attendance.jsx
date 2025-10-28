@@ -139,15 +139,15 @@ const Attendance = () => {
   ]
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Attendance Management</h1>
-          <p className="text-gray-600 mt-1">Track and manage employee attendance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Attendance Management</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Track and manage employee attendance</p>
         </div>
         <button
           onClick={exportAttendance}
-          className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          className="flex items-center justify-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm sm:text-base"
         >
           <FiDownload className="mr-2" />
           Export Report
@@ -155,8 +155,8 @@ const Attendance = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Employee Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -299,7 +299,7 @@ const Attendance = () => {
             Attendance Records - {months[selectedMonth - 1]} {selectedYear}
           </h2>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
             <p className="text-center text-gray-600">Loading...</p>
           ) : !selectedEmployee ? (
@@ -307,66 +307,123 @@ const Attendance = () => {
           ) : filteredAttendance.length === 0 ? (
             <p className="text-center text-gray-600 py-8">No attendance records found</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4">Date</th>
-                    <th className="text-left py-3 px-4">Day</th>
-                    <th className="text-left py-3 px-4">Status</th>
-                    <th className="text-left py-3 px-4">Check In</th>
-                    <th className="text-left py-3 px-4">Check Out</th>
-                    <th className="text-left py-3 px-4">Work Hours</th>
-                    <th className="text-left py-3 px-4">Location</th>
-                    <th className="text-left py-3 px-4">Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAttendance.map((record, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        {new Date(record.date).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(record.status)}`}>
-                          {record.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        {record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '-'}
-                      </td>
-                      <td className="py-3 px-4">
-                        {record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : '-'}
-                      </td>
-                      <td className="py-3 px-4">
-                        {record.workHours ? `${record.workHours.toFixed(2)} hrs` : '-'}
-                      </td>
-                      <td className="py-3 px-4">
-                        {record.checkInLocation?.address && record.checkInLocation.address !== 'Location not provided' ? (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <FiMapPin className="mr-1" size={14} />
-                            <span className="truncate max-w-xs">{record.checkInLocation.address}</span>
-                          </div>
-                        ) : record.checkInLocation?.coordinates ? (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <FiMapPin className="mr-1" size={14} />
-                            <span className="truncate max-w-xs">
-                              {record.checkInLocation.coordinates[1].toFixed(4)}, {record.checkInLocation.coordinates[0].toFixed(4)}
-                            </span>
-                          </div>
-                        ) : '-'}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">
-                        {record.notes || '-'}
-                      </td>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4">Date</th>
+                      <th className="text-left py-3 px-4">Day</th>
+                      <th className="text-left py-3 px-4">Status</th>
+                      <th className="text-left py-3 px-4">Check In</th>
+                      <th className="text-left py-3 px-4">Check Out</th>
+                      <th className="text-left py-3 px-4">Work Hours</th>
+                      <th className="text-left py-3 px-4">Location</th>
+                      <th className="text-left py-3 px-4">Notes</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredAttendance.map((record, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          {new Date(record.date).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(record.status)}`}>
+                            {record.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {record.workHours ? `${record.workHours.toFixed(2)} hrs` : '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {record.checkInLocation?.address && record.checkInLocation.address !== 'Location not provided' ? (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <FiMapPin className="mr-1" size={14} />
+                              <span className="truncate max-w-xs">{record.checkInLocation.address}</span>
+                            </div>
+                          ) : record.checkInLocation?.coordinates ? (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <FiMapPin className="mr-1" size={14} />
+                              <span className="truncate max-w-xs">
+                                {record.checkInLocation.coordinates[1].toFixed(4)}, {record.checkInLocation.coordinates[0].toFixed(4)}
+                              </span>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {record.notes || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="lg:hidden space-y-3">
+                {filteredAttendance.map((record, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">
+                          {new Date(record.date).toLocaleDateString()}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {new Date(record.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(record.status)}`}>
+                        {record.status}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Check In:</span>
+                        <span className="font-medium">
+                          {record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '-'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Check Out:</span>
+                        <span className="font-medium">
+                          {record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : '-'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Work Hours:</span>
+                        <span className="font-medium">
+                          {record.workHours ? `${record.workHours.toFixed(2)} hrs` : '-'}
+                        </span>
+                      </div>
+                      {record.checkInLocation?.address && record.checkInLocation.address !== 'Location not provided' && (
+                        <div className="flex items-start text-sm">
+                          <FiMapPin className="mr-1 mt-0.5 flex-shrink-0" size={14} />
+                          <span className="text-gray-600">{record.checkInLocation.address}</span>
+                        </div>
+                      )}
+                      {record.notes && (
+                        <div className="text-sm">
+                          <span className="text-gray-600">Notes: </span>
+                          <span>{record.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
