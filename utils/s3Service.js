@@ -1,5 +1,6 @@
 import AWS from 'aws-sdk';
 import fs from 'fs';
+import path from 'path';
 
 // Configure AWS
 const s3 = new AWS.S3({
@@ -44,6 +45,30 @@ export const uploadMultipleToS3 = async (files, folder = 'general') => {
   } catch (error) {
     console.error('S3 Multiple Upload Error:', error);
     throw new Error('Failed to upload files to S3');
+  }
+};
+
+// Upload a local file path to S3 (no Multer dependency)
+export const uploadFilePathToS3 = async (filePath, key, contentType = 'application/octet-stream', acl = 'public-read') => {
+  try {
+    if (!process.env.S3_BUCKET_NAME) {
+      throw new Error('S3_BUCKET_NAME not configured');
+    }
+
+    const bodyStream = fs.createReadStream(filePath);
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: key,
+      Body: bodyStream,
+      ContentType: contentType,
+      ACL: acl
+    };
+
+    const result = await s3.upload(params).promise();
+    return { url: result.Location, key: result.Key };
+  } catch (error) {
+    console.error('S3 uploadFilePathToS3 Error:', error);
+    throw error;
   }
 };
 

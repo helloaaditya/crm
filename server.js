@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import mongoose from 'mongoose';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 // Import routes
@@ -72,7 +73,39 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, path) => {
+    console.log('Serving static file:', path);
+  }
+}));
+
+// Direct PDF serving route as fallback
+app.get('/uploads/invoices/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'uploads', 'invoices', filename);
+  
+  console.log('Direct PDF request for:', filename);
+  console.log('File path:', filePath);
+  
+  if (!fs.existsSync(filePath)) {
+    console.log('File not found:', filePath);
+    // List available files for debugging
+    const uploadsDir = path.join(__dirname, 'uploads', 'invoices');
+    if (fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir);
+      console.log('Available PDF files:', files);
+    }
+    return res.status(404).json({ 
+      message: 'PDF file not found',
+      requestedFile: filename,
+      availableFiles: fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : []
+    });
+  }
+  
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+  res.sendFile(filePath);
+});
 
 // API routes
 app.use('/api/auth', authRoutes);

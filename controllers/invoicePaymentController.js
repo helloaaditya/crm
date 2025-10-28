@@ -5,6 +5,8 @@ import Payment from '../models/Payment.js';
 import InvoiceSettings from '../models/InvoiceSettings.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { generateInvoicePDF } from '../utils/pdfService.js';
+import fs from 'fs';
+import { uploadFilePathToS3 } from '../utils/s3Service.js';
 import { sendInvoiceEmail } from '../utils/emailService.js';
 import { createRazorpayOrder, verifyRazorpaySignature } from '../utils/razorpayService.js';
 
@@ -557,10 +559,32 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
 
   // Generate PDF using built-in generator
   try {
+    console.log('Generating PDF for invoice:', invoice.invoiceNumber);
     const pdf = await generateInvoicePDF(invoiceData, 'invoice');
-    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
-    invoice.pdfUrl = `${backendUrl}/uploads/invoices/${pdf.filename}`;
+    console.log('PDF generated successfully:', pdf);
+
+    // If S3 configured, upload and use S3 URL
+    if (process.env.S3_BUCKET_NAME && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      const s3Key = `invoices/${pdf.filename}`;
+      const uploaded = await uploadFilePathToS3(pdf.filepath, s3Key, 'application/pdf', 'public-read');
+      invoice.pdfUrl = uploaded.url;
+      console.log('Uploaded invoice PDF to S3:', uploaded.url);
+      // Best-effort cleanup of local file
+      try {
+        if (pdf.filepath && fs.existsSync(pdf.filepath)) {
+          fs.unlinkSync(pdf.filepath);
+          console.log('Deleted local invoice PDF:', pdf.filepath);
+        }
+      } catch (cleanupErr) {
+        console.warn('Failed to delete local invoice PDF:', cleanupErr?.message);
+      }
+    } else {
+      const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+      invoice.pdfUrl = `${backendUrl}/uploads/invoices/${pdf.filename}`;
+    }
     await invoice.save();
+
+    console.log('PDF URL set:', invoice.pdfUrl);
 
     return res.json({ 
       success: true, 

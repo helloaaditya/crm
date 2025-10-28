@@ -12,11 +12,19 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
         size: 'A4'
       });
       const filename = `${type}-${invoiceData.invoiceNumber}-${Date.now()}.pdf`;
-      const filepath = path.join('uploads', 'invoices', filename);
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'invoices');
+      const filepath = path.join(uploadsDir, filename);
+      
+      console.log('PDF Generation Debug:', {
+        invoiceNumber: invoiceData.invoiceNumber,
+        filename,
+        uploadsDir,
+        filepath
+      });
 
       // Ensure directory exists
-      if (!fs.existsSync(path.join('uploads', 'invoices'))) {
-        fs.mkdirSync(path.join('uploads', 'invoices'), { recursive: true });
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
       }
 
       const stream = fs.createWriteStream(filepath);
@@ -402,10 +410,12 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       }
 
       stream.on('finish', () => {
+        console.log('PDF file written successfully:', { filename, filepath });
         resolve({ filename, filepath });
       });
 
       stream.on('error', (error) => {
+        console.error('PDF stream error:', error);
         reject(error);
       });
 
