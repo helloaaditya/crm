@@ -441,13 +441,24 @@ export const deleteInvoice = asyncHandler(async (req, res) => {
 // @route   GET /api/invoices/:id/pdf
 // @access  Private
 export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
+  console.log('PDF generation request for invoice ID:', req.params.id);
+  
   const invoice = await Invoice.findById(req.params.id)
     .populate('customer')
     .populate('project');
 
   if (!invoice) {
+    console.log('Invoice not found for ID:', req.params.id);
     return res.status(404).json({ message: 'Invoice not found' });
   }
+
+  console.log('Found invoice:', {
+    id: invoice._id,
+    invoiceNumber: invoice.invoiceNumber,
+    customer: invoice.customer?.name,
+    totalAmount: invoice.totalAmount,
+    itemsCount: invoice.items?.length
+  });
 
   // Get invoice settings with fallback to general settings
   let invoiceSettings;
@@ -560,11 +571,20 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
   // Generate PDF using built-in generator
   try {
     console.log('Generating PDF for invoice:', invoice.invoiceNumber);
+    console.log('Invoice data for PDF:', {
+      invoiceNumber: invoiceData.invoiceNumber,
+      customerName: invoiceData.customerName,
+      totalAmount: invoiceData.totalAmount,
+      hasCompanyInfo: !!invoiceData.companyInfo,
+      hasBankDetails: !!invoiceData.bankDetails
+    });
+    
     const pdf = await generateInvoicePDF(invoiceData, 'invoice');
     console.log('PDF generated successfully:', pdf);
 
     // If S3 configured, upload and use S3 URL
     if (process.env.S3_BUCKET_NAME && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log('Uploading to S3...');
       const s3Key = `invoices/${pdf.filename}`;
       const uploaded = await uploadFilePathToS3(pdf.filepath, s3Key, 'application/pdf', 'public-read');
       invoice.pdfUrl = uploaded.url;
@@ -579,9 +599,12 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
         console.warn('Failed to delete local invoice PDF:', cleanupErr?.message);
       }
     } else {
+      console.log('S3 not configured, using local URL');
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
       invoice.pdfUrl = `${backendUrl}/uploads/invoices/${pdf.filename}`;
     }
+    
+    console.log('Saving invoice with PDF URL:', invoice.pdfUrl);
     await invoice.save();
 
     console.log('PDF URL set:', invoice.pdfUrl);
@@ -594,11 +617,17 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
       } 
     });
   } catch (error) {
-    console.error('PDF generation error:', error);
+    console.error('PDF generation error details:', {
+      message: error.message,
+      stack: error.stack,
+      invoiceId: req.params.id,
+      invoiceNumber: invoice?.invoiceNumber
+    });
     return res.status(500).json({ 
       success: false, 
       message: 'Failed to generate PDF', 
-      error: error.message 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
