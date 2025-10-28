@@ -586,7 +586,7 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
     if (process.env.S3_BUCKET_NAME && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
       console.log('Uploading to S3...');
       const s3Key = `invoices/${pdf.filename}`;
-      const uploaded = await uploadFilePathToS3(pdf.filepath, s3Key, 'application/pdf', 'public-read');
+      const uploaded = await uploadFilePathToS3(pdf.filepath, s3Key, 'application/pdf');
       invoice.pdfUrl = uploaded.url;
       console.log('Uploaded invoice PDF to S3:', uploaded.url);
       // Best-effort cleanup of local file

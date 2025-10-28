@@ -18,8 +18,8 @@ export const uploadToS3 = async (file, folder = 'general') => {
       Bucket: process.env.S3_BUCKET_NAME,
       Key: `${folder}/${Date.now()}-${file.originalname}`,
       Body: fileContent,
-      ContentType: file.mimetype,
-      ACL: 'public-read'
+      ContentType: file.mimetype
+      // Removed ACL parameter as the bucket doesn't allow ACLs
     };
 
     const result = await s3.upload(params).promise();
@@ -49,7 +49,7 @@ export const uploadMultipleToS3 = async (files, folder = 'general') => {
 };
 
 // Upload a local file path to S3 (no Multer dependency)
-export const uploadFilePathToS3 = async (filePath, key, contentType = 'application/octet-stream', acl = 'public-read') => {
+export const uploadFilePathToS3 = async (filePath, key, contentType = 'application/octet-stream') => {
   try {
     if (!process.env.S3_BUCKET_NAME) {
       throw new Error('S3_BUCKET_NAME not configured');
@@ -60,8 +60,8 @@ export const uploadFilePathToS3 = async (filePath, key, contentType = 'applicati
       Bucket: process.env.S3_BUCKET_NAME,
       Key: key,
       Body: bodyStream,
-      ContentType: contentType,
-      ACL: acl
+      ContentType: contentType
+      // Removed ACL parameter as the bucket doesn't allow ACLs
     };
 
     const result = await s3.upload(params).promise();
