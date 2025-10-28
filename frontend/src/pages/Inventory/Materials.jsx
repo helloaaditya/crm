@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiArrowUp, FiArrowDown, FiAlertCircle, FiClock, FiRotateCcw } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiArrowUp, FiArrowDown, FiAlertCircle, FiClock, FiRotateCcw, FiDownload, FiFilter, FiCalendar, FiTrendingUp, FiTrendingDown, FiPackage } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import MaterialModal from '../../components/Modals/MaterialModal'
@@ -11,8 +11,18 @@ const Materials = () => {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
+  const [stockFilter, setStockFilter] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summary, setSummary] = useState({ 
+    totalMaterials: 0, 
+    totalValue: 0, 
+    lowStockCount: 0,
+    byCategory: {}
+  })
   const [showModal, setShowModal] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
@@ -22,23 +32,40 @@ const Materials = () => {
 
   useEffect(() => {
     fetchMaterials()
-  }, [page, category])
+    fetchStockSummary()
+  }, [page, category, stockFilter, startDate, endDate])
 
   const fetchMaterials = async () => {
     try {
       setLoading(true)
-      const params = { page, limit: 10 }
-      if (search) params.search = search
-      if (category) params.category = category
+      const params = { 
+        page, 
+        limit: 10,
+        ...(search && { search }),
+        ...(category && { category }),
+        ...(stockFilter && { lowStock: stockFilter === 'low' }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
+      }
 
       const response = await API.inventory.getMaterials(params)
       setMaterials(response.data.data || [])
       setTotalPages(response.data.totalPages || 1)
+      setTotalCount(response.data.total || 0)
     } catch (error) {
       console.error('Error fetching materials:', error)
       toast.error('Failed to load materials')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchStockSummary = async () => {
+    try {
+      const response = await API.inventory.getStockSummary()
+      setSummary(response.data.data || {})
+    } catch (error) {
+      console.error('Error fetching stock summary:', error)
     }
   }
 
@@ -130,53 +157,178 @@ const Materials = () => {
 
   const handleReturnSuccess = () => {
     fetchMaterials()
+    fetchStockSummary()
+  }
+
+  const handleClearFilters = () => {
+    setSearch('')
+    setCategory('')
+    setStockFilter('')
+    setStartDate('')
+    setEndDate('')
+    setPage(1)
+  }
+
+  const handleExportCSV = () => {
+    const csvData = materials.map(material => ({
+      'Material ID': material.materialId,
+      'Name': material.name,
+      'Category': material.category,
+      'Brand': material.brand || 'N/A',
+      'Product': material.product || 'N/A',
+      'Current Stock': material.quantity,
+      'Unit': material.unit,
+      'Min Stock Level': material.minStockLevel,
+      'Sale Cost': material.saleCost,
+      'MRP': material.mrp,
+      'Stock Value': (material.quantity * material.saleCost).toFixed(2),
+      'Status': material.quantity <= material.minStockLevel ? 'Low Stock' : 'Normal',
+      'Vendor': material.vendor?.name || 'N/A',
+      'Created Date': new Date(material.createdAt).toLocaleDateString()
+    }))
+
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `materials-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+    toast.success('Materials exported successfully')
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Materials Inventory</h1>
-        <button 
-          onClick={handleAdd}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
-        >
-          <FiPlus className="mr-2" />
-          Add Material
-        </button>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Materials Inventory</h1>
+          <p className="text-gray-600 mt-1">
+            {totalCount} materials • Total Value: ₹{summary.totalValue?.toLocaleString() || '0'} • 
+            Low Stock: {summary.lowStockCount || 0}
+          </p>
+        </div>
+        <div className="flex space-x-3">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            disabled={materials.length === 0}
+          >
+            <FiDownload className="mr-2" />
+            Export CSV
+          </button>
+          <button 
+            onClick={handleAdd}
+            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+          >
+            <FiPlus className="mr-2" />
+            Add Material
+          </button>
+        </div>
       </div>
 
-      {/* Search & Filter */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <form onSubmit={handleSearch} className="flex items-center space-x-4">
-          <div className="flex-1 relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      {/* Advanced Search & Filter */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          {/* Search */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <FiSearch className="inline mr-1" />
+              Search
+            </label>
             <input
               type="text"
               placeholder="Search materials..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-          <select 
-            value={category}
-            onChange={(e) => { setCategory(e.target.value); setPage(1); }}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">All Categories</option>
-            <option value="waterproofing">Waterproofing</option>
-            <option value="flooring">Flooring</option>
-            <option value="painting">Painting</option>
-            <option value="civil">Civil</option>
-            <option value="tools">Tools</option>
-            <option value="machinery">Machinery</option>
-            <option value="other">Other</option>
-          </select>
-          <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
-            Search
-          </button>
-        </form>
+
+          {/* Category Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select 
+              value={category}
+              onChange={(e) => { setCategory(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Categories</option>
+              <option value="waterproofing">Waterproofing</option>
+              <option value="flooring">Flooring</option>
+              <option value="painting">Painting</option>
+              <option value="civil">Civil</option>
+              <option value="tools">Tools</option>
+              <option value="machinery">Machinery</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          {/* Stock Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Stock Status</label>
+            <select 
+              value={stockFilter}
+              onChange={(e) => { setStockFilter(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Stock</option>
+              <option value="low">Low Stock</option>
+              <option value="normal">Normal Stock</option>
+              <option value="zero">Out of Stock</option>
+            </select>
+          </div>
+
+          {/* Clear Filters */}
+          <div className="flex items-end">
+            <button
+              onClick={handleClearFilters}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        </div>
+
+        {/* Date Range */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <FiCalendar className="inline mr-1" />
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <FiCalendar className="inline mr-1" />
+              End Date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          
+          <div className="flex items-end">
+            <div className="text-sm text-gray-600">
+              Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} materials
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Materials Table */}
@@ -289,20 +441,25 @@ const Materials = () => {
             </table>
 
             {/* Pagination */}
-            <div className="px-6 py-4 flex items-center justify-between border-t">
-              <div className="text-sm text-gray-600">Page {page} of {totalPages}</div>
+            <div className="px-6 py-4 flex items-center justify-between border-t bg-gray-50">
+              <div className="text-sm text-gray-600">
+                Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} materials
+              </div>
               <div className="flex space-x-2">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Previous
                 </button>
+                <span className="px-4 py-2 text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Next
                 </button>

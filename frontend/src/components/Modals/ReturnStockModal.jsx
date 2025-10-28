@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
+import SearchableSelect from '../SearchableSelect'
 
 const ReturnStockModal = ({ isOpen, onClose, onSuccess, material }) => {
   const [formData, setFormData] = useState({
@@ -131,20 +132,13 @@ const ReturnStockModal = ({ isOpen, onClose, onSuccess, material }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Invoice <span className="text-red-500">*</span>
               </label>
-              <select
-                name="invoiceId"
+              <SearchableSelect
+                options={invoices.map(inv => ({ value: inv._id, label: `${inv.invoiceNumber} - ${inv.customer?.name || ''}` }))}
                 value={formData.invoiceId}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={(val) => setFormData(prev => ({ ...prev, invoiceId: val }))}
+                placeholder="Select Invoice"
                 required
-              >
-                <option value="">Select Invoice</option>
-                {invoices.map(invoice => (
-                  <option key={invoice._id} value={invoice._id}>
-                    {invoice.invoiceNumber} - {invoice.customer?.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>

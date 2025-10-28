@@ -382,9 +382,56 @@ export const deleteInvoice = asyncHandler(async (req, res) => {
   
   await invoice.save();
 
+  // Auto-restock materials if invoice had materials
+  let restockResults = null;
+  if (invoice.items && invoice.items.length > 0) {
+    try {
+      const materialsToRestock = invoice.items
+        .filter(item => item.material && item.quantity)
+        .map(item => ({
+          materialId: item.material,
+          quantity: item.quantity,
+          materialName: item.name || 'Unknown Material'
+        }));
+
+      if (materialsToRestock.length > 0) {
+        // Call the auto-restock function
+        const restockResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/inventory/materials/auto-restock`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers.authorization
+          },
+          body: JSON.stringify({
+            invoiceId: invoice._id,
+            invoiceNumber: invoice.invoiceNumber,
+            customerId: invoice.customer,
+            projectId: invoice.project,
+            materials: materialsToRestock,
+            handledBy: req.user._id
+          })
+        });
+
+        if (restockResponse.ok) {
+          restockResults = await restockResponse.json();
+          console.log('Auto-restock completed:', restockResults.data);
+        } else {
+          console.error('Auto-restock failed:', await restockResponse.text());
+        }
+      }
+    } catch (error) {
+      console.error('Error during auto-restock:', error);
+      // Don't fail the invoice cancellation if restock fails
+    }
+  }
+
   res.json({
     success: true,
-    message: 'Invoice cancelled successfully'
+    message: 'Invoice cancelled successfully',
+    data: {
+      invoice: invoice,
+      restockResults: restockResults?.data || null
+    }
   });
 });
 
@@ -393,55 +440,143 @@ export const deleteInvoice = asyncHandler(async (req, res) => {
 // @access  Private
 export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
   const invoice = await Invoice.findById(req.params.id)
-    .populate('customer');
+    .populate('customer')
+    .populate('project');
 
   if (!invoice) {
     return res.status(404).json({ message: 'Invoice not found' });
   }
 
-  // Get invoice settings
-  const invoiceSettings = await InvoiceSettings.getSettings();
+  // Get invoice settings with fallback to general settings
+  let invoiceSettings;
+  try {
+    invoiceSettings = await InvoiceSettings.getSettings();
+  } catch (error) {
+    console.log('InvoiceSettings not found, using empty settings');
+    invoiceSettings = {
+      companyInfo: {},
+      bankDetails: {},
+      invoiceDefaults: {},
+      qrCode: { enabled: false },
+      theme: {}
+    };
+  }
 
+  // Ensure we have valid data for PDF generation
   const invoiceData = {
-    // Company Information from settings
-    companyInfo: invoiceSettings.companyInfo,
-    bankDetails: invoiceSettings.bankDetails,
-    invoiceDefaults: invoiceSettings.invoiceDefaults,
-    qrCode: invoiceSettings.qrCode,
+    // Company Information from settings (with fallbacks)
+    companyInfo: {
+      name: invoiceSettings.companyInfo?.name || 'Your Company Name',
+      address: invoiceSettings.companyInfo?.address || 'Your Company Address',
+      city: invoiceSettings.companyInfo?.city || 'Your City',
+      state: invoiceSettings.companyInfo?.state || 'Your State',
+      pincode: invoiceSettings.companyInfo?.pincode || 'Your Pincode',
+      phone: invoiceSettings.companyInfo?.phone || 'Your Phone',
+      email: invoiceSettings.companyInfo?.email || 'Your Email',
+      gstin: invoiceSettings.companyInfo?.gstin || '',
+      pan: invoiceSettings.companyInfo?.pan || '',
+      logoUrl: invoiceSettings.companyInfo?.logoUrl || ''
+    },
+    bankDetails: {
+      bankName: invoiceSettings.bankDetails?.bankName || '',
+      accountName: invoiceSettings.bankDetails?.accountName || '',
+      accountNumber: invoiceSettings.bankDetails?.accountNumber || '',
+      ifscCode: invoiceSettings.bankDetails?.ifscCode || '',
+      branch: invoiceSettings.bankDetails?.branch || '',
+      upiId: invoiceSettings.bankDetails?.upiId || ''
+    },
+    invoiceDefaults: {
+      terms: invoiceSettings.invoiceDefaults?.terms || 'Thank you for your business!',
+      notes: invoiceSettings.invoiceDefaults?.notes || '',
+      prefix: invoiceSettings.invoiceDefaults?.prefix || 'INV',
+      dateFormat: invoiceSettings.invoiceDefaults?.dateFormat || 'DD/MM/YYYY'
+    },
+    qrCode: {
+      enabled: invoiceSettings.qrCode?.enabled || false,
+      includeAmount: invoiceSettings.qrCode?.includeAmount || false,
+      size: invoiceSettings.qrCode?.size || 80
+    },
+    theme: {
+      primaryColor: invoiceSettings.theme?.primaryColor || '#1e40af',
+      secondaryColor: invoiceSettings.theme?.secondaryColor || '#374151',
+      accentColor: invoiceSettings.theme?.accentColor || '#f3f4f6',
+      fontSizes: invoiceSettings.theme?.fontSizes || {},
+      logo: invoiceSettings.theme?.logo || {},
+      layout: invoiceSettings.theme?.layout || {}
+    },
     
-    // Invoice Information
+    // Invoice Information (from database)
     invoiceNumber: invoice.invoiceNumber,
-    customerName: invoice.customer.name,
-    customerPhone: invoice.customer.contactNumber,
-    customerEmail: invoice.customer.email,
-    customerAddress: invoice.customer.address,
+    customerName: invoice.customer?.name || 'Customer Name',
+    customerPhone: invoice.customer?.contactNumber || '',
+    customerEmail: invoice.customer?.email || '',
+    customerAddress: invoice.customer?.address || '',
     invoiceDate: invoice.invoiceDate || new Date(),
     dueDate: invoice.dueDate,
-    items: invoice.items,
-    subtotal: invoice.subtotal,
-    cgst: invoice.cgst,
-    sgst: invoice.sgst,
-    igst: invoice.igst,
-    discount: invoice.discount,
-    totalAmount: invoice.totalAmount,
-    isGST: invoice.isGST,
-    gstNumber: invoice.gstNumber,
-    terms: invoice.terms || invoiceSettings.invoiceDefaults?.terms
+    items: invoice.items || [],
+    subtotal: invoice.subtotal || 0,
+    cgst: invoice.cgst || 0,
+    sgst: invoice.sgst || 0,
+    igst: invoice.igst || 0,
+    discount: invoice.discount || 0,
+    totalAmount: invoice.totalAmount || 0,
+    isGST: invoice.isGST || false,
+    gstNumber: invoice.gstNumber || '',
+    terms: invoice.terms || invoiceSettings.invoiceDefaults?.terms || 'Thank you for your business!'
   };
 
-  const pdf = await generateInvoicePDF(invoiceData, 'invoice');
-
-  // Generate full URL for PDF (backend URL + path)
-  const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
-  invoice.pdfUrl = `${backendUrl}/uploads/invoices/${pdf.filename}`;
-  await invoice.save();
-
-  res.json({
-    success: true,
-    data: {
-      pdfUrl: invoice.pdfUrl
-    }
+  console.log('Generating PDF with data:', {
+    invoiceNumber: invoiceData.invoiceNumber,
+    customerName: invoiceData.customerName,
+    totalAmount: invoiceData.totalAmount,
+    companyName: invoiceData.companyInfo.name,
+    hasQRCode: invoiceData.qrCode.enabled,
+    upiId: invoiceData.bankDetails.upiId
   });
+
+  // If external provider enabled, construct a download URL directly
+  if (invoiceSettings.externalProvider?.enabled && invoiceSettings.externalProvider?.downloadUrlTemplate) {
+    const t = invoiceSettings.externalProvider.downloadUrlTemplate;
+    const externalUrl = t
+      .replace(/\{\{invoiceId\}\}/g, String(invoice._id))
+      .replace(/\{\{invoiceNumber\}\}/g, String(invoice.invoiceNumber))
+      .replace(/\{\{customerName\}\}/g, encodeURIComponent(invoice.customer?.name || ''))
+      .replace(/\{\{totalAmount\}\}/g, String(invoice.totalAmount || 0));
+
+    invoice.pdfUrl = externalUrl;
+    await invoice.save();
+
+    return res.json({ 
+      success: true, 
+      data: { 
+        pdfUrl: externalUrl, 
+        provider: invoiceSettings.externalProvider.name || 'external' 
+      } 
+    });
+  }
+
+  // Generate PDF using built-in generator
+  try {
+    const pdf = await generateInvoicePDF(invoiceData, 'invoice');
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    invoice.pdfUrl = `${backendUrl}/uploads/invoices/${pdf.filename}`;
+    await invoice.save();
+
+    return res.json({ 
+      success: true, 
+      data: { 
+        pdfUrl: invoice.pdfUrl,
+        filename: pdf.filename
+      } 
+    });
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Failed to generate PDF', 
+      error: error.message 
+    });
+  }
 });
 
 // @desc    Send invoice via email
@@ -490,28 +625,111 @@ export const sendInvoiceViaEmail = asyncHandler(async (req, res) => {
 
 // =============== PAYMENTS ===============
 
-// @desc    Get all payments
+// @desc    Get all payments with filters and pagination
 // @route   GET /api/payments
 // @access  Private
 export const getPayments = asyncHandler(async (req, res) => {
-  const payments = await Payment.find()
-    .populate('invoice', 'invoiceNumber customer')
-    .populate('customer', 'name contactNumber')
-    .populate('recordedBy', 'name')
-    .sort({ createdAt: -1 });
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    status,
+    paymentMethod,
+    invoiceId,
+    customerId,
+    startDate,
+    endDate
+  } = req.query;
+
+  const query = {};
+
+  if (status) query.status = status;
+  if (paymentMethod) query.paymentMethod = paymentMethod;
+  if (invoiceId) query.invoice = invoiceId;
+  if (customerId) query.customer = customerId;
+
+  // Date range filter on paymentDate
+  if (startDate || endDate) {
+    query.paymentDate = {};
+    if (startDate) query.paymentDate.$gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query.paymentDate.$lte = end;
+    }
+  }
+
+  // Text search on notes or transactionId (case-insensitive)
+  if (search) {
+    query.$or = [
+      { notes: { $regex: search, $options: 'i' } },
+      { transactionId: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  const pageNum = parseInt(page, 10);
+  const limitNum = Math.min(parseInt(limit, 10) || 10, 100);
+
+  // Query paginated results
+  const [payments, totalCount, totals] = await Promise.all([
+    Payment.find(query)
+      .populate({
+        path: 'invoice',
+        select: 'invoiceNumber customer',
+        populate: { path: 'customer', select: 'name contactNumber' }
+      })
+      .populate('customer', 'name contactNumber')
+      .populate('recordedBy', 'name')
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum),
+    Payment.countDocuments(query),
+    // Aggregate totals for filtered set
+    Payment.aggregate([
+      { $match: normalizeMatch(query) },
+      { $group: { _id: null, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } }
+    ])
+  ]);
+
+  const totalPages = Math.ceil(totalCount / limitNum) || 1;
+  const summary = totals && totals[0] ? { totalAmount: totals[0].totalAmount, count: totals[0].count } : { totalAmount: 0, count: 0 };
 
   res.json({
     success: true,
-    data: payments
+    data: payments,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total: totalCount,
+      totalPages
+    },
+    summary
   });
 });
+
+// Helper to convert Mongoose query with RegExp/Date into plain values for aggregation match
+function normalizeMatch(q) {
+  const out = {};
+  for (const [k, v] of Object.entries(q)) {
+    if (v && typeof v === 'object' && !(v instanceof Date) && !Array.isArray(v)) {
+      out[k] = normalizeMatch(v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
 
 // @desc    Get single payment
 // @route   GET /api/payments/:id
 // @access  Private
 export const getPayment = asyncHandler(async (req, res) => {
   const payment = await Payment.findById(req.params.id)
-    .populate('invoice', 'invoiceNumber customer')
+    .populate({
+      path: 'invoice',
+      select: 'invoiceNumber customer',
+      populate: { path: 'customer', select: 'name contactNumber' }
+    })
     .populate('customer', 'name contactNumber')
     .populate('recordedBy', 'name');
 

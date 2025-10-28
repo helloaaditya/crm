@@ -20,6 +20,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import reminderRoutes from './routes/reminderRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import invoiceSettingsRoutes from './routes/invoiceSettingsRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -85,15 +86,36 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/invoice-settings', invoiceSettingsRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
-    origin: req.get('origin')
-  });
+// Health check endpoints
+app.get('/health', async (req, res) => {
+  try {
+    const { quickHealthCheck } = await import('./utils/healthCheck.js');
+    const health = await quickHealthCheck();
+    res.status(health.status === 'healthy' ? 200 : 503).json(health);
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Detailed health check
+app.get('/health/detailed', async (req, res) => {
+  try {
+    const { performHealthCheck } = await import('./utils/healthCheck.js');
+    const health = await performHealthCheck();
+    res.status(health.status === 'healthy' ? 200 : 503).json(health);
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // CORS preflight test endpoint
@@ -112,13 +134,47 @@ app.get('/cors-test', (req, res) => {
 // Error handler middleware (must be last)
 app.use(errorHandler);
 
-// Database connection
+// Database connection with enhanced error handling
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    // Validate MongoDB URI
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI environment variable is not set');
+    }
+
+    // Connection options
+    const options = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+      socketTimeoutMS: 45000 // Close sockets after 45 seconds of inactivity
+    };
+
+    await mongoose.connect(process.env.MONGODB_URI, options);
     console.log('✅ MongoDB Connected Successfully');
+    console.log(`📊 Database: ${mongoose.connection.name}`);
+    console.log(`🌐 Host: ${mongoose.connection.host}:${mongoose.connection.port}`);
+
+    // Connection event listeners
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ MongoDB Connection Error:', err.message);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️  MongoDB Disconnected');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('🔄 MongoDB Reconnected');
+    });
+
   } catch (error) {
     console.error('❌ MongoDB Connection Error:', error.message);
+    console.error('💡 Please check:');
+    console.error('   1. MongoDB server is running');
+    console.error('   2. MONGODB_URI is correctly set in .env file');
+    console.error('   3. Network connectivity to MongoDB server');
     process.exit(1);
   }
 };

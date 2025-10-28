@@ -10,21 +10,41 @@ export const getSettings = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Access denied. Admin rights required.' });
   }
 
-  const settings = await Settings.findOne();
-  
-  // If no settings exist, create default settings
-  if (!settings) {
-    const defaultSettings = await Settings.create({});
-    return res.json({
+  try {
+    const settings = await Settings.findOne();
+    
+    console.log('Settings found:', settings ? 'Yes' : 'No');
+    if (settings) {
+      console.log('Settings data:', {
+        company: settings.company,
+        invoice: settings.invoice,
+        tax: settings.tax,
+        theme: settings.theme
+      });
+    }
+    
+    // If no settings exist, create default settings
+    if (!settings) {
+      console.log('No settings found, creating default settings');
+      const defaultSettings = await Settings.create({});
+      return res.json({
+        success: true,
+        data: defaultSettings
+      });
+    }
+
+    res.json({
       success: true,
-      data: defaultSettings
+      data: settings
+    });
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch settings',
+      error: error.message
     });
   }
-
-  res.json({
-    success: true,
-    data: settings
-  });
 });
 
 // @desc    Update settings
@@ -36,60 +56,75 @@ export const updateSettings = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Access denied. Admin rights required.' });
   }
 
-  // Ensure nested structures are properly handled
-  const updateData = {
-    ...req.body,
-    updatedBy: req.user._id
-  };
+  try {
+    console.log('Updating settings with data:', req.body);
 
-  // Ensure nested objects exist for sections that are managed in settings
-  if (req.body.company) {
-    updateData.company = {
-      ...req.body.company,
-      address: {
-        ...req.body.company.address
-      }
+    // Ensure nested structures are properly handled
+    const updateData = {
+      ...req.body,
+      updatedBy: req.user._id
     };
+
+    // Ensure nested objects exist for sections that are managed in settings
+    if (req.body.company) {
+      updateData.company = {
+        ...req.body.company,
+        address: {
+          ...req.body.company.address
+        }
+      };
+    }
+
+    if (req.body.invoice) {
+      updateData.invoice = {
+        ...req.body.invoice,
+        bankDetails: {
+          ...req.body.invoice.bankDetails
+        }
+      };
+    }
+
+    if (req.body.tax) {
+      updateData.tax = {
+        ...req.body.tax
+      };
+    }
+
+    if (req.body.theme) {
+      updateData.theme = {
+        ...req.body.theme
+      };
+    }
+
+    if (req.body.backup) {
+      updateData.backup = {
+        ...req.body.backup
+      };
+    }
+
+    console.log('Final update data:', updateData);
+
+    const settings = await Settings.findOneAndUpdate(
+      {},
+      updateData,
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    console.log('Settings updated successfully:', settings);
+
+    res.json({
+      success: true,
+      data: settings,
+      message: 'Settings updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update settings',
+      error: error.message
+    });
   }
-
-  if (req.body.invoice) {
-    updateData.invoice = {
-      ...req.body.invoice,
-      bankDetails: {
-        ...req.body.invoice.bankDetails
-      }
-    };
-  }
-
-  if (req.body.tax) {
-    updateData.tax = {
-      ...req.body.tax
-    };
-  }
-
-  if (req.body.theme) {
-    updateData.theme = {
-      ...req.body.theme
-    };
-  }
-
-  if (req.body.backup) {
-    updateData.backup = {
-      ...req.body.backup
-    };
-  }
-
-  const settings = await Settings.findOneAndUpdate(
-    {},
-    updateData,
-    { new: true, upsert: true, runValidators: true }
-  );
-
-  res.json({
-    success: true,
-    data: settings,
-    message: 'Settings updated successfully'
-  });
 });
 
 // @desc    Get user-specific settings

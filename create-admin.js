@@ -4,7 +4,7 @@ const createAdmin = async () => {
   try {
     console.log('🔧 Creating admin user...\n');
     
-    const response = await axios.post('http://localhost:5000/api/auth/register', {
+    const response = await axios.post('https://crm-156r.onrender.com/api/auth/register', {
       name: 'Admin User',
       email: 'admin@sanjanacrm.com',
       password: 'admin123',

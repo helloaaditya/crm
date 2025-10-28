@@ -11,6 +11,8 @@ import {
   getLowStockMaterials,
   returnMaterial,
   getMaterialHistory,
+  autoRestockFromInvoice,
+  bulkMaterialOperations,
   getVendors,
   getVendor,
   createVendor,
@@ -36,6 +38,8 @@ router.delete('/materials/:id', checkPermission('canDelete'), deleteMaterial);
 router.post('/materials/:id/inward', checkPermission('canCreate'), materialInward);
 router.post('/materials/:id/outward', checkPermission('canCreate'), materialOutward);
 router.post('/materials/:id/return', checkPermission('canCreate'), returnMaterial);
+router.post('/materials/auto-restock', checkPermission('canCreate'), autoRestockFromInvoice);
+router.post('/materials/bulk-operations', checkPermission('canCreate'), bulkMaterialOperations);
 
 // Vendors
 router.get('/vendors', getVendors);

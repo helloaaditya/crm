@@ -2,92 +2,32 @@ import mongoose from 'mongoose';
 
 const invoiceSettingsSchema = new mongoose.Schema({
   companyInfo: {
-    name: {
-      type: String,
-      default: 'Sanjana Enterprises'
-    },
-    address: {
-      type: String,
-      default: '# 786/1/30&31, 3rd main, 2nd cross, telecom layout, beside muneshwara temple, srirampura, jakkurpost'
-    },
-    city: {
-      type: String,
-      default: 'Bangalore'
-    },
-    state: {
-      type: String,
-      default: 'Karnataka'
-    },
-    pincode: {
-      type: String,
-      default: '561203'
-    },
-    phone: {
-      type: String,
-      default: '+91 9916290799'
-    },
-    email: {
-      type: String,
-      default: 'sanjana.waterproofing@gmail.com'
-    },
-    gstin: {
-      type: String,
-      default: 'GSTIN1234567890'
-    },
-    pan: {
-      type: String,
-      default: 'PAN1234567'
-    },
-    logoUrl: {
-      type: String,
-      default: ''
-    }
+    name: { type: String },
+    address: { type: String },
+    city: { type: String },
+    state: { type: String },
+    pincode: { type: String },
+    phone: { type: String },
+    email: { type: String },
+    gstin: { type: String },
+    pan: { type: String },
+    logoUrl: { type: String }
   },
   
   bankDetails: {
-    bankName: {
-      type: String,
-      default: 'State Bank of India'
-    },
-    accountName: {
-      type: String,
-      default: 'Sanjana Enterprises'
-    },
-    accountNumber: {
-      type: String,
-      default: '123456789012'
-    },
-    ifscCode: {
-      type: String,
-      default: 'SBIN0001234'
-    },
-    branch: {
-      type: String,
-      default: 'Main Branch, Bangalore'
-    },
-    upiId: {
-      type: String,
-      default: 'sanjana@sbi'
-    }
+    bankName: { type: String },
+    accountName: { type: String },
+    accountNumber: { type: String },
+    ifscCode: { type: String },
+    branch: { type: String },
+    upiId: { type: String }
   },
   
   invoiceDefaults: {
-    terms: {
-      type: String,
-      default: '1. Payment terms are 30 days from the date of invoice.\n2. Interest @ 24% per annum will be charged on overdue amounts.\n3. All disputes are subject to Bangalore jurisdiction.'
-    },
-    notes: {
-      type: String,
-      default: 'Thank you for your business!'
-    },
-    prefix: {
-      type: String,
-      default: 'INV'
-    },
-    dateFormat: {
-      type: String,
-      default: 'DD/MM/YYYY'
-    }
+    terms: { type: String },
+    notes: { type: String },
+    prefix: { type: String },
+    dateFormat: { type: String }
   },
   
   qrCode: {
@@ -102,6 +42,41 @@ const invoiceSettingsSchema = new mongoose.Schema({
     includeAmount: {
       type: Boolean,
       default: true
+    }
+  },
+  
+  // Optional external provider integration for invoices (e.g., 3rd-party template service)
+  externalProvider: {
+    enabled: { type: Boolean, default: false },
+    name: { type: String },
+    // Example: https://thirdparty.example.com/render?invoiceId={{invoiceId}}&number={{invoiceNumber}}
+    downloadUrlTemplate: { type: String },
+  },
+  
+  // Theme customization for PDF generation
+  theme: {
+    primaryColor: { type: String, default: '#1e40af' },
+    secondaryColor: { type: String, default: '#374151' },
+    accentColor: { type: String, default: '#f3f4f6' },
+    fontSizes: {
+      companyName: { type: Number, default: 24 },
+      invoiceTitle: { type: Number, default: 14 },
+      headerText: { type: Number, default: 8 },
+      bodyText: { type: Number, default: 7 },
+      totalText: { type: Number, default: 9 }
+    },
+    logo: {
+      enabled: { type: Boolean, default: false },
+      url: { type: String },
+      width: { type: Number, default: 80 },
+      height: { type: Number, default: 40 },
+      position: { type: String, enum: ['left', 'right', 'center'], default: 'left' }
+    },
+    layout: {
+      showBorder: { type: Boolean, default: false },
+      borderColor: { type: String, default: '#e5e7eb' },
+      showAlternateRows: { type: Boolean, default: true },
+      compactMode: { type: Boolean, default: false }
     }
   },
   

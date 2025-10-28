@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
+import SearchableSelect from '../SearchableSelect'
 
 const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [] }) => {
   const [formData, setFormData] = useState({
@@ -108,20 +109,13 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Invoice <span className="text-red-500">*</span>
               </label>
-              <select
+              <SearchableSelect
+                options={invoices.map(inv => ({ value: inv._id, label: `${inv.invoiceNumber} - ${inv.customer?.name || ''} (₹${inv.totalAmount?.toLocaleString() || 0})` }))}
                 value={formData.invoiceId}
-                onChange={(e) => setFormData({ ...formData, invoiceId: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
+                onChange={(val) => setFormData({ ...formData, invoiceId: val })}
+                placeholder="-- Select Invoice --"
                 required
-              >
-                <option value="">-- Select Invoice --</option>
-                {invoices.map(invoice => (
-                  <option key={invoice._id} value={invoice._id}>
-                    {invoice.invoiceNumber} - {invoice.customer?.name} 
-                    (₹{invoice.totalAmount?.toLocaleString() || 0})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Amount */}

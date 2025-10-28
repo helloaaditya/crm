@@ -160,16 +160,21 @@ export const materialInward = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Material not found' });
   }
 
-  const { quantity, reference, notes } = req.body;
+  const { quantity, reference, notes, projectId, invoiceId, customerId } = req.body;
 
   // Update quantity
+  const oldQuantity = material.quantity;
   material.quantity += Number(quantity);
 
   // Add to stock history
   material.stockHistory.push({
     type: 'inward',
     quantity: Number(quantity),
+    balanceAfter: material.quantity,
     reference,
+    project: projectId || null,
+    invoice: invoiceId || null,
+    customer: customerId || null,
     notes,
     handledBy: req.user._id
   });
@@ -193,7 +198,7 @@ export const materialOutward = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Material not found' });
   }
 
-  const { quantity, reference, notes } = req.body;
+  const { quantity, reference, notes, projectId, invoiceId, customerId } = req.body;
 
   if (material.quantity < Number(quantity)) {
     return res.status(400).json({ message: 'Insufficient stock' });
@@ -206,7 +211,11 @@ export const materialOutward = asyncHandler(async (req, res) => {
   material.stockHistory.push({
     type: 'outward',
     quantity: Number(quantity),
+    balanceAfter: material.quantity,
     reference,
+    project: projectId || null,
+    invoice: invoiceId || null,
+    customer: customerId || null,
     notes,
     handledBy: req.user._id
   });
@@ -498,5 +507,155 @@ export const getMaterialHistory = asyncHandler(async (req, res) => {
       },
       history: history
     }
+  });
+});
+
+// @desc    Auto restock materials when invoice is canceled
+// @route   POST /api/inventory/materials/auto-restock
+// @access  Private
+export const autoRestockFromInvoice = asyncHandler(async (req, res) => {
+  const { invoiceId, invoiceNumber, customerId, projectId, materials, handledBy } = req.body;
+
+  if (!materials || !Array.isArray(materials) || materials.length === 0) {
+    return res.status(400).json({ message: 'Materials array is required' });
+  }
+
+  const restockResults = [];
+  const errors = [];
+
+  for (const materialData of materials) {
+    try {
+      const { materialId, quantity, materialName } = materialData;
+      
+      const material = await Material.findById(materialId);
+      if (!material) {
+        errors.push(`Material ${materialName || materialId} not found`);
+        continue;
+      }
+
+      // Add back to stock
+      material.quantity += Number(quantity);
+
+      // Add stock history entry
+      material.stockHistory.push({
+        type: 'return',
+        quantity: Number(quantity),
+        balanceAfter: material.quantity,
+        reference: `Auto-restock from canceled invoice: ${invoiceNumber}`,
+        project: projectId || null,
+        invoice: invoiceId || null,
+        customer: customerId || null,
+        notes: `Automatic restock due to invoice cancellation - ${materialName}`,
+        handledBy: handledBy || null
+      });
+
+      await material.save();
+
+      restockResults.push({
+        materialId: material.materialId,
+        materialName: material.name,
+        quantity: Number(quantity),
+        newStock: material.quantity,
+        unit: material.unit
+      });
+
+    } catch (error) {
+      console.error(`Error restocking material ${materialData.materialId}:`, error);
+      errors.push(`Failed to restock ${materialData.materialName || materialData.materialId}: ${error.message}`);
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      restockedMaterials: restockResults,
+      errors: errors,
+      totalRestocked: restockResults.length,
+      totalErrors: errors.length
+    },
+    message: `Auto-restock completed. ${restockResults.length} materials restocked, ${errors.length} errors.`
+  });
+});
+
+// @desc    Bulk material operations
+// @route   POST /api/inventory/materials/bulk-operations
+// @access  Private
+export const bulkMaterialOperations = asyncHandler(async (req, res) => {
+  const { operations, reference, notes } = req.body;
+
+  if (!operations || !Array.isArray(operations) || operations.length === 0) {
+    return res.status(400).json({ message: 'Operations array is required' });
+  }
+
+  const results = [];
+  const errors = [];
+
+  for (const operation of operations) {
+    try {
+      const { materialId, type, quantity, projectId, invoiceId, customerId } = operation;
+      
+      const material = await Material.findById(materialId);
+      if (!material) {
+        errors.push(`Material ${materialId} not found`);
+        continue;
+      }
+
+      const oldQuantity = material.quantity;
+      let newQuantity = oldQuantity;
+
+      if (type === 'inward') {
+        newQuantity = oldQuantity + Number(quantity);
+      } else if (type === 'outward') {
+        if (oldQuantity < Number(quantity)) {
+          errors.push(`Insufficient stock for ${material.name}. Available: ${oldQuantity}, Required: ${quantity}`);
+          continue;
+        }
+        newQuantity = oldQuantity - Number(quantity);
+      } else if (type === 'adjustment') {
+        newQuantity = Number(quantity);
+      }
+
+      material.quantity = newQuantity;
+
+      // Add to stock history
+      material.stockHistory.push({
+        type: type,
+        quantity: type === 'adjustment' ? (newQuantity - oldQuantity) : Number(quantity),
+        balanceAfter: newQuantity,
+        reference: reference || 'Bulk Operation',
+        project: projectId || null,
+        invoice: invoiceId || null,
+        customer: customerId || null,
+        notes: notes || `Bulk ${type} operation`,
+        handledBy: req.user._id
+      });
+
+      await material.save();
+
+      results.push({
+        materialId: material.materialId,
+        materialName: material.name,
+        operation: type,
+        quantity: Number(quantity),
+        oldStock: oldQuantity,
+        newStock: newQuantity,
+        unit: material.unit
+      });
+
+    } catch (error) {
+      console.error(`Error in bulk operation for material ${operation.materialId}:`, error);
+      errors.push(`Failed to process ${operation.materialId}: ${error.message}`);
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      operations: results,
+      errors: errors,
+      totalProcessed: results.length,
+      totalErrors: errors.length
+    },
+    message: `Bulk operations completed. ${results.length} operations successful, ${errors.length} errors.`
   });
 });

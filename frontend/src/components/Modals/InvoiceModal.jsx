@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { FiX, FiPlus, FiTrash2 } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
+import SearchableSelect from '../SearchableSelect'
 
 const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
   const [customers, setCustomers] = useState([])
@@ -272,41 +273,27 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Customer <span className="text-red-500">*</span>
               </label>
-              <select
-                name="customer"
+              <SearchableSelect
+                options={customers.map(c => ({ value: c._id, label: `${c.name} - ${c.contactNumber || ''}` }))}
                 value={formData.customer}
-                onChange={handleChange}
-                required
+                onChange={(val) => handleChange({ target: { name: 'customer', value: val, type: 'text' } })}
+                placeholder="Select Customer"
                 disabled={isViewMode}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              >
-                <option value="">Select Customer</option>
-                {customers.map(customer => (
-                  <option key={customer._id} value={customer._id}>
-                    {customer.name} - {customer.contactNumber}
-                  </option>
-                ))}
-              </select>
+                required
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Project
               </label>
-              <select
-                name="project"
+              <SearchableSelect
+                options={projects.map(p => ({ value: p._id, label: `${p.projectId} - ${p.description?.substring(0, 30) || ''}...` }))}
                 value={formData.project}
-                onChange={handleChange}
+                onChange={(val) => handleChange({ target: { name: 'project', value: val, type: 'text' } })}
+                placeholder="Select Project (Optional)"
                 disabled={!formData.customer || isViewMode}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${isViewMode || !formData.customer ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              >
-                <option value="">Select Project (Optional)</option>
-                {projects.map(project => (
-                  <option key={project._id} value={project._id}>
-                    {project.projectId} - {project.description.substring(0, 30)}...
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
@@ -388,20 +375,14 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
               {formData.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-start p-3 border rounded-lg">
                   <div className="col-span-3 relative">
-                    <select
+                    <SearchableSelect
+                      options={materials.map(m => ({ value: m._id, label: `${m.name} - Stock: ${m.quantity} ${m.unit}` }))}
                       value={item.material}
-                      onChange={(e) => handleItemChange(index, 'material', e.target.value)}
-                      required
+                      onChange={(val) => handleItemChange(index, 'material', val)}
+                      placeholder="Select Material"
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                    >
-                      <option value="">Select Material</option>
-                      {materials.map(material => (
-                        <option key={material._id} value={material._id}>
-                          {material.name} - Stock: {material.quantity} {material.unit}
-                        </option>
-                      ))}
-                    </select>
+                      required
+                    />
                     {/* Stock warning indicator */}
                     {item.material && item.stockAvailable !== undefined && item.quantity > item.stockAvailable && !isViewMode && (
                       <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">

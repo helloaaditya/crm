@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign } from 'react-icons/fi'
+import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import API from '../../api'
 import { toast } from 'react-toastify'
@@ -20,34 +20,41 @@ const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [totalCount, setTotalCount] = useState(0)
+  const [summary, setSummary] = useState({ totalAmount: 0, paidAmount: 0, pendingAmount: 0 })
 
   useEffect(() => {
     fetchInvoices()
-  }, [page, searchTerm, statusFilter, paymentStatusFilter])
+  }, [page, searchTerm, statusFilter, paymentStatusFilter, startDate, endDate])
 
   const fetchInvoices = async () => {
     try {
       setLoading(true)
-      const params = { page, limit: 10 };
-      
-      // Add search term if provided
-      if (searchTerm) {
-        params.search = searchTerm;
-      }
-      
-      // Add status filter if provided
-      if (statusFilter) {
-        params.status = statusFilter;
-      }
-      
-      // Add payment status filter if provided
-      if (paymentStatusFilter) {
-        params.paymentStatus = paymentStatusFilter;
-      }
+      const params = { 
+        page, 
+        limit: 10,
+        ...(searchTerm && { search: searchTerm }),
+        ...(statusFilter && { status: statusFilter }),
+        ...(paymentStatusFilter && { paymentStatus: paymentStatusFilter }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
+      };
       
       const response = await API.invoices.getAll(params);
       setInvoices(response.data.data);
       setTotalPages(response.data.totalPages);
+      setTotalCount(response.data.total || 0);
+      
+      // Calculate summary
+      const totalAmount = response.data.data.reduce((sum, inv) => sum + inv.totalAmount, 0);
+      const paidAmount = response.data.data.reduce((sum, inv) => sum + inv.paidAmount, 0);
+      setSummary({
+        totalAmount,
+        paidAmount,
+        pendingAmount: totalAmount - paidAmount
+      });
     } catch (error) {
       console.error('Error fetching invoices:', error);
       toast.error('Failed to load invoices');
@@ -218,29 +225,88 @@ Sanjana CRM Team`
     fetchInvoices()
   }
 
+  const handleClearFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('')
+    setPaymentStatusFilter('')
+    setStartDate('')
+    setEndDate('')
+    setPage(1)
+  }
+
+  const handleExportCSV = () => {
+    const csvData = invoices.map(invoice => ({
+      'Invoice Number': invoice.invoiceNumber,
+      'Customer': invoice.customer?.name || 'N/A',
+      'Customer Phone': invoice.customer?.contactNumber || 'N/A',
+      'Type': invoice.invoiceType,
+      'Date': new Date(invoice.invoiceDate).toLocaleDateString(),
+      'Due Date': invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A',
+      'Total Amount': invoice.totalAmount,
+      'Paid Amount': invoice.paidAmount,
+      'Balance': invoice.totalAmount - invoice.paidAmount,
+      'Status': invoice.status,
+      'Payment Status': invoice.paymentStatus
+    }))
+
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `invoices-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+    toast.success('Invoices exported successfully')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Invoices</h1>
-        <button 
-          onClick={handleAdd}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
-        >
-          <FiPlus className="mr-2" />
-          Create Invoice
-        </button>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Invoices</h1>
+          <p className="text-gray-600 mt-1">
+            {totalCount} invoices • Total: ₹{summary.totalAmount?.toLocaleString() || '0'} • 
+            Paid: ₹{summary.paidAmount?.toLocaleString() || '0'} • 
+            Pending: ₹{summary.pendingAmount?.toLocaleString() || '0'}
+          </p>
+        </div>
+        <div className="flex space-x-3">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            disabled={invoices.length === 0}
+          >
+            <FiDownload className="mr-2" />
+            Export CSV
+          </button>
+          <button 
+            onClick={handleAdd}
+            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+          >
+            <FiPlus className="mr-2" />
+            Create Invoice
+          </button>
+        </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* Advanced Search and Filters */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {/* Search */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <FiSearch className="inline mr-1" />
+              Search
+            </label>
             <input
               type="text"
-              placeholder="Search by invoice #"
+              placeholder="Search by invoice #, customer..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -284,15 +350,46 @@ Sanjana CRM Team`
           {/* Clear Filters */}
           <div className="flex items-end">
             <button
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('');
-                setPaymentStatusFilter('');
-              }}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+              onClick={handleClearFilters}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
             >
-              Clear Filters
+              Clear All Filters
             </button>
+          </div>
+        </div>
+
+        {/* Date Range */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <FiCalendar className="inline mr-1" />
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <FiCalendar className="inline mr-1" />
+              End Date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          
+          <div className="flex items-end">
+            <div className="text-sm text-gray-600">
+              Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} invoices
+            </div>
           </div>
         </div>
       </div>
@@ -409,20 +506,25 @@ Sanjana CRM Team`
             </table>
 
             {/* Pagination */}
-            <div className="px-6 py-4 flex items-center justify-between border-t">
-              <div className="text-sm text-gray-600">Page {page} of {totalPages}</div>
+            <div className="px-6 py-4 flex items-center justify-between border-t bg-gray-50">
+              <div className="text-sm text-gray-600">
+                Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} invoices
+              </div>
               <div className="flex space-x-2">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Previous
                 </button>
+                <span className="px-4 py-2 text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Next
                 </button>

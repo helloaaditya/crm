@@ -68,6 +68,8 @@ export const inventoryAPI = {
   materialOutward: (id, data) => api.post(`/inventory/materials/${id}/outward`, data),
   returnMaterial: (id, data) => api.post(`/inventory/materials/${id}/return`, data),
   getLowStock: () => api.get('/inventory/materials/low-stock'),
+  autoRestock: (data) => api.post('/inventory/materials/auto-restock', data),
+  bulkOperations: (data) => api.post('/inventory/materials/bulk-operations', data),
   
   // Vendors
   getVendors: (params) => api.get('/inventory/vendors', { params }),
@@ -190,6 +192,13 @@ export const settingsAPI = {
   updateMySettings: (data) => api.put('/settings/my-settings', data)
 };
 
+// ============= INVOICE SETTINGS =============
+export const invoiceSettingsAPI = {
+  getAll: () => api.get('/invoice-settings'),
+  update: (data) => api.put('/invoice-settings', data),
+  syncFromSettings: () => api.post('/invoice-settings/sync-from-settings')
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -201,5 +210,6 @@ export default {
   payments: paymentAPI,
   reminders: reminderAPI,
   auth: authAPI,
-  settings: settingsAPI
+  settings: settingsAPI,
+  invoiceSettings: invoiceSettingsAPI
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiSave, FiUpload } from 'react-icons/fi';
+import { FiSave, FiUpload, FiRefreshCw } from 'react-icons/fi';
 import API from '../../api';
 import { toast } from 'react-toastify';
 
@@ -7,28 +7,28 @@ const InvoiceSettings = () => {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({
     companyInfo: {
-      name: 'Sanjana Enterprises',
-      address: '# 786/1/30&31, 3rd main, 2nd cross, telecom layout, beside muneshwara temple, srirampura, jakkurpost',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      pincode: '561203',
-      phone: '+91 9916290799',
-      email: 'sanjana.waterproofing@gmail.com',
-      gstin: 'GSTIN1234567890',
-      pan: 'PAN1234567',
+      name: '',
+      address: '',
+      city: '',
+      state: '',
+      pincode: '',
+      phone: '',
+      email: '',
+      gstin: '',
+      pan: '',
       logoUrl: ''
     },
     bankDetails: {
-      bankName: 'State Bank of India',
-      accountName: 'Sanjana Enterprises',
-      accountNumber: '123456789012',
-      ifscCode: 'SBIN0001234',
-      branch: 'Main Branch, Bangalore',
-      upiId: 'sanjana@sbi'
+      bankName: '',
+      accountName: '',
+      accountNumber: '',
+      ifscCode: '',
+      branch: '',
+      upiId: ''
     },
     invoiceDefaults: {
-      terms: '1. Payment terms are 30 days from the date of invoice.\n2. Interest @ 24% per annum will be charged on overdue amounts.\n3. All disputes are subject to Bangalore jurisdiction.',
-      notes: 'Thank you for your business!',
+      terms: '',
+      notes: '',
       prefix: 'INV',
       dateFormat: 'DD/MM/YYYY'
     },
@@ -36,6 +36,31 @@ const InvoiceSettings = () => {
       enabled: true,
       size: 100,
       includeAmount: true
+    },
+    theme: {
+      primaryColor: '#1e40af',
+      secondaryColor: '#374151',
+      accentColor: '#f3f4f6',
+      fontSizes: {
+        companyName: 24,
+        invoiceTitle: 14,
+        headerText: 8,
+        bodyText: 7,
+        totalText: 9
+      },
+      logo: {
+        enabled: false,
+        url: '',
+        width: 80,
+        height: 40,
+        position: 'left'
+      },
+      layout: {
+        showBorder: false,
+        borderColor: '#e5e7eb',
+        showAlternateRows: true,
+        compactMode: false
+      }
     }
   });
 
@@ -46,23 +71,47 @@ const InvoiceSettings = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      // Use the correct API endpoint for invoice settings
-      const response = await API.settings.getAll();
+      // Use the dedicated invoice settings API
+      const response = await API.invoiceSettings.getAll();
       if (response.data.data) {
-        // Extract invoice settings from the main settings object
         const invoiceSettings = {
-          companyInfo: response.data.data.company || {},
-          bankDetails: response.data.data.invoice?.bankDetails || {},
-          invoiceDefaults: {
-            terms: response.data.data.invoice?.terms || '',
+          companyInfo: response.data.data.companyInfo || {},
+          bankDetails: response.data.data.bankDetails || {},
+          invoiceDefaults: response.data.data.invoiceDefaults || {
+            terms: '',
             notes: '',
-            prefix: response.data.data.invoice?.prefix || 'INV',
+            prefix: 'INV',
             dateFormat: 'DD/MM/YYYY'
           },
-          qrCode: {
+          qrCode: response.data.data.qrCode || {
             enabled: true,
             size: 100,
             includeAmount: true
+          },
+          theme: response.data.data.theme || {
+            primaryColor: '#1e40af',
+            secondaryColor: '#374151',
+            accentColor: '#f3f4f6',
+            fontSizes: {
+              companyName: 24,
+              invoiceTitle: 14,
+              headerText: 8,
+              bodyText: 7,
+              totalText: 9
+            },
+            logo: {
+              enabled: false,
+              url: '',
+              width: 80,
+              height: 40,
+              position: 'left'
+            },
+            layout: {
+              showBorder: false,
+              borderColor: '#e5e7eb',
+              showAlternateRows: true,
+              compactMode: false
+            }
           }
         };
         setSettings(invoiceSettings);
@@ -102,20 +151,27 @@ const InvoiceSettings = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      // Format the data to match the backend settings structure
-      const settingsData = {
-        company: settings.companyInfo,
-        invoice: {
-          bankDetails: settings.bankDetails,
-          terms: settings.invoiceDefaults?.terms,
-          prefix: settings.invoiceDefaults?.prefix
-        }
-      };
-      await API.settings.update(settingsData);
+      // Send the complete settings object to the invoice settings API
+      await API.invoiceSettings.update(settings);
       toast.success('Invoice settings updated successfully');
     } catch (error) {
       console.error('Error updating invoice settings:', error);
       toast.error('Failed to update invoice settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncFromSettings = async () => {
+    setLoading(true);
+    
+    try {
+      const response = await API.invoiceSettings.syncFromSettings();
+      setSettings(response.data.data);
+      toast.success('Invoice settings synced from general settings!');
+    } catch (error) {
+      console.error('Error syncing settings:', error);
+      toast.error('Failed to sync settings from general settings');
     } finally {
       setLoading(false);
     }
@@ -450,8 +506,206 @@ const InvoiceSettings = () => {
             </div>
           </div>
           
+          {/* Theme Customization */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Theme Customization</h3>
+            
+            {/* Colors */}
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-gray-700 mb-3">Colors</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Primary Color
+                  </label>
+                  <input
+                    type="color"
+                    value={settings.theme.primaryColor}
+                    onChange={(e) => handleNestedInputChange('theme', 'primaryColor', e.target.value)}
+                    className="w-full h-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Secondary Color
+                  </label>
+                  <input
+                    type="color"
+                    value={settings.theme.secondaryColor}
+                    onChange={(e) => handleNestedInputChange('theme', 'secondaryColor', e.target.value)}
+                    className="w-full h-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Accent Color
+                  </label>
+                  <input
+                    type="color"
+                    value={settings.theme.accentColor}
+                    onChange={(e) => handleNestedInputChange('theme', 'accentColor', e.target.value)}
+                    className="w-full h-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Font Sizes */}
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-gray-700 mb-3">Font Sizes</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Company Name
+                  </label>
+                  <input
+                    type="number"
+                    min="12"
+                    max="36"
+                    value={settings.theme.fontSizes.companyName}
+                    onChange={(e) => handleNestedInputChange('theme', 'fontSizes', { ...settings.theme.fontSizes, companyName: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Invoice Title
+                  </label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="24"
+                    value={settings.theme.fontSizes.invoiceTitle}
+                    onChange={(e) => handleNestedInputChange('theme', 'fontSizes', { ...settings.theme.fontSizes, invoiceTitle: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Body Text
+                  </label>
+                  <input
+                    type="number"
+                    min="6"
+                    max="12"
+                    value={settings.theme.fontSizes.bodyText}
+                    onChange={(e) => handleNestedInputChange('theme', 'fontSizes', { ...settings.theme.fontSizes, bodyText: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Logo Settings */}
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-gray-700 mb-3">Logo Settings</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="logoEnabled"
+                    checked={settings.theme.logo.enabled}
+                    onChange={(e) => handleNestedInputChange('theme', 'logo', { ...settings.theme.logo, enabled: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="logoEnabled" className="ml-2 block text-sm text-gray-700">
+                    Enable Logo
+                  </label>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Logo URL
+                  </label>
+                  <input
+                    type="url"
+                    value={settings.theme.logo.url}
+                    onChange={(e) => handleNestedInputChange('theme', 'logo', { ...settings.theme.logo, url: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="https://example.com/logo.png"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Width (px)
+                  </label>
+                  <input
+                    type="number"
+                    min="40"
+                    max="200"
+                    value={settings.theme.logo.width}
+                    onChange={(e) => handleNestedInputChange('theme', 'logo', { ...settings.theme.logo, width: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Position
+                  </label>
+                  <select
+                    value={settings.theme.logo.position}
+                    onChange={(e) => handleNestedInputChange('theme', 'logo', { ...settings.theme.logo, position: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            {/* Layout Options */}
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-gray-700 mb-3">Layout Options</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showAlternateRows"
+                    checked={settings.theme.layout.showAlternateRows}
+                    onChange={(e) => handleNestedInputChange('theme', 'layout', { ...settings.theme.layout, showAlternateRows: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="showAlternateRows" className="ml-2 block text-sm text-gray-700">
+                    Show Alternate Row Colors
+                  </label>
+                </div>
+                
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="compactMode"
+                    checked={settings.theme.layout.compactMode}
+                    onChange={(e) => handleNestedInputChange('theme', 'layout', { ...settings.theme.layout, compactMode: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="compactMode" className="ml-2 block text-sm text-gray-700">
+                    Compact Mode
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           {/* Save Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-between">
+            <button
+              type="button"
+              onClick={handleSyncFromSettings}
+              disabled={loading}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <FiRefreshCw className="mr-2" />
+              Sync from General Settings
+            </button>
+            
             <button
               type="submit"
               disabled={loading}

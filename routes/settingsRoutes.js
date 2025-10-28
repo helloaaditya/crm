@@ -19,4 +19,28 @@ router.put('/my-settings', updateMySettings);
 router.get('/', checkPermission('canEdit'), getSettings);
 router.put('/', checkPermission('canEdit'), updateSettings);
 
+// Debug endpoint to check database connection
+router.get('/debug', checkPermission('canEdit'), async (req, res) => {
+  try {
+    const Settings = (await import('../models/Settings.js')).default;
+    const count = await Settings.countDocuments();
+    const allSettings = await Settings.find();
+    
+    res.json({
+      success: true,
+      data: {
+        count,
+        settings: allSettings,
+        message: 'Database connection working'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Database connection failed'
+    });
+  }
+});
+
 export default router;

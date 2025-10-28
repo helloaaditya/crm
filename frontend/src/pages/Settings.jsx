@@ -82,41 +82,22 @@ const Settings = () => {
       
       // Fetch admin settings if user is admin
       if (isAdmin) {
-        const response = await API.settings.getAll();
-        const settingsData = response.data.data;
-        
-        // Ensure nested structures exist
+        console.log('Fetching admin settings and invoice settings...');
+        const [settingsRes, invoiceSettingsRes] = await Promise.allSettled([
+          API.settings.getAll(),
+          API.invoiceSettings.getAll()
+        ]);
+
+        const settingsData = settingsRes.status === 'fulfilled' ? (settingsRes.value.data.data || {}) : {};
+        const inv = invoiceSettingsRes.status === 'fulfilled' ? (invoiceSettingsRes.value.data.data || {}) : {};
+
+        // Map InvoiceSettings -> UI formData.company/invoice
+        const companyInfo = inv.companyInfo || {};
+        const bankDetails = inv.bankDetails || {};
+        const invoiceDefaults = inv.invoiceDefaults || {};
+
         const safeSettingsData = {
-          ...settingsData,
-          company: {
-            name: settingsData.company?.name || 'Sanjana Enterprises',
-            logo: settingsData.company?.logo || '',
-            address: {
-              street: settingsData.company?.address?.street || '',
-              city: settingsData.company?.address?.city || 'Bangalore',
-              state: settingsData.company?.address?.state || 'Karnataka',
-              pincode: settingsData.company?.address?.pincode || '561203',
-              country: settingsData.company?.address?.country || 'India'
-            },
-            phone: settingsData.company?.phone || '+91 9916290799',
-            email: settingsData.company?.email || 'sanjana.waterproofing@gmail.com',
-            website: settingsData.company?.website || '',
-            gstNumber: settingsData.company?.gstNumber || '',
-            panNumber: settingsData.company?.panNumber || ''
-          },
-          invoice: {
-            prefix: settingsData.invoice?.prefix || 'INV',
-            startNumber: settingsData.invoice?.startNumber || 1,
-            terms: settingsData.invoice?.terms || '',
-            defaultDueDays: settingsData.invoice?.defaultDueDays || 30,
-            bankDetails: {
-              bankName: settingsData.invoice?.bankDetails?.bankName || 'State Bank of India',
-              accountNumber: settingsData.invoice?.bankDetails?.accountNumber || '123456789012',
-              ifscCode: settingsData.invoice?.bankDetails?.ifscCode || 'SBIN0001234',
-              accountHolderName: settingsData.invoice?.bankDetails?.accountHolderName || 'Sanjana Enterprises',
-              branch: settingsData.invoice?.bankDetails?.branch || 'Main Branch, Bangalore'
-            }
-          },
+          // Keep tax/theme/backup from general settings
           tax: {
             defaultGST: settingsData.tax?.defaultGST || 18,
             cgst: settingsData.tax?.cgst || 9,
@@ -131,15 +112,45 @@ const Settings = () => {
           backup: {
             enabled: settingsData.backup?.enabled !== undefined ? settingsData.backup.enabled : true,
             frequency: settingsData.backup?.frequency || 'daily'
+          },
+          // From InvoiceSettings
+          company: {
+            name: companyInfo.name || '',
+            logo: companyInfo.logoUrl || '',
+            address: {
+              street: companyInfo.address || '',
+              city: companyInfo.city || '',
+              state: companyInfo.state || '',
+              pincode: companyInfo.pincode || '',
+              country: 'India'
+            },
+            phone: companyInfo.phone || '',
+            email: companyInfo.email || '',
+            website: settingsData.company?.website || '',
+            gstNumber: companyInfo.gstin || '',
+            panNumber: companyInfo.pan || ''
+          },
+          invoice: {
+            prefix: invoiceDefaults.prefix || 'INV',
+            startNumber: settingsData.invoice?.startNumber || 1,
+            terms: invoiceDefaults.terms || '',
+            defaultDueDays: settingsData.invoice?.defaultDueDays || 30,
+            bankDetails: {
+              bankName: bankDetails.bankName || '',
+              accountNumber: bankDetails.accountNumber || '',
+              ifscCode: bankDetails.ifscCode || '',
+              accountHolderName: bankDetails.accountName || '',
+              branch: bankDetails.branch || ''
+            }
           }
         };
-        
-        setSettings(settingsData);
+
+        setSettings({ settings: settingsData, invoiceSettings: inv, invoiceSettingsError: invoiceSettingsRes.status === 'rejected' });
         setFormData(safeSettingsData);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
-      toast.error('Failed to load settings');
+      toast.error(`Failed to load settings: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
     }
@@ -219,33 +230,70 @@ const Settings = () => {
     
     try {
       setLoading(true);
-      // Ensure proper data structure before sending
-      const settingsData = {
-        ...formData,
-        company: {
-          ...formData.company,
-          address: {
-            ...formData.company.address
-          }
+      console.log('Submitting settings data:', formData);
+      
+      // Split save: Invoice-related -> InvoiceSettings; others -> Settings
+      const invoiceSettingsPayload = {
+        companyInfo: {
+          name: formData.company?.name || '',
+          logoUrl: formData.company?.logo || '',
+          address: formData.company?.address?.street || '',
+          city: formData.company?.address?.city || '',
+          state: formData.company?.address?.state || '',
+          pincode: formData.company?.address?.pincode || '',
+          phone: formData.company?.phone || '',
+          email: formData.company?.email || '',
+          gstin: formData.company?.gstNumber || '',
+          pan: formData.company?.panNumber || ''
         },
-        invoice: {
-          ...formData.invoice,
-          bankDetails: {
-            ...formData.invoice.bankDetails
-          }
+        bankDetails: {
+          bankName: formData.invoice?.bankDetails?.bankName || '',
+          accountName: formData.invoice?.bankDetails?.accountHolderName || '',
+          accountNumber: formData.invoice?.bankDetails?.accountNumber || '',
+          ifscCode: formData.invoice?.bankDetails?.ifscCode || '',
+          branch: formData.invoice?.bankDetails?.branch || '',
+          upiId: settings?.invoiceSettings?.bankDetails?.upiId || ''
+        },
+        invoiceDefaults: {
+          prefix: formData.invoice?.prefix || 'INV',
+          terms: formData.invoice?.terms || '',
+          dateFormat: 'DD/MM/YYYY'
         }
       };
-      await API.settings.update(settingsData);
+
+      const settingsPayload = {
+        tax: formData.tax,
+        theme: formData.theme,
+        backup: formData.backup
+      };
+
+      console.log('Final invoiceSettings payload:', invoiceSettingsPayload);
+      console.log('Final settings payload:', settingsPayload);
+
+      // Try invoice settings first; if it 404s (not deployed), skip and still save Settings
+      try {
+        const invResp = await API.invoiceSettings.update(invoiceSettingsPayload);
+        console.log('InvoiceSettings update response:', invResp.data);
+      } catch (err) {
+        if (err?.response?.status === 404) {
+          console.warn('InvoiceSettings API not available in this environment; skipping.');
+        } else {
+          throw err;
+        }
+      }
+
+      const setResp = await API.settings.update(settingsPayload);
+      console.log('Settings update response:', setResp.data);
+      
       toast.success('System settings updated successfully');
       
-      // Also update invoice settings for backward compatibility
-      // This ensures both systems are in sync
+      // Refresh settings after successful update
       setTimeout(() => {
         fetchSettings();
       }, 500);
     } catch (error) {
       console.error('Error updating settings:', error);
-      toast.error('Failed to update system settings');
+      toast.error(`Failed to update system settings: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
     }
