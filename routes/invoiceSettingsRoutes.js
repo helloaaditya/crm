@@ -3,8 +3,11 @@ import { protect, checkPermission } from '../middleware/auth.js';
 import InvoiceSettings from '../models/InvoiceSettings.js';
 import Settings from '../models/Settings.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import multer from 'multer';
+import { uploadBufferToS3 } from '../utils/s3Service.js';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Public ping to verify route is mounted in production
 router.get('/ping', (req, res) => {
@@ -44,6 +47,24 @@ router.put('/', checkPermission('canEdit'), asyncHandler(async (req, res) => {
     data: settings,
     message: 'Invoice settings updated successfully'
   });
+}));
+
+// @desc    Upload logo image to S3 and return URL
+// @route   POST /api/invoice-settings/upload-logo
+// @access  Private (Admin only)
+router.post('/upload-logo', checkPermission('canEdit'), upload.single('logo'), asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+  const ext = req.file.originalname.split('.').pop()?.toLowerCase();
+  const allowed = ['png', 'jpg', 'jpeg', 'webp'];
+  if (!allowed.includes(ext)) {
+    return res.status(400).json({ success: false, message: 'Unsupported file type' });
+  }
+
+  const key = `logos/${Date.now()}-${req.file.originalname}`;
+  const uploaded = await uploadBufferToS3(req.file.buffer, key, req.file.mimetype);
+  return res.json({ success: true, data: { url: uploaded.url, key: uploaded.key } });
 }));
 
 // @desc    Sync from general Settings (one-time convenience)

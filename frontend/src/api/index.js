@@ -196,7 +196,14 @@ export const settingsAPI = {
 export const invoiceSettingsAPI = {
   getAll: () => api.get('/invoice-settings'),
   update: (data) => api.put('/invoice-settings', data),
-  syncFromSettings: () => api.post('/invoice-settings/sync-from-settings')
+  syncFromSettings: () => api.post('/invoice-settings/sync-from-settings'),
+  uploadLogo: (file) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return api.post('/invoice-settings/upload-logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
 };
 
 // Export all APIs

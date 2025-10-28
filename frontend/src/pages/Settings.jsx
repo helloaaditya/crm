@@ -299,17 +299,39 @@ const Settings = () => {
     }
   };
 
-  const handleLogoUpload = (e) => {
-    // In a real implementation, this would upload the file to the server
+  const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      toast.info('Logo upload functionality would be implemented here');
-      // For now, we'll just show a message
-      // In a real app, you would:
-      // 1. Upload the file to your server
-      // 2. Get the URL of the uploaded file
-      // 3. Update the formData with the logo URL
-      // handleInputChange('company', 'logo', url);
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload a PNG, JPG, or WEBP image');
+      return;
+    }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('File size must be less than 2MB');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await API.invoiceSettings.uploadLogo(file);
+      const logoUrl = response.data?.data?.url;
+      
+      if (logoUrl) {
+        handleInputChange('company', 'logo', logoUrl);
+        toast.success('Logo uploaded successfully!');
+      } else {
+        toast.error('Failed to get logo URL from server');
+      }
+    } catch (error) {
+      console.error('Logo upload failed:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload logo');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -460,36 +482,51 @@ const Settings = () => {
                   />
                 </div>
                 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Logo
+                    Company Logo
                   </label>
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-start space-x-4">
                     {formData.company?.logo ? (
-                      <img src={formData.company.logo} alt="Company Logo" className="h-16 w-16 object-contain" />
+                      <img src={formData.company.logo} alt="Company Logo" className="h-16 w-16 object-contain border rounded" />
                     ) : (
-                      <div className="h-16 w-16 bg-gray-200 rounded-md flex items-center justify-center">
+                      <div className="h-16 w-16 bg-gray-200 rounded-md flex items-center justify-center border">
                         <FiImage className="h-8 w-8 text-gray-400" />
                       </div>
                     )}
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        className="hidden"
-                        id="logo-upload"
-                      />
-                      <label
-                        htmlFor="logo-upload"
-                        className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <FiUpload className="mr-2" />
-                        Upload Logo
-                      </label>
-                      <p className="mt-1 text-sm text-gray-500">
-                        PNG, JPG up to 2MB
-                      </p>
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          id="logo-upload"
+                          disabled={loading}
+                        />
+                        <label
+                          htmlFor="logo-upload"
+                          className={`cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <FiUpload className="mr-2" />
+                          {loading ? 'Uploading...' : 'Upload Logo'}
+                        </label>
+                        <p className="mt-1 text-sm text-gray-500">
+                          PNG, JPG, WEBP up to 2MB
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Or paste logo URL:
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.company?.logo || ''}
+                          onChange={(e) => handleInputChange('company', 'logo', e.target.value)}
+                          placeholder="https://example.com/logo.png"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -230,6 +230,41 @@ const InvoiceSettings = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Upload Logo (PNG/JPG/WEBP)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/webp"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const res = await API.invoiceSettings.uploadLogo(file);
+                    const url = res.data?.data?.url;
+                    if (url) {
+                      handleInputChange('companyInfo', 'logoUrl', url);
+                      // Also set theme logo.url if enabled
+                      if (settings.theme?.logo) {
+                        handleNestedInputChange('theme', 'logo', { ...settings.theme.logo, url });
+                      }
+                      toast.success('Logo uploaded successfully');
+                    }
+                  } catch (err) {
+                    console.error('Logo upload failed:', err);
+                    toast.error(err.response?.data?.message || 'Logo upload failed');
+                  }
+                }}
+                className="block w-full text-sm text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+            </div>
+            {settings.companyInfo.logoUrl && (
+              <p className="mt-2 text-sm text-gray-600 break-words">Current: {settings.companyInfo.logoUrl}</p>
+            )}
+          </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

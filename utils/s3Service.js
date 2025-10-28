@@ -72,6 +72,28 @@ export const uploadFilePathToS3 = async (filePath, key, contentType = 'applicati
   }
 };
 
+// Upload a buffer to S3 (for multer memory storage)
+export const uploadBufferToS3 = async (buffer, key, contentType = 'application/octet-stream') => {
+  try {
+    if (!process.env.S3_BUCKET_NAME) {
+      throw new Error('S3_BUCKET_NAME not configured');
+    }
+
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType
+    };
+
+    const result = await s3.upload(params).promise();
+    return { url: result.Location, key: result.Key };
+  } catch (error) {
+    console.error('S3 uploadBufferToS3 Error:', error);
+    throw error;
+  }
+};
+
 // Delete file from S3
 export const deleteFromS3 = async (fileKey) => {
   try {

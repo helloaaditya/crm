@@ -58,15 +58,16 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
             logoX = (pageWidth - logoWidth) / 2;
           }
           
-          // Note: In a real implementation, you'd load the image from URL
-          // For now, we'll just reserve space
+          // Load and display the actual logo
+          doc.image(logo.url, logoX, 30, { width: logoWidth, height: logoHeight });
+        } catch (error) {
+          console.log('Logo loading failed:', error);
+          // Fallback: show placeholder
           doc.rect(logoX, 30, logoWidth, logoHeight)
              .stroke('#e5e7eb');
           doc.fontSize(8)
              .fillColor('#9ca3af')
              .text('LOGO', logoX + 5, 30 + logoHeight/2 - 4, { width: logoWidth - 10, align: 'center' });
-        } catch (error) {
-          console.log('Logo loading failed:', error);
         }
       }
       
@@ -120,12 +121,12 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       doc.font('Helvetica')
          .text('Date:', boxX + 5, boxY + 35)
          .font('Helvetica-Bold')
-         .text(new Date(invoiceData.invoiceDate).toLocaleDateString('en-IN'), boxX + 65, boxY + 35);
+         .text(new Date(invoiceData.invoiceDate).toLocaleDateString('en-IN'), boxX + 50, boxY + 35);
 
       doc.font('Helvetica')
          .text('Due Date:', boxX + 5, boxY + 45)
          .font('Helvetica-Bold')
-         .text(invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString('en-IN') : 'On Receipt', boxX + 65, boxY + 45);
+         .text(invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString('en-IN') : 'On Receipt', boxX + 50, boxY + 45);
 
       // Currency note (single place only)
       doc.fontSize(7)
@@ -173,10 +174,10 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
               [invoiceData.customerAddress.city, invoiceData.customerAddress.state, invoiceData.customerAddress.pincode].filter(Boolean).join(', ')
             ].filter(Boolean).join('\n')
           : String(invoiceData.customerAddress);
-        doc.text(addr, 300, yPos + 25, { width: 250 });
+        doc.text(addr, 300, yPos + 25, { width: 250, lineGap: 2 });
       }
 
-      let customerYPos = invoiceData.customerAddress ? yPos + 35 : yPos + 25;
+      let customerYPos = invoiceData.customerAddress ? yPos + 45 : yPos + 25;
       
       if (invoiceData.customerPhone) {
         doc.text(`Phone: ${invoiceData.customerPhone}`, 300, customerYPos);
@@ -377,6 +378,21 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
 
       function continueWithTermsAndFooter() {
         yPos += 90;
+
+        // ================== DECLARATION ==================
+        doc.fontSize(8)
+           .font('Helvetica-Bold')
+           .fillColor('#1f2937')
+           .text('DECLARATION:', 30, yPos);
+
+        doc.fontSize(7)
+           .font('Helvetica')
+           .fillColor('#4b5563')
+           .text('WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED AND THAT ALL', 30, yPos + 12, { width: 350, lineGap: 1 });
+        
+        doc.text('PARTICULARS ARE TRUE AND CORRECT', 30, yPos + 24, { width: 350, lineGap: 1 });
+
+        yPos += 50;
 
         // ================== TERMS & CONDITIONS ==================
         const terms = invoiceData.terms || invoiceData.invoiceDefaults?.terms || '';
