@@ -54,24 +54,24 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
          .fillColor(secondaryColor);
       
       if (companyInfo.address) {
-        doc.text(companyInfo.address, 40, yPos);
+        doc.text(companyInfo.address, 30, yPos);   
         yPos += 12;
       }
       
       const cityLine = [companyInfo.city, companyInfo.state, companyInfo.pincode]
         .filter(Boolean).join(', ');
       if (cityLine) {
-        doc.text(cityLine, 40, yPos);
+        doc.text(cityLine, 30, yPos);
         yPos += 12;
       }
       
       if (companyInfo.phone) {
-        doc.text(`Phone: ${companyInfo.phone}`, 40, yPos);
+        doc.text(`Phone: ${companyInfo.phone}`, 30, yPos);
         yPos += 12;
       }
       
       if (companyInfo.email) {
-        doc.text(`Email: ${companyInfo.email}`, 40, yPos);
+        doc.text(`Email: ${companyInfo.email}`, 30, yPos);
         yPos += 12;
       }
       
@@ -79,19 +79,19 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       yPos += 5;
       if (companyInfo.gstin) {
         doc.font('Helvetica-Bold')
-           .text(`GSTIN: ${companyInfo.gstin}`, 40, yPos);
+           .text(`GSTIN: ${companyInfo.gstin}`, 30, yPos);
         yPos += 12;
       }
       
       if (companyInfo.pan) {
         doc.font('Helvetica')
-           .text(`PAN: ${companyInfo.pan}`, 40, yPos);
+           .text(`PAN: ${companyInfo.pan}`, 30, yPos);
       }
       
       // ================== INVOICE INFO BOX - Right Side ==================
-      const boxX = 350;
+      const boxX = 300;
       const boxY = 35;
-      const boxWidth = 205;
+      const boxWidth = 185;
       
       // Invoice type header
       const invoiceTitle = type === 'quotation' ? 'QUOTATION' : 'TAX INVOICE';
@@ -154,15 +154,6 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
          );
       
       detailY += 18;
-      
-      // Currency
-      doc.font('Helvetica')
-         .text('Currency:', boxX + 10, detailY);
-      doc.font('Helvetica-Bold')
-         .text('INR (₹)', boxX + 90, detailY, {
-           width: boxWidth - 100,
-           align: 'right'
-         });
       
       // ================== BILLING SECTION ==================
       yPos = 180;
@@ -432,7 +423,7 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       
       doc.fontSize(14)
          .text(
-           `₹ ${invoiceData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+           `${invoiceData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} INR`,
            amountX,
            yPos + 5,
            { width: amountWidth, align: 'right' }
@@ -502,15 +493,15 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
           companyInfo.name || ''
         )}${amountParam}&cu=INR`;
         
-        QRCode.toDataURL(upiString, { width: 140, margin: 1 }, (err, url) => {
+        QRCode.toDataURL(upiString, { width: 140 , height: 140, margin: 0.5 }, (err, url) => {
           if (!err && url) {
             // QR Code container
-            doc.rect(qrX, qrY, 175, 140)
-               .fillAndStroke('#f0fdf4', '#22c55e');
+            doc.rect(qrX, qrY, 175, 175)
+               .fillAndStroke('#f0fdf4', '#000000');
             
             doc.fontSize(10)
                .font('Helvetica-Bold')
-               .fillColor('#166534')
+               .fillColor('#000000')
                .text('SCAN TO PAY', qrX, qrY + 8, { width: 175, align: 'center' });
             
             try {
