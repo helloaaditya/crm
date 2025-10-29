@@ -145,9 +145,21 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
                 <MediaGallery mediaArray={item.images} title="Images" />
               )}
               
-              {/* Audio Notes */}
+              {/* Audio Notes - inline simple players */}
               {item.audioNotes && item.audioNotes.length > 0 && (
-                <MediaGallery mediaArray={item.audioNotes} title="Audio Notes" />
+                <div className="mt-3">
+                  <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <FiMic className="text-green-500" />
+                    Audio Notes ({item.audioNotes.length})
+                  </h5>
+                  <div className="space-y-2">
+                    {item.audioNotes.map((audio, idx) => (
+                      <audio key={idx} controls className="w-full">
+                        <source src={audio} />
+                      </audio>
+                    ))}
+                  </div>
+                </div>
               )}
               
               {/* Video Recordings */}
@@ -190,9 +202,21 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
                 <MediaGallery mediaArray={item.images} title="Images" />
               )}
               
-              {/* Audio Notes */}
+              {/* Audio Notes - inline simple players */}
               {item.audioNotes && item.audioNotes.length > 0 && (
-                <MediaGallery mediaArray={item.audioNotes} title="Audio Notes" />
+                <div className="mt-3">
+                  <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <FiMic className="text-green-500" />
+                    Audio Notes ({item.audioNotes.length})
+                  </h5>
+                  <div className="space-y-2">
+                    {item.audioNotes.map((audio, idx) => (
+                      <audio key={idx} controls className="w-full">
+                        <source src={audio} />
+                      </audio>
+                    ))}
+                  </div>
+                </div>
               )}
               
               {/* Video Recordings */}
