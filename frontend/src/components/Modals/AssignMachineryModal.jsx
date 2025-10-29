@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
-import { FiX } from 'react-icons/fi'
+import { FiX, FiSearch, FiChevronDown } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
 const AssignMachineryModal = ({ isOpen, onClose, onSuccess, machinery = null }) => {
   const [projects, setProjects] = useState([])
+  const [filteredProjects, setFilteredProjects] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(-1)
   const [formData, setFormData] = useState({
     projectId: '',
     quantity: 1,
@@ -23,14 +27,31 @@ const AssignMachineryModal = ({ isOpen, onClose, onSuccess, machinery = null }) 
           expectedReturnDate: '',
           notes: ''
         })
+        setSearchTerm('')
+        setShowDropdown(false)
       }
     }
   }, [isOpen, machinery])
+
+  // Filter projects based on search term
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = projects.filter(project => 
+        project.projectId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      setFilteredProjects(filtered)
+    } else {
+      setFilteredProjects(projects)
+    }
+  }, [searchTerm, projects])
 
   const fetchProjects = async () => {
     try {
       const response = await API.projects.getAll({ limit: 100, status: 'in_progress' })
       setProjects(response.data.data)
+      setFilteredProjects(response.data.data)
     } catch (error) {
       console.error('Error fetching projects:', error)
       toast.error('Failed to fetch projects')
@@ -44,6 +65,69 @@ const AssignMachineryModal = ({ isOpen, onClose, onSuccess, machinery = null }) 
       [name]: value
     }))
   }
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value)
+    setShowDropdown(true)
+    setSelectedIndex(-1)
+  }
+
+  const handleProjectSelect = (project) => {
+    setFormData(prev => ({
+      ...prev,
+      projectId: project._id
+    }))
+    setSearchTerm(`${project.projectId} - ${project.customer?.name} - ${project.description}`)
+    setShowDropdown(false)
+    setSelectedIndex(-1)
+  }
+
+  const handleDropdownToggle = () => {
+    setShowDropdown(!showDropdown)
+  }
+
+  const handleKeyDown = (e) => {
+    if (!showDropdown) return
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setSelectedIndex(prev => 
+          prev < filteredProjects.length - 1 ? prev + 1 : 0
+        )
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setSelectedIndex(prev => 
+          prev > 0 ? prev - 1 : filteredProjects.length - 1
+        )
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (selectedIndex >= 0 && filteredProjects[selectedIndex]) {
+          handleProjectSelect(filteredProjects[selectedIndex])
+        }
+        break
+      case 'Escape':
+        setShowDropdown(false)
+        setSelectedIndex(-1)
+        break
+    }
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDropdown && !event.target.closest('.project-dropdown')) {
+        setShowDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDropdown])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -106,25 +190,65 @@ const AssignMachineryModal = ({ isOpen, onClose, onSuccess, machinery = null }) 
             </div>
           </div>
 
-          {/* Project Selection */}
-          <div>
+          {/* Project Selection with Search */}
+          <div className="relative project-dropdown">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Project <span className="text-red-500">*</span>
             </label>
-            <select
-              name="projectId"
-              value={formData.projectId}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
-            >
-              <option value="">Choose a project...</option>
-              {projects.map(project => (
-                <option key={project._id} value={project._id}>
-                  {project.projectId} - {project.customer?.name} - {project.description}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onFocus={() => setShowDropdown(true)}
+                onKeyDown={handleKeyDown}
+                placeholder="Search projects by ID, customer, or description..."
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                <FiSearch className="text-gray-400" size={18} />
+              </div>
+              <button
+                type="button"
+                onClick={handleDropdownToggle}
+                className="absolute inset-y-0 right-8 flex items-center pr-2"
+              >
+                <FiChevronDown className="text-gray-400" size={18} />
+              </button>
+            </div>
+            
+            {/* Dropdown */}
+            {showDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredProjects.length > 0 ? (
+                  filteredProjects.map((project, index) => (
+                    <div
+                      key={project._id}
+                      onClick={() => handleProjectSelect(project)}
+                      className={`px-3 py-2 cursor-pointer border-b border-gray-100 last:border-b-0 ${
+                        index === selectedIndex 
+                          ? 'bg-blue-100 text-blue-900' 
+                          : 'hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="font-medium text-sm text-gray-900">
+                        {project.projectId}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {project.customer?.name} - {project.description}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Status: {project.status} | Start: {new Date(project.startDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    No projects found matching "{searchTerm}"
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quantity */}

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEye, FiEdit, FiTrash2, FiPackage, FiTruck, FiTool, FiAlertTriangle, FiCheckCircle, FiXCircle, FiFilter, FiX } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEye, FiEdit, FiTrash2, FiPackage, FiTruck, FiTool, FiAlertTriangle, FiCheckCircle, FiXCircle, FiFilter, FiX, FiRotateCcw } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import MachineryModal from '../../components/Modals/MachineryModal'
 import AssignMachineryModal from '../../components/Modals/AssignMachineryModal'
+import ReturnMachineryModal from '../../components/Modals/ReturnMachineryModal'
 
 const Machinery = () => {
   const [machinery, setMachinery] = useState([])
@@ -24,8 +25,11 @@ const Machinery = () => {
   })
   const [showModal, setShowModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
+  const [showReturnModal, setShowReturnModal] = useState(false)
   const [selectedMachinery, setSelectedMachinery] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
 
   const categories = [
     { value: 'construction', label: 'Construction' },
@@ -50,9 +54,23 @@ const Machinery = () => {
     { value: 'low_stock', label: 'Low Stock' }
   ]
 
+  // Debounce search to prevent too many API calls
+  useEffect(() => {
+    if (search) {
+      setIsSearching(true)
+    }
+    
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      setIsSearching(false)
+    }, 500) // 500ms delay
+
+    return () => clearTimeout(timer)
+  }, [search])
+
   useEffect(() => {
     fetchMachinery()
-  }, [page, category, condition, status])
+  }, [page, category, condition, status, debouncedSearch])
 
   const fetchMachinery = async () => {
     try {
@@ -60,7 +78,7 @@ const Machinery = () => {
       const params = { 
         page, 
         limit: 10,
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(category && { category }),
         ...(condition && { condition }),
         ...(status && { status })
@@ -81,7 +99,7 @@ const Machinery = () => {
 
   const handleSearch = (e) => {
     setSearch(e.target.value)
-    setPage(1)
+    setPage(1) // Reset to first page when searching
   }
 
   const handleFilterChange = (filterType, value) => {
@@ -106,6 +124,13 @@ const Machinery = () => {
     setCondition('')
     setStatus('')
     setSearch('')
+    setDebouncedSearch('')
+    setPage(1)
+  }
+
+  const clearSearch = () => {
+    setSearch('')
+    setDebouncedSearch('')
     setPage(1)
   }
 
@@ -117,6 +142,11 @@ const Machinery = () => {
   const handleAssign = (machinery) => {
     setSelectedMachinery(machinery)
     setShowAssignModal(true)
+  }
+
+  const handleReturn = (machinery) => {
+    setSelectedMachinery(machinery)
+    setShowReturnModal(true)
   }
 
   const handleDelete = async (id) => {
@@ -246,6 +276,20 @@ const Machinery = () => {
               onChange={handleSearch}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
             />
+            {search && !isSearching && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                type="button"
+              >
+                <FiX size={18} />
+              </button>
+            )}
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              </div>
+            )}
           </div>
 
           {/* Filter Toggle */}
@@ -393,6 +437,17 @@ const Machinery = () => {
                                 <FiTruck size={16} />
                               </button>
                             )}
+                            {item.assignedProjects && item.assignedProjects.some(assignment => 
+                              assignment.status === 'assigned' || assignment.status === 'in_use'
+                            ) && (
+                              <button 
+                                onClick={() => handleReturn(item)}
+                                className="p-2 text-orange-600 hover:bg-orange-50 rounded"
+                                title="Return from Project"
+                              >
+                                <FiRotateCcw size={16} />
+                              </button>
+                            )}
                             <button 
                               onClick={() => handleDelete(item._id)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded"
@@ -453,10 +508,10 @@ const Machinery = () => {
                       </div>
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button 
                         onClick={() => handleEdit(item)}
-                        className="flex-1 flex items-center justify-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-medium min-h-44"
+                        className="flex items-center justify-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-medium min-h-44"
                       >
                         <FiEdit className="mr-1" size={14} />
                         Edit
@@ -464,15 +519,26 @@ const Machinery = () => {
                       {item.availableQuantity > 0 && (
                         <button 
                           onClick={() => handleAssign(item)}
-                          className="flex-1 flex items-center justify-center px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs font-medium min-h-44"
+                          className="flex items-center justify-center px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs font-medium min-h-44"
                         >
                           <FiTruck className="mr-1" size={14} />
                           Assign
                         </button>
                       )}
+                      {item.assignedProjects && item.assignedProjects.some(assignment => 
+                        assignment.status === 'assigned' || assignment.status === 'in_use'
+                      ) && (
+                        <button 
+                          onClick={() => handleReturn(item)}
+                          className="flex items-center justify-center px-3 py-2 text-orange-600 hover:bg-orange-50 rounded-lg text-xs font-medium min-h-44"
+                        >
+                          <FiRotateCcw className="mr-1" size={14} />
+                          Return
+                        </button>
+                      )}
                       <button 
                         onClick={() => handleDelete(item._id)}
-                        className="flex-1 flex items-center justify-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs font-medium min-h-44"
+                        className="flex items-center justify-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs font-medium min-h-44"
                       >
                         <FiTrash2 className="mr-1" size={14} />
                         Delete
@@ -538,6 +604,18 @@ const Machinery = () => {
           onClose={() => setShowAssignModal(false)}
           onSuccess={() => {
             setShowAssignModal(false)
+            fetchMachinery()
+          }}
+          machinery={selectedMachinery}
+        />
+      )}
+
+      {showReturnModal && (
+        <ReturnMachineryModal
+          isOpen={showReturnModal}
+          onClose={() => setShowReturnModal(false)}
+          onSuccess={() => {
+            setShowReturnModal(false)
             fetchMachinery()
           }}
           machinery={selectedMachinery}
