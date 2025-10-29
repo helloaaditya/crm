@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import { FiX, FiUser, FiFileText, FiImage, FiVideo, FiMic, FiClock, FiCheck, FiAlertCircle } from 'react-icons/fi'
+import { FiX, FiUser, FiFileText, FiImage, FiVideo, FiMic, FiClock, FiCheck, FiAlertCircle, FiPlay, FiDownload, FiEye } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
+import MediaViewer from '../MediaViewer'
 
 const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
   const [history, setHistory] = useState(null)
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('all') // all, activity, updates, comments
+  const [mediaViewer, setMediaViewer] = useState({ isOpen: false, media: [], currentIndex: 0 })
 
   useEffect(() => {
     if (isOpen && projectId) {
@@ -25,6 +27,81 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const openMediaViewer = (mediaArray, startIndex = 0) => {
+    const formattedMedia = mediaArray.map((url, index) => ({
+      url,
+      name: `Media ${index + 1}`,
+      type: getMediaType(url)
+    }))
+    
+    setMediaViewer({
+      isOpen: true,
+      media: formattedMedia,
+      currentIndex: startIndex
+    })
+  }
+
+  const getMediaType = (url) => {
+    if (url.includes('.mp4') || url.includes('.webm') || url.includes('.avi')) return 'video'
+    if (url.includes('.mp3') || url.includes('.wav') || url.includes('.m4a')) return 'audio'
+    if (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.gif')) return 'image'
+    return 'file'
+  }
+
+  const getMediaIcon = (url) => {
+    const type = getMediaType(url)
+    switch (type) {
+      case 'video': return <FiVideo className="text-blue-500" />
+      case 'audio': return <FiMic className="text-green-500" />
+      case 'image': return <FiImage className="text-purple-500" />
+      default: return <FiFileText className="text-gray-500" />
+    }
+  }
+
+  const MediaGallery = ({ mediaArray, title = "Media Files" }) => {
+    if (!mediaArray || mediaArray.length === 0) return null
+
+    return (
+      <div className="mt-3">
+        <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+          {getMediaIcon(mediaArray[0])}
+          {title} ({mediaArray.length})
+        </h5>
+        <div className="grid grid-cols-4 gap-2">
+          {mediaArray.map((url, idx) => (
+            <div key={idx} className="relative group">
+              {getMediaType(url) === 'image' ? (
+                <img 
+                  src={url} 
+                  alt={`Media ${idx + 1}`}
+                  className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => openMediaViewer(mediaArray, idx)}
+                />
+              ) : (
+                <div 
+                  className="w-full h-20 bg-gray-100 rounded flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors"
+                  onClick={() => openMediaViewer(mediaArray, idx)}
+                >
+                  {getMediaIcon(url)}
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded flex items-center justify-center transition-all">
+                <FiEye className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={20} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => openMediaViewer(mediaArray)}
+          className="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+        >
+          <FiPlay size={12} />
+          View All Media
+        </button>
+      </div>
+    )
   }
 
   if (!isOpen) return null
@@ -63,12 +140,24 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
               <p className="text-xs text-gray-600">
                 By: {item.performedBy?.name || 'Unknown'}
               </p>
+              {/* Images */}
               {item.images && item.images.length > 0 && (
-                <div className="flex gap-2 mt-3">
-                  {item.images.map((img, idx) => (
-                    <img key={idx} src={img} alt="" className="w-20 h-20 object-cover rounded" />
-                  ))}
-                </div>
+                <MediaGallery mediaArray={item.images} title="Images" />
+              )}
+              
+              {/* Audio Notes */}
+              {item.audioNotes && item.audioNotes.length > 0 && (
+                <MediaGallery mediaArray={item.audioNotes} title="Audio Notes" />
+              )}
+              
+              {/* Video Recordings */}
+              {item.videoRecordings && item.videoRecordings.length > 0 && (
+                <MediaGallery mediaArray={item.videoRecordings} title="Video Recordings" />
+              )}
+              
+              {/* Documents */}
+              {item.documents && item.documents.length > 0 && (
+                <MediaGallery mediaArray={item.documents} title="Documents" />
               )}
             </div>
           </div>
@@ -96,22 +185,24 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
                 <span>By: {item.updatedBy?.name}</span>
                 {item.status && <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">{item.status}</span>}
               </div>
+              {/* Images */}
               {item.images && item.images.length > 0 && (
-                <div className="flex gap-2 mt-3 flex-wrap">
-                  {item.images.map((img, idx) => (
-                    <img key={idx} src={img} alt="" className="w-24 h-24 object-cover rounded" />
-                  ))}
-                </div>
+                <MediaGallery mediaArray={item.images} title="Images" />
               )}
+              
+              {/* Audio Notes */}
               {item.audioNotes && item.audioNotes.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-600 mb-1"><FiMic className="inline mr-1" />Audio Notes:</p>
-                  {item.audioNotes.map((audio, idx) => (
-                    <audio key={idx} controls className="w-full mb-1">
-                      <source src={audio} />
-                    </audio>
-                  ))}
-                </div>
+                <MediaGallery mediaArray={item.audioNotes} title="Audio Notes" />
+              )}
+              
+              {/* Video Recordings */}
+              {item.videoRecordings && item.videoRecordings.length > 0 && (
+                <MediaGallery mediaArray={item.videoRecordings} title="Video Recordings" />
+              )}
+              
+              {/* Documents */}
+              {item.documents && item.documents.length > 0 && (
+                <MediaGallery mediaArray={item.documents} title="Documents" />
               )}
             </div>
           </div>
@@ -140,8 +231,9 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div>
@@ -221,7 +313,16 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
           </button>
         </div>
       </div>
-    </div>
+      
+      {/* Media Viewer */}
+      <MediaViewer
+        isOpen={mediaViewer.isOpen}
+        onClose={() => setMediaViewer({ isOpen: false, media: [], currentIndex: 0 })}
+        media={mediaViewer.media}
+        currentIndex={mediaViewer.currentIndex}
+        onIndexChange={(index) => setMediaViewer(prev => ({ ...prev, currentIndex: index }))}
+      />
+    </>
   )
 }
 
