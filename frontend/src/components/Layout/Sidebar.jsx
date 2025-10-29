@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend 
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool 
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -24,6 +24,7 @@ const Sidebar = () => {
     
     // Inventory Section
     { name: 'Materials', icon: FiPackage, path: '/inventory/materials', module: 'inventory', notificationCount: counts.lowStock },
+    { name: 'Machinery', icon: FiTool, path: '/inventory/machinery', module: 'inventory' },
     { name: 'Vendors', icon: FiTruck, path: '/inventory/vendors', module: 'inventory' },
     
     // Employee Section (Admin View)
@@ -44,7 +45,7 @@ const Sidebar = () => {
     { name: 'Accounts', icon: FiKey, path: '/accounts', module: 'all', adminOnly: true },
     
     // Common
-    { name: 'Settings', icon: FiSettings, path: '/settings', module: 'all' },
+    { name: 'Settings', icon: FiSettings, path: '/settings', module: 'all'},
   ]
 
   // Filter menu items based on user module access
@@ -85,7 +86,7 @@ const Sidebar = () => {
       <aside
         className={`${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed lg:static inset-y-0 left-0 z-40 w-64 sm:w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0`}
+        } fixed lg:relative inset-y-0 left-0 z-40 w-64 sm:w-72 lg:w-64 xl:w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex-shrink-0`}
       >
         {/* Logo */}
         <div className="flex items-center justify-center h-16 lg:h-20 border-b px-4">
@@ -130,7 +131,7 @@ const Sidebar = () => {
         </nav>
 
         {/* User Info - Hidden on mobile, shown on desktop */}
-        <div className="hidden lg:block absolute bottom-0 w-full p-4 border-t">
+        {/* <div className="hidden lg:block absolute bottom-0 w-full p-4 border-t">
           <div className="flex items-center">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold">
               {user?.name?.charAt(0).toUpperCase()}
@@ -143,7 +144,7 @@ const Sidebar = () => {
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
       </aside>
 
       {/* Overlay for mobile */}

@@ -83,6 +83,22 @@ export const inventoryAPI = {
   getStockSummary: () => api.get('/inventory/reports/stock-summary')
 };
 
+// ============= MACHINERY =============
+export const machineryAPI = {
+  getAll: (params) => api.get('/machinery', { params }),
+  getById: (id) => api.get(`/machinery/${id}`),
+  create: (data) => api.post('/machinery', data),
+  update: (id, data) => api.put(`/machinery/${id}`, data),
+  delete: (id) => api.delete(`/machinery/${id}`),
+  assignToProject: (id, data) => api.post(`/machinery/${id}/assign`, data),
+  returnFromProject: (id, data) => api.post(`/machinery/${id}/return`, data),
+  getProjectAssignments: (projectId) => api.get(`/machinery/project/${projectId}/assignments`),
+  uploadImage: (machineryId, formData) => api.post(`/machinery/${machineryId}/upload-image`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getDashboardStats: () => api.get('/machinery/dashboard/stats')
+};
+
 // ============= EMPLOYEES =============
 export const employeeAPI = {
   getAll: (params) => api.get('/employees', { params }),
@@ -212,6 +228,7 @@ export default {
   customers: customerAPI,
   projects: projectAPI,
   inventory: inventoryAPI,
+  machinery: machineryAPI,
   employees: employeeAPI,
   invoices: invoiceAPI,
   payments: paymentAPI,

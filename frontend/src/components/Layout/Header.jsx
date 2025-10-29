@@ -25,7 +25,7 @@ const Header = () => {
 
       {/* Page Title - Hidden on mobile, shown on larger screens */}
       <div className="hidden lg:flex flex-1 max-w-lg">
-        <h1 className="text-lg font-semibold text-gray-800">CRM Dashboard</h1>
+        <h1 className="text-lg font-semibold text-gray-800"></h1>
       </div>
 
       {/* Right Side */}

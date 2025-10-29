@@ -9,6 +9,7 @@ import Customers from './pages/CRM/Customers'
 import Projects from './pages/CRM/Projects'
 import Invoices from './pages/CRM/Invoices'
 import Materials from './pages/Inventory/Materials'
+import Machinery from './pages/Inventory/Machinery'
 import Vendors from './pages/Inventory/Vendors'
 import Employees from './pages/Employee/Employees'
 import Attendance from './pages/Employee/Attendance'
@@ -72,6 +73,7 @@ function App() {
           
           {/* Inventory Routes */}
           <Route path="inventory/materials" element={<Materials />} />
+          <Route path="inventory/machinery" element={<Machinery />} />
           <Route path="inventory/vendors" element={<Vendors />} />
           
           {/* Employee Routes */}
