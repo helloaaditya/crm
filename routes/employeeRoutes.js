@@ -83,6 +83,9 @@ router.get('/by-role/:role', getEmployeesByRole);
 // My Payslip (Employee Self-Service)
 router.get('/my-payslip/:month', generateMyPayslip);
 
+// File upload for work updates (Employee Self-Service)
+router.post('/upload-work-files', upload.array('files', 10), uploadWorkUpdateFiles);
+
 // ============= ADMIN EMPLOYEE MANAGEMENT ROUTES =============
 // These routes require 'employee' or 'all' module access
 router.use(moduleAccess('employee', 'all'));
@@ -117,8 +120,5 @@ router.get('/:id/payslip/:month', generatePayslip);
 // Work Updates (Admin)
 router.post('/:id/work-update', addWorkUpdate);
 router.get('/:id/work-updates', getWorkUpdates);
-
-// File upload for work updates
-router.post('/upload-work-files', upload.array('files', 10), uploadWorkUpdateFiles);
 
 export default router;
