@@ -31,7 +31,7 @@ const storage = multer.diskStorage({
 // File filter (allow common media + docs)
 const fileFilter = (req, file, cb) => {
   // Allowed file types
-  const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|m4a|mp4|webm|avi|pdf|doc|docx|xls|xlsx|txt/;
+  const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|m4a|m4b|aac|oga|ogg|3gp|3gpp|mp4|webm|avi|pdf|doc|docx|xls|xlsx|txt/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
