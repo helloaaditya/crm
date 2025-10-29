@@ -10,7 +10,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
     phone: '',
     password: '',
     role: 'employee',
-    modules: ['none'],
+    modules: ['all'],
     permissions: {
       canCreate: false,
       canEdit: false,
@@ -25,14 +25,14 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
   useEffect(() => {
     if (user) {
       // Handle backward compatibility - convert old module string to array
-      let userModules = ['none']
+      let userModules = ['all'] // Default to 'all' instead of 'none'
       if (user.module) {
         if (Array.isArray(user.module)) {
           userModules = user.module
         } else if (user.module === 'all') {
           userModules = ['all']
         } else if (user.module === 'none') {
-          userModules = ['none']
+          userModules = ['all'] // Convert 'none' to 'all' for better access
         } else {
           // For comma-separated modules, split them
           if (user.module.includes(',')) {

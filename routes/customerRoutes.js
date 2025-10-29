@@ -12,7 +12,7 @@ import {
 const router = express.Router();
 
 router.use(protect);
-router.use(moduleAccess('crm', 'all'));
+router.use(moduleAccess('crm', 'inventory', 'all'));
 
 router.get('/stats', getCustomerStats);
 router.get('/', getCustomers);
