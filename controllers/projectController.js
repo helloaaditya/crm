@@ -353,7 +353,18 @@ export const generateWarranty = asyncHandler(async (req, res) => {
 // @route   POST /api/projects/:id/assign-employee
 // @access  Private
 export const assignEmployee = asyncHandler(async (req, res) => {
-  const { employeeId, role } = req.body; // role: 'supervisor' or 'worker'
+  const { employeeId, role } = req.body;
+
+  // Validation
+  if (!employeeId) {
+    return res.status(400).json({ message: 'Employee ID is required' });
+  }
+  if (!role) {
+    return res.status(400).json({ message: 'Role is required' });
+  }
+  if (!['supervisor', 'worker', 'engineer', 'helper', 'technician'].includes(role)) {
+    return res.status(400).json({ message: 'Invalid role. Must be supervisor, worker, engineer, helper, or technician' });
+  }
 
   console.log('Assigning employee to project:', { projectId: req.params.id, employeeId, role });
 
@@ -361,6 +372,13 @@ export const assignEmployee = asyncHandler(async (req, res) => {
   if (!project) {
     console.log('Project not found:', req.params.id);
     return res.status(404).json({ message: 'Project not found' });
+  }
+
+  // Check if employee exists
+  const employee = await Employee.findById(employeeId);
+  if (!employee) {
+    console.log('Employee not found:', employeeId);
+    return res.status(404).json({ message: 'Employee not found' });
   }
 
   // Check if employee is already assigned
@@ -372,16 +390,13 @@ export const assignEmployee = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Employee already assigned to this project' });
   }
 
-  project.assignEmployee(employeeId, role, req.user._id);
-  await project.save();
-  console.log('Project updated with employee assignment');
+  try {
+    // Assign employee to project
+    project.assignEmployee(employeeId, role, req.user._id);
+    await project.save();
+    console.log('Project updated with employee assignment');
 
-  // Also update employee's assignedProjects array
-  const employee = await Employee.findById(employeeId);
-  if (employee) {
-    console.log('Employee found:', employee._id);
-    console.log('Employee userId:', employee.userId);
-    // Check if project is already in employee's assignedProjects
+    // Also update employee's assignedProjects array
     const projectAlreadyAssigned = employee.assignedProjects.some(ap => 
       ap.project.toString() === project._id.toString() && ap.status === 'active'
     );
@@ -410,19 +425,24 @@ export const assignEmployee = asyncHandler(async (req, res) => {
     } else {
       console.log('Project already assigned to employee in assignedProjects array');
     }
-  } else {
-    console.log('Employee not found:', employeeId);
+
+    const populated = await Project.findById(project._id)
+      .populate('supervisors.employee', 'name employeeId')
+      .populate('workers.employee', 'name employeeId');
+
+    res.json({
+      success: true,
+      data: populated,
+      message: `Employee assigned as ${role} successfully`
+    });
+  } catch (error) {
+    console.error('Error assigning employee to project:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to assign employee to project',
+      error: error.message 
+    });
   }
-
-  const populated = await Project.findById(project._id)
-    .populate('supervisors.employee', 'name employeeId')
-    .populate('workers.employee', 'name employeeId');
-
-  res.json({
-    success: true,
-    data: populated,
-    message: `Employee assigned as ${role} successfully`
-  });
 });
 
 // @desc    Remove employee from project
@@ -494,14 +514,50 @@ export const addWorkUpdate = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Project not found' });
   }
 
+  // If files are uploaded, upload them to S3
+  let uploadedImages = images || [];
+  let uploadedAudioNotes = audioNotes || [];
+  let uploadedVideoRecordings = videoRecordings || [];
+  let uploadedDocuments = documents || [];
+
+  if (req.files && req.files.length > 0) {
+    try {
+      const { uploadMultipleToS3 } = await import('../utils/s3Service.js');
+      const uploadedFiles = await uploadMultipleToS3(req.files, 'work-updates');
+
+      // Categorize uploaded files based on their type
+      uploadedFiles.forEach((file, index) => {
+        const originalFile = req.files[index];
+        const fileUrl = file.url;
+        
+        if (originalFile.mimetype.startsWith('image/')) {
+          uploadedImages.push(fileUrl);
+        } else if (originalFile.mimetype.startsWith('audio/')) {
+          uploadedAudioNotes.push(fileUrl);
+        } else if (originalFile.mimetype.startsWith('video/')) {
+          uploadedVideoRecordings.push(fileUrl);
+        } else {
+          uploadedDocuments.push(fileUrl);
+        }
+      });
+    } catch (error) {
+      console.error('S3 upload error:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to upload files to S3',
+        error: error.message 
+      });
+    }
+  }
+
   project.addWorkUpdate({
     title,
     description,
     status,
-    images: images || [],
-    audioNotes: audioNotes || [],
-    videoRecordings: videoRecordings || [],
-    documents: documents || [],
+    images: uploadedImages,
+    audioNotes: uploadedAudioNotes,
+    videoRecordings: uploadedVideoRecordings,
+    documents: uploadedDocuments,
     updatedBy: req.user._id
   });
 
@@ -529,35 +585,48 @@ export const uploadProjectFiles = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Please upload files' });
   }
 
-  // Upload files
-  const uploadedFiles = req.files.map(file => ({
-    name: file.originalname,
-    url: `/uploads/projects/${file.filename}`,
-    type: type || 'other',
-    size: file.size,
-    description: description || '',
-    category: category || 'other',
-    uploadedBy: req.user._id
-  }));
+  try {
+    // Upload files to S3
+    const { uploadMultipleToS3 } = await import('../utils/s3Service.js');
+    const uploadedFiles = await uploadMultipleToS3(req.files, 'projects');
 
-  project.documents.push(...uploadedFiles);
+    // Create document records
+    const documentRecords = uploadedFiles.map((file, index) => ({
+      name: req.files[index].originalname,
+      url: file.url,
+      type: type || 'other',
+      size: req.files[index].size,
+      description: description || '',
+      category: category || 'other',
+      uploadedBy: req.user._id
+    }));
 
-  // Log activity
-  project.activityHistory.push({
-    action: 'file_uploaded',
-    description: `Uploaded ${uploadedFiles.length} file(s) - ${type}`,
-    performedBy: req.user._id,
-    files: uploadedFiles.map(f => f.url),
-    date: new Date()
-  });
+    project.documents.push(...documentRecords);
 
-  await project.save();
+    // Log activity
+    project.activityHistory.push({
+      action: 'file_uploaded',
+      description: `Uploaded ${documentRecords.length} file(s) - ${type}`,
+      performedBy: req.user._id,
+      files: documentRecords.map(f => f.url),
+      date: new Date()
+    });
 
-  res.json({
-    success: true,
-    data: project,
-    message: 'Files uploaded successfully'
-  });
+    await project.save();
+
+    res.json({
+      success: true,
+      data: project,
+      message: 'Files uploaded successfully to S3'
+    });
+  } catch (error) {
+    console.error('S3 upload error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to upload files to S3',
+      error: error.message 
+    });
+  }
 });
 
 // @desc    Get project activity history

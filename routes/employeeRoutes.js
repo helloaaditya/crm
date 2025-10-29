@@ -14,6 +14,7 @@ import {
   getSalaryHistory,
   addWorkUpdate,
   getWorkUpdates,
+  uploadWorkUpdateFiles,
   updateEmployeeRole,
   assignProjectToEmployee,
   getEmployeeProjects,
@@ -115,5 +116,8 @@ router.get('/:id/payslip/:month', generatePayslip);
 // Work Updates (Admin)
 router.post('/:id/work-update', addWorkUpdate);
 router.get('/:id/work-updates', getWorkUpdates);
+
+// File upload for work updates
+router.post('/upload-work-files', upload.array('files', 10), uploadWorkUpdateFiles);
 
 export default router;

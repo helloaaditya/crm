@@ -860,11 +860,44 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee record not found' });
   }
 
+  // If files are uploaded, upload them to S3
+  let uploadedImages = images || [];
+  let uploadedAudioNotes = audioNotes || [];
+  let uploadedVideoRecordings = videoRecordings || [];
+
+  if (req.files && req.files.length > 0) {
+    try {
+      const { uploadMultipleToS3 } = await import('../utils/s3Service.js');
+      const uploadedFiles = await uploadMultipleToS3(req.files, 'work-updates');
+
+      // Categorize uploaded files based on their type
+      uploadedFiles.forEach((file, index) => {
+        const originalFile = req.files[index];
+        const fileUrl = file.url;
+        
+        if (originalFile.mimetype.startsWith('image/')) {
+          uploadedImages.push(fileUrl);
+        } else if (originalFile.mimetype.startsWith('audio/')) {
+          uploadedAudioNotes.push(fileUrl);
+        } else if (originalFile.mimetype.startsWith('video/')) {
+          uploadedVideoRecordings.push(fileUrl);
+        }
+      });
+    } catch (error) {
+      console.error('S3 upload error:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to upload files to S3',
+        error: error.message 
+      });
+    }
+  }
+
   employee.workUpdates.push({
     date: new Date(),
     project: projectId,
     description,
-    images: images || [],
+    images: uploadedImages,
     submittedBy: req.user._id
   });
 
@@ -878,9 +911,9 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
         title: `Update by ${employee.name}`,
         description,
         status: 'in_progress',
-        images: images || [],
-        audioNotes: audioNotes || [],
-        videoRecordings: videoRecordings || [],
+        images: uploadedImages,
+        audioNotes: uploadedAudioNotes,
+        videoRecordings: uploadedVideoRecordings,
         updatedBy: employee._id
       });
       await project.save();
@@ -891,6 +924,35 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
     success: true,
     message: 'Work update submitted successfully'
   });
+});
+
+// @desc    Upload work update files
+// @route   POST /api/employees/upload-work-files
+// @access  Private (Employee)
+export const uploadWorkUpdateFiles = asyncHandler(async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: 'Please upload files' });
+  }
+
+  try {
+    // Upload files to S3
+    const { uploadMultipleToS3 } = await import('../utils/s3Service.js');
+    const uploadedFiles = await uploadMultipleToS3(req.files, 'work-updates');
+
+    // Return the uploaded file URLs
+    res.json({
+      success: true,
+      data: uploadedFiles,
+      message: 'Files uploaded successfully to S3'
+    });
+  } catch (error) {
+    console.error('S3 upload error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to upload files to S3',
+      error: error.message 
+    });
+  }
 });
 
 // @desc    Apply for leave

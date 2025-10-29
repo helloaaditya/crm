@@ -138,6 +138,9 @@ export const employeeAPI = {
   mySalary: () => api.get('/employees/my-salary'),
   myProjects: () => api.get('/employees/my-projects'),
   myWorkUpdate: (data) => api.post('/employees/my-work-update', data),
+  uploadWorkUpdateFiles: (formData) => api.post('/employees/upload-work-files', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   myLeave: {
     apply: (data) => api.post('/employees/my-leave', data),
     get: () => api.get('/employees/my-leaves')

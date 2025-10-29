@@ -108,16 +108,36 @@ function WorkUpdates() {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
 
-    // In production, upload to server/S3 and get URLs
-    // For now, we'll simulate with file names
-    const fileUrls = files.map(file => URL.createObjectURL(file))
-    
-    setFormData(prev => ({
-      ...prev,
-      [type]: [...prev[type], ...fileUrls]
-    }))
-    
-    toast.success(`${files.length} file(s) added`)
+    try {
+      setLoading(true)
+      
+      // Create FormData for file upload
+      const formData = new FormData()
+      files.forEach(file => {
+        formData.append('files', file)
+      })
+      formData.append('type', type)
+      formData.append('projectId', formData.projectId)
+      formData.append('description', formData.description)
+
+      // Upload files to server (which will upload to S3)
+      const response = await API.employees.uploadWorkUpdateFiles(formData)
+      
+      // Update form data with uploaded URLs
+      const uploadedUrls = response.data.data.map(file => file.url)
+      
+      setFormData(prev => ({
+        ...prev,
+        [type]: [...prev[type], ...uploadedUrls]
+      }))
+      
+      toast.success(`${files.length} file(s) uploaded successfully`)
+    } catch (error) {
+      console.error('File upload error:', error)
+      toast.error('Failed to upload files')
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Voice recording functions

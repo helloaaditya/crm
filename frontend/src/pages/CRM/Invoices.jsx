@@ -24,6 +24,7 @@ const Invoices = () => {
   const [endDate, setEndDate] = useState('')
   const [totalCount, setTotalCount] = useState(0)
   const [summary, setSummary] = useState({ totalAmount: 0, paidAmount: 0, pendingAmount: 0 })
+  const [downloadingPDF, setDownloadingPDF] = useState(null)
 
   useEffect(() => {
     fetchInvoices()
@@ -98,11 +99,15 @@ const Invoices = () => {
 
   const handleGeneratePDF = async (id) => {
     try {
+      setDownloadingPDF(id)
       const response = await API.invoices.generatePDF(id)
       toast.success('PDF generated successfully!')
       window.open(response.data.data.pdfUrl, '_blank')
     } catch (error) {
-      toast.error('Failed to generate PDF')
+      console.error('PDF generation error:', error)
+      toast.error(error.response?.data?.message || 'Failed to generate PDF')
+    } finally {
+      setDownloadingPDF(null)
     }
   }
 
@@ -471,10 +476,15 @@ Sanjana CRM Team`
                           </button>
                           <button 
                             onClick={() => handleGeneratePDF(invoice._id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded disabled:opacity-50 disabled:cursor-not-allowed" 
                             title="Download PDF"
+                            disabled={downloadingPDF === invoice._id}
                           >
-                            <FiDownload />
+                            {downloadingPDF === invoice._id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            ) : (
+                              <FiDownload />
+                            )}
                           </button>
                           <button 
                             onClick={() => handleSendEmail(invoice._id)}
@@ -569,9 +579,14 @@ Sanjana CRM Team`
                     </button>
                     <button 
                       onClick={() => handleGeneratePDF(invoice._id)}
-                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={downloadingPDF === invoice._id}
                     >
-                      <FiDownload className="mr-1" size={12} />
+                      {downloadingPDF === invoice._id ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-1"></div>
+                      ) : (
+                        <FiDownload className="mr-1" size={12} />
+                      )}
                       PDF
                     </button>
                     <button 

@@ -83,7 +83,31 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    // Client-side validation
+    if (!formData.name.trim()) {
+      toast.error('Name is required')
+      return
+    }
+    if (!formData.email.trim()) {
+      toast.error('Email is required')
+      return
+    }
+    if (!formData.phone || formData.phone.length !== 10) {
+      toast.error('Valid 10-digit phone number is required')
+      return
+    }
+    if (!user && !formData.password) {
+      toast.error('Password is required for new accounts')
+      return
+    }
+    if (formData.password && formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
     try {
+      setLoading(true)
+      
       // Convert modules array to appropriate format for backend
       const submitData = {
         ...formData
@@ -92,8 +116,8 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
       // Handle module conversion for backend compatibility
       if (formData.modules.includes('all')) {
         submitData.module = 'all';
-      } else if (formData.modules.includes('none')) {
-        submitData.module = 'none';
+      } else if (formData.modules.includes('none') || formData.modules.length === 0) {
+        submitData.module = 'all'; // Default to 'all' instead of 'none' for better access
       } else {
         // For multiple specific modules, join them with commas
         submitData.module = formData.modules.join(',');
@@ -110,10 +134,6 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
         toast.success('User account updated successfully')
       } else {
         // Create new user
-        if (!submitData.password) {
-          toast.error('Password is required for new accounts')
-          return
-        }
         await API.auth.register(submitData)
         toast.success('User account created successfully')
       }
@@ -121,7 +141,13 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
       onClose()
     } catch (error) {
       console.error('Error saving user account:', error)
-      toast.error(error.response?.data?.message || 'Failed to save user account')
+      const errorMessage = error.response?.data?.message || 
+                          (error.response?.data?.errors ? 
+                            error.response.data.errors.map(e => e.msg).join(', ') : 
+                            'Failed to save user account')
+      toast.error(errorMessage)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -130,8 +156,8 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
       const newModules = [...prev.modules].filter(m => m !== 'all' && m !== 'none')
       if (newModules.includes(moduleValue)) {
         const filtered = newModules.filter(m => m !== moduleValue)
-        // If nothing left after removing, default to none
-        return { ...prev, modules: filtered.length === 0 ? ['none'] : filtered }
+        // If nothing left after removing, default to all instead of none
+        return { ...prev, modules: filtered.length === 0 ? ['all'] : filtered }
       } else {
         return { ...prev, modules: [...newModules, moduleValue] }
       }
@@ -187,14 +213,24 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
             {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
+                Phone Number <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
+                required
+                pattern="[0-9]{10}"
+                maxLength="10"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({ ...formData, phone: value });
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base min-h-44"
+                placeholder="10-digit phone number"
               />
+              {formData.phone && formData.phone.length !== 10 && (
+                <p className="text-red-500 text-sm mt-1">Phone number must be exactly 10 digits</p>
+              )}
             </div>
 
             {/* Password */}
