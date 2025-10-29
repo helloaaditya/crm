@@ -97,11 +97,20 @@ const Invoices = () => {
     }
   }
 
-  const handleGeneratePDF = async (id) => {
+  const handleGeneratePDF = async (id, forceRegenerate = false) => {
     try {
       setDownloadingPDF(id)
-      const response = await API.invoices.generatePDF(id)
-      toast.success('PDF generated successfully!')
+      
+      // Add force regenerate parameter to URL
+      const url = forceRegenerate ? `${id}?force=true` : id
+      const response = await API.invoices.generatePDF(url)
+      
+      if (response.data.data.cached && !forceRegenerate) {
+        toast.success('PDF loaded from cache!')
+      } else {
+        toast.success('PDF generated successfully!')
+      }
+      
       window.open(response.data.data.pdfUrl, '_blank')
     } catch (error) {
       console.error('PDF generation error:', error)
@@ -476,12 +485,24 @@ Sanjana CRM Team`
                           </button>
                           <button 
                             onClick={() => handleGeneratePDF(invoice._id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded disabled:opacity-50 disabled:cursor-not-allowed" 
-                            title="Download PDF"
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              if (invoice.pdfUrl) {
+                                handleGeneratePDF(invoice._id, true)
+                              }
+                            }}
+                            className={`p-2 rounded disabled:opacity-50 disabled:cursor-not-allowed ${
+                              invoice.pdfUrl 
+                                ? 'text-green-600 hover:bg-green-50' 
+                                : 'text-blue-600 hover:bg-blue-50'
+                            }`}
+                            title={invoice.pdfUrl ? 'Left-click: Download PDF (Cached) | Right-click: Force Regenerate' : 'Generate & Download PDF'}
                             disabled={downloadingPDF === invoice._id}
                           >
                             {downloadingPDF === invoice._id ? (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            ) : invoice.pdfUrl ? (
+                              <FiDownload className="text-green-600" />
                             ) : (
                               <FiDownload />
                             )}
@@ -579,15 +600,20 @@ Sanjana CRM Team`
                     </button>
                     <button 
                       onClick={() => handleGeneratePDF(invoice._id)}
-                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`flex items-center justify-center px-2 py-2 rounded-lg text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                        invoice.pdfUrl 
+                          ? 'text-green-600 hover:bg-green-50' 
+                          : 'text-blue-600 hover:bg-blue-50'
+                      }`}
                       disabled={downloadingPDF === invoice._id}
+                      title={invoice.pdfUrl ? 'Download PDF (Cached)' : 'Generate & Download PDF'}
                     >
                       {downloadingPDF === invoice._id ? (
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-1"></div>
                       ) : (
                         <FiDownload className="mr-1" size={12} />
                       )}
-                      PDF
+                      {invoice.pdfUrl ? 'PDF ✓' : 'PDF'}
                     </button>
                     <button 
                       onClick={() => handleSendEmail(invoice._id)}

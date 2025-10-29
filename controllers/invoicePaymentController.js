@@ -457,8 +457,56 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
     invoiceNumber: invoice.invoiceNumber,
     customer: invoice.customer?.name,
     totalAmount: invoice.totalAmount,
-    itemsCount: invoice.items?.length
+    itemsCount: invoice.items?.length,
+    existingPdfUrl: invoice.pdfUrl
   });
+
+  // Check if PDF already exists (unless force regenerate is requested)
+  const forceRegenerate = req.query.force === 'true';
+  
+  if (invoice.pdfUrl && !forceRegenerate) {
+    console.log('PDF already exists for invoice:', invoice.invoiceNumber, 'URL:', invoice.pdfUrl);
+    
+    // Verify the PDF URL is still accessible
+    try {
+      // For S3 URLs, we can assume they're accessible
+      if (invoice.pdfUrl.includes('amazonaws.com') || invoice.pdfUrl.includes('s3')) {
+        console.log('S3 PDF URL found, returning existing PDF');
+        return res.json({ 
+          success: true, 
+          data: { 
+            pdfUrl: invoice.pdfUrl,
+            filename: invoice.pdfUrl.split('/').pop(),
+            cached: true
+          } 
+        });
+      }
+      
+      // For local URLs, check if file exists
+      if (invoice.pdfUrl.includes('/uploads/invoices/')) {
+        const filename = invoice.pdfUrl.split('/').pop();
+        const filePath = `uploads/invoices/${filename}`;
+        
+        if (fs.existsSync(filePath)) {
+          console.log('Local PDF file found, returning existing PDF');
+          return res.json({ 
+            success: true, 
+            data: { 
+              pdfUrl: invoice.pdfUrl,
+              filename: filename,
+              cached: true
+            } 
+          });
+        } else {
+          console.log('Local PDF file not found, will regenerate');
+        }
+      }
+    } catch (error) {
+      console.log('Error checking existing PDF, will regenerate:', error.message);
+    }
+  } else if (forceRegenerate) {
+    console.log('Force regenerate requested for invoice:', invoice.invoiceNumber);
+  }
 
   // Get invoice settings with fallback to general settings
   let invoiceSettings;
