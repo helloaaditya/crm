@@ -898,6 +898,8 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
     project: projectId,
     description,
     images: uploadedImages,
+    audioNotes: uploadedAudioNotes,
+    videoRecordings: uploadedVideoRecordings,
     submittedBy: req.user._id
   });
 
