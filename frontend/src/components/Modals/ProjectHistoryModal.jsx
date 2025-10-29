@@ -312,6 +312,7 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
             Close
           </button>
         </div>
+        </div>
       </div>
       
       {/* Media Viewer */}
