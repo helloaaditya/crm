@@ -1,5 +1,6 @@
 import express from 'express';
 import { protect, moduleAccess, checkPermission } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 import {
   getEmployees,
   getEmployee,
