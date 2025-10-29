@@ -1,7 +1,7 @@
 import Project from '../models/Project.js';
 import Employee from '../models/Employee.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { uploadToS3, uploadMultipleToS3 } from '../utils/s3Service.js';
+import { uploadToS3, uploadMultipleToS3, getSignedUrl } from '../utils/s3Service.js';
 import { generateInvoicePDF, generateWarrantyCertificate } from '../utils/pdfService.js';
 
 // @desc    Get all projects
@@ -652,16 +652,49 @@ export const getProjectHistory = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Project not found' });
   }
 
-  // Sort activity history by date descending
-  const sortedHistory = project.activityHistory.sort((a, b) => b.date - a.date);
+  // Helper to generate signed URL if S3 and bucket is private
+  const signIfS3 = (url) => {
+    try {
+      if (!url) return url;
+      if (url.includes('amazonaws.com')) {
+        // Extract key from URL path
+        const parsed = new URL(url);
+        const key = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
+        return getSignedUrl(key, 60 * 60); // 1 hour
+      }
+      return url;
+    } catch {
+      return url;
+    }
+  };
+
+  // Deep clone and sign media URLs
+  const sortedActivity = project.activityHistory
+    .sort((a, b) => b.date - a.date)
+    .map(item => ({
+      ...item.toObject(),
+      files: Array.isArray(item.files) ? item.files.map(signIfS3) : item.files
+    }));
+
+  const sortedWorkUpdates = project.workUpdates
+    .sort((a, b) => b.date - a.date)
+    .map(wu => ({
+      ...wu.toObject(),
+      images: Array.isArray(wu.images) ? wu.images.map(signIfS3) : wu.images,
+      audioNotes: Array.isArray(wu.audioNotes) ? wu.audioNotes.map(signIfS3) : wu.audioNotes,
+      videoRecordings: Array.isArray(wu.videoRecordings) ? wu.videoRecordings.map(signIfS3) : wu.videoRecordings,
+      documents: Array.isArray(wu.documents) ? wu.documents.map(signIfS3) : wu.documents,
+    }));
+
+  const sortedComments = project.comments.sort((a, b) => b.createdAt - a.createdAt);
 
   res.json({
     success: true,
     data: {
       projectId: project.projectId,
-      activityHistory: sortedHistory,
-      workUpdates: project.workUpdates.sort((a, b) => b.date - a.date),
-      comments: project.comments.sort((a, b) => b.createdAt - a.createdAt)
+      activityHistory: sortedActivity,
+      workUpdates: sortedWorkUpdates,
+      comments: sortedComments
     }
   });
 });
