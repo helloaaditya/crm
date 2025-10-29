@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect, moduleAccess, checkPermission } from '../middleware/auth.js';
-import { upload } from '../middleware/upload.js';
+import { upload, uploadMemory } from '../middleware/upload.js';
 import {
   getProjects,
   getProject,
@@ -40,8 +40,9 @@ router.delete('/:id/remove-employee/:employeeId', checkPermission('canEdit'), re
 router.post('/:id/work-update', checkPermission('canCreate'), addWorkUpdate);
 router.post('/:id/comment', checkPermission('canCreate'), addComment);
 router.post('/:id/site-visit', checkPermission('canCreate'), addSiteVisit);
-router.post('/:id/images', upload.array('projectImages', 10), uploadProjectImages);
-router.post('/:id/upload-files', upload.array('files', 20), uploadProjectFiles);
+// Use memory storage for S3-only uploads
+router.post('/:id/images', uploadMemory.array('projectImages', 10), uploadProjectImages);
+router.post('/:id/upload-files', uploadMemory.array('files', 20), uploadProjectFiles);
 router.post('/:id/materials', checkPermission('canCreate'), addMaterialRequirement);
 router.post('/:id/return-materials', checkPermission('canCreate'), addReturnedMaterial);
 router.get('/:id/quotation', generateQuotation);

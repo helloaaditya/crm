@@ -867,8 +867,8 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
 
   if (req.files && req.files.length > 0) {
     try {
-      const { uploadMultipleToS3 } = await import('../utils/s3Service.js');
-      const uploadedFiles = await uploadMultipleToS3(req.files, 'work-updates');
+      const { uploadMultipleFromMemory } = await import('../utils/s3Service.js');
+      const uploadedFiles = await uploadMultipleFromMemory(req.files, 'work-updates');
 
       // Categorize uploaded files based on their type
       uploadedFiles.forEach((file, index) => {
@@ -935,9 +935,9 @@ export const uploadWorkUpdateFiles = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Upload files to S3
-    const { uploadMultipleToS3 } = await import('../utils/s3Service.js');
-    const uploadedFiles = await uploadMultipleToS3(req.files, 'work-updates');
+    // Upload files to S3 (memory buffers)
+    const { uploadMultipleFromMemory } = await import('../utils/s3Service.js');
+    const uploadedFiles = await uploadMultipleFromMemory(req.files, 'work-updates');
 
     // Return the uploaded file URLs
     res.json({

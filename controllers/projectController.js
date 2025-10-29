@@ -196,20 +196,28 @@ export const uploadProjectImages = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Please upload images' });
   }
 
-  // Upload to S3 or save locally
-  const uploadedImages = req.files.map(file => ({
-    url: `/uploads/projects/${file.filename}`,
-    description: req.body.description || '',
-    uploadedBy: req.user._id
-  }));
+  // Upload to S3 (memory buffers)
+  try {
+    const { uploadMultipleFromMemory } = await import('../utils/s3Service.js');
+    const uploaded = await uploadMultipleFromMemory(req.files, 'projects');
 
-  project.images.push(...uploadedImages);
-  await project.save();
+    const uploadedImages = uploaded.map((file, index) => ({
+      url: file.url,
+      description: req.body.description || '',
+      uploadedBy: req.user._id
+    }));
 
-  res.json({
-    success: true,
-    data: project
-  });
+    project.images.push(...uploadedImages);
+    await project.save();
+
+    res.json({
+      success: true,
+      data: project
+    });
+  } catch (error) {
+    console.error('S3 upload error (project images):', error);
+    res.status(500).json({ success: false, message: 'Failed to upload images to S3', error: error.message });
+  }
 });
 
 // @desc    Add material requirement
@@ -587,8 +595,8 @@ export const uploadProjectFiles = asyncHandler(async (req, res) => {
 
   try {
     // Upload files to S3
-    const { uploadMultipleToS3 } = await import('../utils/s3Service.js');
-    const uploadedFiles = await uploadMultipleToS3(req.files, 'projects');
+    const { uploadMultipleFromMemory } = await import('../utils/s3Service.js');
+    const uploadedFiles = await uploadMultipleFromMemory(req.files, 'projects');
 
     // Create document records
     const documentRecords = uploadedFiles.map((file, index) => ({

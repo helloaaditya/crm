@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configure storage
+// Configure storage (disk) - used only where explicitly needed
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadPath = 'uploads/';
@@ -28,10 +28,10 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter
+// File filter (allow common media + docs)
 const fileFilter = (req, file, cb) => {
   // Allowed file types
-  const allowedTypes = /jpeg|jpg|png|pdf|doc|docx|xls|xlsx/;
+  const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|m4a|mp4|webm|avi|pdf|doc|docx|xls|xlsx|txt/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
@@ -42,7 +42,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Multer upload configuration
+// Multer upload configuration (disk)
 export const upload = multer({
   storage: storage,
   limits: {
@@ -68,4 +68,13 @@ export const imageUpload = multer({
       cb(new Error('Invalid file type. Only images are allowed.'));
     }
   }
+});
+
+// Multer upload configuration (memory) - preferred for S3 uploads
+export const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: fileFilter
 });

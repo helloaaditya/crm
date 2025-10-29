@@ -94,6 +94,24 @@ export const uploadBufferToS3 = async (buffer, key, contentType = 'application/o
   }
 };
 
+// Upload multiple buffers (from multer memoryStorage files)
+export const uploadMultipleFromMemory = async (files, folder = 'general') => {
+  try {
+    if (!process.env.S3_BUCKET_NAME) {
+      throw new Error('S3_BUCKET_NAME not configured');
+    }
+
+    const uploads = files.map(async (file) => {
+      const key = `${folder}/${Date.now()}-${file.originalname}`;
+      return await uploadBufferToS3(file.buffer, key, file.mimetype);
+    });
+    return await Promise.all(uploads);
+  } catch (error) {
+    console.error('S3 uploadMultipleFromMemory Error:', error);
+    throw error;
+  }
+};
+
 // Delete file from S3
 export const deleteFromS3 = async (fileKey) => {
   try {
