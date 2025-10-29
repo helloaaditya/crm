@@ -158,6 +158,49 @@ app.get('/health/detailed', async (req, res) => {
   }
 });
 
+// Migration endpoint for updating user modules
+app.post('/api/migrate/user-modules', async (req, res) => {
+  try {
+    const User = (await import('./models/User.js')).default;
+    
+    // Update users with 'none' module access to 'all'
+    const result = await User.updateMany(
+      { module: 'none' },
+      { $set: { module: 'all' } }
+    );
+
+    // Also update users with empty or null module
+    const result2 = await User.updateMany(
+      { $or: [{ module: { $exists: false } }, { module: null }, { module: '' }] },
+      { $set: { module: 'all' } }
+    );
+
+    // Get current user module distribution
+    const moduleStats = await User.aggregate([
+      {
+        $group: {
+          _id: '$module',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      message: 'User module migration completed',
+      updatedNone: result.modifiedCount,
+      updatedEmpty: result2.modifiedCount,
+      moduleStats
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // CORS preflight test endpoint
 app.get('/cors-test', (req, res) => {
   res.status(200).json({ 
