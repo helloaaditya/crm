@@ -99,6 +99,11 @@ router.post('/upload-work-files', uploadMemory.array('files', 10), uploadWorkUpd
 // These routes require 'employee' or 'all' module access
 router.use(moduleAccess('employee', 'all'));
 
+// Hold Requests (Admin) - must be before any '/:id' routes
+router.get('/hold-requests', checkPermission('canHandleAccounts'), listHoldRequests);
+router.put('/hold-requests/:requestId/approve', checkPermission('canHandleAccounts'), approveHoldRequest);
+router.put('/hold-requests/:requestId/reject', checkPermission('canHandleAccounts'), rejectHoldRequest);
+
 // Employees
 router.get('/', getEmployees);
 router.post('/', checkPermission('canCreate'), createEmployee);
@@ -127,11 +132,6 @@ router.post('/:id/salary', checkPermission('canHandleAccounts'), processSalary);
 router.get('/:id/salary-history', getSalaryHistory);
 router.get('/:id/salary-preview', getSalaryPreview);
 router.get('/:id/payslip/:month', generatePayslip);
-
-// Hold Requests (Admin)
-router.get('/hold-requests', checkPermission('canHandleAccounts'), listHoldRequests);
-router.put('/hold-requests/:requestId/approve', checkPermission('canHandleAccounts'), approveHoldRequest);
-router.put('/hold-requests/:requestId/reject', checkPermission('canHandleAccounts'), rejectHoldRequest);
 
 // Work Updates (Admin)
 router.post('/:id/work-update', addWorkUpdate);
