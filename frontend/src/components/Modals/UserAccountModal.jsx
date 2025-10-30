@@ -21,6 +21,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
     employeeId: ''
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -457,9 +458,10 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
             </button>
             <button
               type="submit"
-              className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 min-h-44"
+              disabled={loading}
+              className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed min-h-44"
             >
-              {user ? 'Update' : 'Create'} Account
+              {loading ? 'Saving...' : (user ? 'Update' : 'Create')} Account
             </button>
           </div>
         </form>
