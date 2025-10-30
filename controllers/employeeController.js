@@ -980,17 +980,12 @@ export const getMyHold = asyncHandler(async (req, res) => {
   }
 
   const holdPercent = employee.holdPercent || 5;
-  // Calculate accrual from paid salary history
-  const now = new Date();
-  const cutoff = new Date(now.getFullYear(), now.getMonth() - 3, 1); // older than 3 months eligible
+  // Calculate accrual from paid salary history (for display)
   let totalAccrued = 0;
-  let eligibleAccrued = 0;
   (employee.salaryHistory || []).forEach(r => {
     if (r.status === 'paid') {
-      const monthDate = new Date(r.month + '-01');
       const hold = Math.round((r.netSalary * holdPercent / 100) * 100) / 100;
       totalAccrued += hold;
-      if (monthDate < cutoff) eligibleAccrued += hold;
     }
   });
 
@@ -998,8 +993,9 @@ export const getMyHold = asyncHandler(async (req, res) => {
   const withdrawn = approvedRequests.reduce((s, r) => s + (r.amount || 0), 0);
   const pending = (employee.holdRequests || []).filter(r => r.status === 'pending').reduce((s, r) => s + (r.amount || 0), 0);
 
-  const holdBalance = Math.max(0, totalAccrued - withdrawn);
-  const withdrawable = Math.max(0, eligibleAccrued - withdrawn - pending);
+  // Use stored holdBalance as current available balance tracker
+  const holdBalance = Math.max(0, (employee.holdBalance || 0));
+  const withdrawable = Math.max(0, holdBalance - pending);
 
   res.json({
     success: true,
@@ -1009,7 +1005,7 @@ export const getMyHold = asyncHandler(async (req, res) => {
       holdBalance: Math.round(holdBalance * 100) / 100,
       withdrawable: Math.round(withdrawable * 100) / 100,
       pendingRequestsAmount: Math.round(pending * 100) / 100,
-      nextEligibleMonth: new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0, 7)
+      nextEligibleMonth: null
     }
   });
 });
@@ -1024,21 +1020,9 @@ export const requestMyHoldWithdrawal = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee record not found' });
   }
 
-  // Compute withdrawable as in getMyHold
-  const holdPercent = employee.holdPercent || 5;
-  const now = new Date();
-  const cutoff = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-  let eligibleAccrued = 0;
-  (employee.salaryHistory || []).forEach(r => {
-    if (r.status === 'paid') {
-      const monthDate = new Date(r.month + '-01');
-      const hold = Math.round((r.netSalary * holdPercent / 100) * 100) / 100;
-      if (monthDate < cutoff) eligibleAccrued += hold;
-    }
-  });
-  const withdrawn = (employee.holdRequests || []).filter(r => r.status === 'approved').reduce((s, r) => s + (r.amount || 0), 0);
+  // Withdraw up to current hold balance minus pending requests
   const pending = (employee.holdRequests || []).filter(r => r.status === 'pending').reduce((s, r) => s + (r.amount || 0), 0);
-  const withdrawable = Math.max(0, eligibleAccrued - withdrawn - pending);
+  const withdrawable = Math.max(0, (employee.holdBalance || 0) - pending);
 
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Invalid amount' });
