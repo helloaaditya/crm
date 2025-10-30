@@ -80,7 +80,8 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
       } else if (['bank_transfer','upi','card'].includes(formData.paymentMode)) {
         payload.referenceNumber = formData.referenceNumber;
       } else if (formData.paymentMode === 'razorpay') {
-        // referenceNumber not needed here; razorpay flow uses verify endpoint
+        // Allow manual transaction ID entry for online payments recorded manually
+        payload.transactionId = formData.referenceNumber;
       }
 
       await API.payments.recordManual(payload)
@@ -171,22 +172,22 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
                 <option value="cash">Cash</option>
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="cheque">Cheque</option>
-                <option value="razorpay">Online Payment</option>
+                <option value="razorpay">Online</option>
               </select>
             </div>
 
             {/* Reference / Cheque Details */}
-            {['bank_transfer','upi','card'].includes(formData.paymentMode) && (
+            {['bank_transfer','upi','card','razorpay'].includes(formData.paymentMode) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reference / Transaction Number
+                  {formData.paymentMode === 'razorpay' ? 'Transaction ID' : 'Reference / Transaction Number'}
                 </label>
                 <input
                   type="text"
                   value={formData.referenceNumber}
                   onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="e.g., UTR, UPI txn ID, card auth"
+                  placeholder={formData.paymentMode === 'razorpay' ? 'e.g., RZP_Payment_ID' : 'e.g., UTR, UPI txn ID, card auth'}
                 />
               </div>
             )}

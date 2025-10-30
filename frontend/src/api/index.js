@@ -123,6 +123,7 @@ export const employeeAPI = {
   // Salary
   processSalary: (id, data) => api.post(`/employees/${id}/salary`, data),
   getSalaryHistory: (id) => api.get(`/employees/${id}/salary-history`),
+  getSalaryPreview: (id, month) => api.get(`/employees/${id}/salary-preview`, { params: { month } }),
   generatePayslip: (id, month) => api.get(`/employees/${id}/payslip/${month}`),
   
   // Work Updates

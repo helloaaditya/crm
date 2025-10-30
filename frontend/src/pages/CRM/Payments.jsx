@@ -112,32 +112,6 @@ const Payments = () => {
     setPage(1)
   }
 
-  const handleExportCSV = () => {
-    const csvData = payments.map(payment => ({
-      'Invoice Number': payment.invoice?.invoiceNumber || 'N/A',
-      'Customer': payment.invoice?.customer?.name || payment.customer?.name || 'N/A',
-      'Date': new Date(payment.paymentDate).toLocaleDateString(),
-      'Amount': payment.amount,
-      'Payment Method': payment.paymentMethod,
-      'Status': payment.status,
-      'Notes': payment.notes || ''
-    }))
-
-    const csvContent = [
-      Object.keys(csvData[0]).join(','),
-      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `payments-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-    toast.success('Payments exported successfully')
-  }
-
   const getStatusBadge = (status) => {
     const badges = {
       paid: 'bg-green-100 text-green-800',
@@ -157,6 +131,37 @@ const Payments = () => {
       card: 'bg-pink-100 text-pink-800'
     }
     return badges[mode] || 'bg-gray-100 text-gray-800'
+  }
+
+  const displayPaymentMethod = (mode) => {
+    if (mode === 'razorpay') return 'Online'
+    return (mode || '').replace('_', ' ')
+  }
+
+  const handleExportCSV = () => {
+    const csvData = payments.map(payment => ({
+      'Invoice Number': payment.invoice?.invoiceNumber || 'N/A',
+      'Customer': payment.invoice?.customer?.name || payment.customer?.name || 'N/A',
+      'Date': new Date(payment.paymentDate).toLocaleDateString(),
+      'Amount': payment.amount,
+      'Payment Method': displayPaymentMethod(payment.paymentMethod),
+      'Status': payment.status,
+      'Notes': payment.notes || ''
+    }))
+
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `payments-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+    toast.success('Payments exported successfully')
   }
 
   return (
@@ -249,7 +254,7 @@ const Payments = () => {
               <option value="bank_transfer">Bank Transfer</option>
               <option value="cheque">Cheque</option>
               <option value="upi">UPI</option>
-              <option value="razorpay">Razorpay</option>
+              <option value="razorpay">Online</option>
               <option value="card">Card</option>
             </select>
           </div>
@@ -310,6 +315,7 @@ const Payments = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Mode</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference / Txn</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -332,8 +338,15 @@ const Payments = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs rounded-full ${getPaymentModeBadge(payment.paymentMethod)}`}>
-                        {payment.paymentMethod?.replace('_', ' ') || 'N/A'}
+                        {displayPaymentMethod(payment.paymentMethod) || 'N/A'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 max-w-xs truncate">
+                      {payment.paymentMethod === 'cheque' ? (
+                        payment.chequeDetails?.chequeNumber || '-'
+                      ) : (
+                        payment.transactionId || payment.referenceNumber || '-'
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(payment.status)}`}>

@@ -8,6 +8,7 @@ const SalaryManagement = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [salaryHistory, setSalaryHistory] = useState([])
+  const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
@@ -54,6 +55,17 @@ const SalaryManagement = () => {
     }
   }
 
+  const fetchPreview = async (employeeId, month) => {
+    if (!employeeId || !month) return
+    try {
+      const res = await API.employees.getSalaryPreview(employeeId, month)
+      setPreview(res.data.data)
+    } catch (e) {
+      console.error('Error fetching salary preview:', e)
+      setPreview(null)
+    }
+  }
+
   const handleEmployeeSelect = (employee) => {
     setSelectedEmployee(employee)
     setFormData({
@@ -63,6 +75,7 @@ const SalaryManagement = () => {
       deductions: employee.deductions || { pf: 0, esi: 0, tax: 0, other: 0 }
     })
     fetchSalaryHistory(employee._id)
+    fetchPreview(employee._id, formData.month)
   }
 
   const handleProcessSalary = async (e) => {
@@ -79,12 +92,19 @@ const SalaryManagement = () => {
       toast.success('Salary processed successfully')
       setShowModal(false)
       fetchSalaryHistory(selectedEmployee._id)
+      fetchPreview(selectedEmployee._id, formData.month)
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to process salary')
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (selectedEmployee) {
+      fetchPreview(selectedEmployee._id, formData.month)
+    }
+  }, [formData.month])
 
   const handleUpdateSalaryStructure = async () => {
     if (!selectedEmployee) return
@@ -301,16 +321,43 @@ const SalaryManagement = () => {
 
                     {/* Salary Summary */}
                     <div className="col-span-2 mt-4 p-4 bg-blue-50 rounded-lg">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">Gross Salary</p>
-                          <p className="text-xl font-bold text-gray-800">₹{grossSalary.toLocaleString()}</p>
+                      {preview ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600">Gross Salary</p>
+                            <p className="text-xl font-bold text-gray-800">₹{preview.grossSalary.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Fixed Deductions</p>
+                            <p className="text-xl font-bold text-red-600">-₹{preview.fixedDeductions.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Leave Deductions</p>
+                            <p className="text-xl font-bold text-red-600">-₹{preview.leaveDeductions.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Hold ({preview.holdPercent}%)</p>
+                            <p className="text-xl font-bold text-orange-600">-₹{preview.holdAmount.toLocaleString()}</p>
+                          </div>
+                          <div className="col-span-2 md:col-span-4">
+                            <div className="p-3 bg-green-100 rounded">
+                              <p className="text-sm text-gray-700">Payable Net</p>
+                              <p className="text-2xl font-extrabold text-green-700">₹{preview.payableNet.toLocaleString()}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Net Salary</p>
-                          <p className="text-xl font-bold text-green-600">₹{netSalary.toLocaleString()}</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600">Gross Salary</p>
+                            <p className="text-xl font-bold text-gray-800">₹{grossSalary.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Net Salary</p>
+                            <p className="text-xl font-bold text-green-600">₹{netSalary.toLocaleString()}</p>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -417,7 +464,7 @@ const SalaryManagement = () => {
 
                 <div className="p-4 bg-green-50 rounded-lg">
                   <p className="text-sm text-gray-600">Net Payment Amount</p>
-                  <p className="text-2xl font-bold text-green-600">₹{netSalary.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600">₹{(preview?.payableNet ?? netSalary).toLocaleString()}</p>
                 </div>
               </div>
 

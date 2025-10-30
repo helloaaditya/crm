@@ -375,21 +375,61 @@ export const processSalary = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Salary already processed for this month' });
   }
 
-  const totalAllowances = Object.values(employee.allowances).reduce((sum, val) => sum + val, 0);
-  const totalDeductions = Object.values(employee.deductions).reduce((sum, val) => sum + val, 0);
-  const netSalary = employee.basicSalary + totalAllowances - totalDeductions;
+  const totalAllowances = Object.values(employee.allowances).reduce((sum, val) => sum + (val || 0), 0);
+  const fixedDeductions = Object.values(employee.deductions).reduce((sum, val) => sum + (val || 0), 0);
+  const grossSalary = employee.basicSalary + totalAllowances;
+
+  // Calculate leave/attendance deductions for the target month
+  const [y, m] = month.split('-').map(Number);
+  const monthStart = new Date(y, (m - 1), 1);
+  const monthEnd = new Date(y, (m - 1) + 1, 0, 23, 59, 59, 999);
+  const attendanceThisMonth = (employee.attendance || []).filter(a => {
+    const d = new Date(a.date);
+    return d >= monthStart && d <= monthEnd;
+  });
+
+  // Approved leaves overlapping month
+  let sickApprovedDays = 0;
+  let otherApprovedLeaveDays = 0;
+  (employee.leaves || []).forEach(l => {
+    if (l.status === 'approved') {
+      const s = new Date(l.startDate);
+      const e = new Date(l.endDate);
+      const from = s < monthStart ? monthStart : s;
+      const to = e > monthEnd ? monthEnd : e;
+      if (from <= to) {
+        const days = Math.ceil((to - from) / (1000*60*60*24)) + 1;
+        if (l.leaveType === 'sick') sickApprovedDays += days; else otherApprovedLeaveDays += days;
+      }
+    }
+  });
+  const halfDays = attendanceThisMonth.filter(a => a.status === 'half_day').length;
+  const absents = attendanceThisMonth.filter(a => a.status === 'absent').length;
+  // Daily rate approximation of 26 working days
+  const dailyRate = (employee.basicSalary + totalAllowances - fixedDeductions) / 26;
+  const unpaidSickDays = Math.max(0, sickApprovedDays - 1);
+  const leaveDeductions = Math.max(0, Math.round(((unpaidSickDays + otherApprovedLeaveDays + absents) * dailyRate + halfDays * (dailyRate/2)) * 100) / 100);
+
+  // Hold (Retention) 5% by default
+  const holdPercent = employee.holdPercent || 5;
+  const prelimNet = grossSalary - fixedDeductions - leaveDeductions;
+  const holdAmount = Math.max(0, Math.round((prelimNet * holdPercent / 100) * 100) / 100);
+  const payableNet = Math.max(0, Math.round((prelimNet - holdAmount) * 100) / 100);
 
   employee.salaryHistory.push({
     month,
     basicSalary: employee.basicSalary,
     totalAllowances,
-    totalDeductions,
-    netSalary,
+    totalDeductions: fixedDeductions + leaveDeductions + holdAmount,
+    netSalary: payableNet,
     paidDate: new Date(),
     paymentMode,
     status: 'paid',
     notes
   });
+
+  // Update hold balance accumulator
+  employee.holdBalance = (employee.holdBalance || 0) + holdAmount;
 
   await employee.save();
 
@@ -398,8 +438,80 @@ export const processSalary = asyncHandler(async (req, res) => {
     data: employee,
     message: 'Salary processed successfully',
     salaryDetails: {
-      netSalary,
-      month
+      month,
+      grossSalary,
+      fixedDeductions,
+      leaveDeductions,
+      holdPercent,
+      holdAmount,
+      payableNet
+    }
+  });
+});
+
+// @desc    Preview salary calculation for a month (no save)
+// @route   GET /api/employees/:id/salary-preview?month=YYYY-MM
+// @access  Private
+export const getSalaryPreview = asyncHandler(async (req, res) => {
+  const employee = await Employee.findById(req.params.id);
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+  }
+  const { month } = req.query;
+  if (!month) {
+    return res.status(400).json({ message: 'Month (YYYY-MM) is required' });
+  }
+
+  const totalAllowances = Object.values(employee.allowances).reduce((sum, val) => sum + (val || 0), 0);
+  const fixedDeductions = Object.values(employee.deductions).reduce((sum, val) => sum + (val || 0), 0);
+  const grossSalary = employee.basicSalary + totalAllowances;
+
+  const [y, m] = month.split('-').map(Number);
+  const monthStart = new Date(y, (m - 1), 1);
+  const monthEnd = new Date(y, (m - 1) + 1, 0, 23, 59, 59, 999);
+
+  const attendanceThisMonth = (employee.attendance || []).filter(a => {
+    const d = new Date(a.date);
+    return d >= monthStart && d <= monthEnd;
+  });
+
+  let sickApprovedDays = 0;
+  let otherApprovedLeaveDays = 0;
+  (employee.leaves || []).forEach(l => {
+    if (l.status === 'approved') {
+      const s = new Date(l.startDate);
+      const e = new Date(l.endDate);
+      const from = s < monthStart ? monthStart : s;
+      const to = e > monthEnd ? monthEnd : e;
+      if (from <= to) {
+        const days = Math.ceil((to - from) / (1000*60*60*24)) + 1;
+        if (l.leaveType === 'sick') sickApprovedDays += days; else otherApprovedLeaveDays += days;
+      }
+    }
+  });
+
+  const halfDays = attendanceThisMonth.filter(a => a.status === 'half_day').length;
+  const absents = attendanceThisMonth.filter(a => a.status === 'absent').length;
+  const dailyRate = (employee.basicSalary + totalAllowances - fixedDeductions) / 26;
+  const unpaidSickDays = Math.max(0, sickApprovedDays - 1);
+  const leaveDeductions = Math.max(0, Math.round(((unpaidSickDays + otherApprovedLeaveDays + absents) * dailyRate + halfDays * (dailyRate/2)) * 100) / 100);
+
+  const holdPercent = employee.holdPercent || 5;
+  const prelimNet = grossSalary - fixedDeductions - leaveDeductions;
+  const holdAmount = Math.max(0, Math.round((prelimNet * holdPercent / 100) * 100) / 100);
+  const payableNet = Math.max(0, Math.round((prelimNet - holdAmount) * 100) / 100);
+
+  res.json({
+    success: true,
+    data: {
+      month,
+      grossSalary,
+      totalAllowances,
+      fixedDeductions,
+      leaveDeductions,
+      holdPercent,
+      holdAmount,
+      payableNet
     }
   });
 });
