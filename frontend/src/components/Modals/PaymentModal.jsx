@@ -10,6 +10,10 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
     paymentMode: 'cash',
+    referenceNumber: '',
+    chequeNumber: '',
+    bankName: '',
+    chequeDate: '',
     notes: '',
     status: 'paid'
   })
@@ -21,7 +25,11 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
         invoiceId: payment.invoice?._id || '',
         amount: payment.amount || '',
         paymentDate: payment.paymentDate ? new Date(payment.paymentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        paymentMode: payment.paymentMode || 'cash',
+        paymentMode: payment.paymentMode || payment.paymentMethod || 'cash',
+        referenceNumber: payment.referenceNumber || payment.transactionId || '',
+        chequeNumber: payment.chequeDetails?.chequeNumber || '',
+        bankName: payment.chequeDetails?.bankName || '',
+        chequeDate: payment.chequeDetails?.chequeDate ? new Date(payment.chequeDetails.chequeDate).toISOString().split('T')[0] : '',
         notes: payment.notes || '',
         status: payment.status || 'paid'
       })
@@ -31,6 +39,10 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
         amount: '',
         paymentDate: new Date().toISOString().split('T')[0],
         paymentMode: 'cash',
+        referenceNumber: '',
+        chequeNumber: '',
+        bankName: '',
+        chequeDate: '',
         notes: '',
         status: 'paid'
       })
@@ -53,29 +65,26 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
     try {
       setLoading(true)
       
-      if (payment) {
-        // Update existing payment (if needed)
-        await API.payments.recordManual({
-          invoiceId: formData.invoiceId,
-          amount: parseFloat(formData.amount),
-          paymentDate: formData.paymentDate,
-          paymentMethod: formData.paymentMode,
-          notes: formData.notes,
-          status: formData.status
-        })
-        toast.success('Payment updated successfully')
-      } else {
-        // Create new payment
-        await API.payments.recordManual({
-          invoiceId: formData.invoiceId,
-          amount: parseFloat(formData.amount),
-          paymentDate: formData.paymentDate,
-          paymentMethod: formData.paymentMode,
-          notes: formData.notes,
-          status: formData.status
-        })
-        toast.success('Payment recorded successfully')
+      const payload = {
+        invoiceId: formData.invoiceId,
+        amount: parseFloat(formData.amount),
+        paymentDate: formData.paymentDate,
+        paymentMethod: formData.paymentMode,
+        notes: formData.notes,
+        status: formData.status
+      };
+      if (formData.paymentMode === 'cheque') {
+        payload.chequeNumber = formData.chequeNumber || formData.referenceNumber;
+        payload.bankName = formData.bankName;
+        payload.chequeDate = formData.chequeDate;
+      } else if (['bank_transfer','upi','card'].includes(formData.paymentMode)) {
+        payload.referenceNumber = formData.referenceNumber;
+      } else if (formData.paymentMode === 'razorpay') {
+        // referenceNumber not needed here; razorpay flow uses verify endpoint
       }
+
+      await API.payments.recordManual(payload)
+      toast.success(payment ? 'Payment updated successfully' : 'Payment recorded successfully')
       
       onSuccess()
     } catch (error) {
@@ -165,6 +174,60 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
                 <option value="razorpay">Online Payment</option>
               </select>
             </div>
+
+            {/* Reference / Cheque Details */}
+            {['bank_transfer','upi','card'].includes(formData.paymentMode) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reference / Transaction Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.referenceNumber}
+                  onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  placeholder="e.g., UTR, UPI txn ID, card auth"
+                />
+              </div>
+            )}
+
+            {formData.paymentMode === 'cheque' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cheque Number
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.chequeNumber}
+                    onChange={(e) => setFormData({ ...formData, chequeNumber: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Bank Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bankName}
+                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cheque Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.chequeDate}
+                    onChange={(e) => setFormData({ ...formData, chequeDate: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Status */}
             <div>

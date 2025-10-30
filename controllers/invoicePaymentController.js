@@ -924,7 +924,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 // @route   POST /api/payments/manual
 // @access  Private
 export const recordManualPayment = asyncHandler(async (req, res) => {
-  const { invoiceId, amount, paymentMethod, transactionId, notes } = req.body;
+  const { invoiceId, amount, paymentMethod, transactionId, referenceNumber, notes, chequeNumber, bankName, chequeDate } = req.body;
 
   const invoice = await Invoice.findById(invoiceId);
   if (!invoice) {
@@ -932,16 +932,27 @@ export const recordManualPayment = asyncHandler(async (req, res) => {
   }
 
   // Record payment
-  const payment = await Payment.create({
+  const paymentData = {
     invoice: invoiceId,
     customer: invoice.customer,
     amount,
     paymentMethod,
-    transactionId,
+    transactionId: transactionId || referenceNumber || undefined,
+    referenceNumber: referenceNumber || transactionId || undefined,
     notes,
     status: 'success',
     recordedBy: req.user._id
-  });
+  };
+  if (paymentMethod === 'cheque') {
+    paymentData.chequeDetails = {
+      chequeNumber: chequeNumber || referenceNumber || '',
+      bankName: bankName || '',
+      chequeDate: chequeDate ? new Date(chequeDate) : undefined,
+      clearanceStatus: 'pending'
+    };
+  }
+
+  const payment = await Payment.create(paymentData);
 
   // Update invoice
   invoice.paidAmount += amount;
