@@ -136,6 +136,10 @@ export const employeeAPI = {
   },
   myProfile: () => api.get('/employees/my-profile'),
   mySalary: () => api.get('/employees/my-salary'),
+  myHold: {
+    get: () => api.get('/employees/my-hold'),
+    request: (data) => api.post('/employees/my-hold/request', data)
+  },
   myProjects: () => api.get('/employees/my-projects'),
   myWorkUpdate: (data) => api.post('/employees/my-work-update', data),
   uploadWorkUpdateFiles: (formData) => api.post('/employees/upload-work-files', formData, {

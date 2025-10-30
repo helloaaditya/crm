@@ -199,10 +199,23 @@ const employeeSchema = new mongoose.Schema({
     },
     description: String,
     images: [String],
+    audioNotes: [String],
+    videoRecordings: [String],
     submittedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     }
+  }],
+
+  // Salary Hold (Retention)
+  holdPercent: { type: Number, default: 5 }, // percent
+  holdBalance: { type: Number, default: 0 },
+  holdRequests: [{
+    amount: Number,
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    requestedAt: { type: Date, default: Date.now },
+    processedAt: Date,
+    notes: String
   }],
   
   // Documents

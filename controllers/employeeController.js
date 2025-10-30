@@ -261,6 +261,42 @@ export const getAttendanceHistory = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Admin edit attendance entry (check-in/out times and status)
+// @route   PUT /api/employees/:id/attendance/:attendanceId
+// @access  Private (Admin/with module)
+export const updateAttendanceEntry = asyncHandler(async (req, res) => {
+  const { id, attendanceId } = req.params;
+  const { checkInTime, checkOutTime, status, notes } = req.body;
+  const employee = await Employee.findById(id);
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+  }
+  const entry = employee.attendance.id(attendanceId);
+  if (!entry) {
+    return res.status(404).json({ message: 'Attendance entry not found' });
+  }
+
+  if (checkInTime) entry.checkInTime = new Date(checkInTime);
+  if (checkOutTime) entry.checkOutTime = new Date(checkOutTime);
+  if (typeof notes === 'string') entry.notes = notes;
+
+  // Recompute work hours if both present
+  if (entry.checkInTime && entry.checkOutTime) {
+    const hours = (entry.checkOutTime - entry.checkInTime) / (1000 * 60 * 60);
+    entry.workHours = Math.round(hours * 100) / 100;
+    if (!status) {
+      // Auto-determine unless explicit status provided
+      if (entry.workHours >= 8.25) entry.status = 'present';
+      else if (entry.workHours >= 4) entry.status = 'half_day';
+      else entry.status = 'absent';
+    }
+  }
+  if (status) entry.status = status;
+
+  await employee.save();
+  res.json({ success: true, data: entry, message: 'Attendance entry updated' });
+});
+
 // @desc    Apply for leave
 // @route   POST /api/employees/:id/leave
 // @access  Private
@@ -744,6 +780,36 @@ export const getMySalary = asyncHandler(async (req, res) => {
   const totalDeductions = Object.values(employee.deductions).reduce((sum, val) => sum + (val || 0), 0);
   const netSalary = employee.basicSalary + totalAllowances - totalDeductions;
 
+  // Leave/attendance deduction calculation for current month
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const attendanceThisMonth = (employee.attendance || []).filter(a => {
+    const d = new Date(a.date);
+    return d >= monthStart && d <= monthEnd;
+  });
+  const dailyRate = netSalary / 26; // working days approx
+  let sickApprovedDays = 0;
+  let otherApprovedLeaveDays = 0;
+  // Approved leaves overlapping current month
+  (employee.leaves || []).forEach(l => {
+    if (l.status === 'approved') {
+      const s = new Date(l.startDate);
+      const e = new Date(l.endDate);
+      const from = s < monthStart ? monthStart : s;
+      const to = e > monthEnd ? monthEnd : e;
+      if (from <= to) {
+        const days = Math.ceil((to - from) / (1000*60*60*24)) + 1;
+        if (l.leaveType === 'sick') sickApprovedDays += days; else otherApprovedLeaveDays += days;
+      }
+    }
+  });
+  // First 1 sick day is paid
+  const unpaidSickDays = Math.max(0, sickApprovedDays - 1);
+  // Half-day and absent from attendance
+  const halfDays = attendanceThisMonth.filter(a => a.status === 'half_day').length;
+  const absents = attendanceThisMonth.filter(a => a.status === 'absent').length;
+  const leaveDeductions = Math.round(((unpaidSickDays + otherApprovedLeaveDays + absents) * dailyRate + halfDays * (dailyRate/2)) * 100) / 100;
+
   // Format current month data for frontend
   const currentMonthData = currentSalaryRecord 
     ? {
@@ -757,9 +823,9 @@ export const getMySalary = asyncHandler(async (req, res) => {
     : {
         month: currentMonth,
         status: 'pending',
-        netAmount: netSalary,
+        netAmount: Math.max(0, netSalary - leaveDeductions),
         grossAmount: employee.basicSalary + totalAllowances,
-        deductions: totalDeductions,
+        deductions: totalDeductions + leaveDeductions,
         paymentDate: null
       };
 
@@ -784,10 +850,95 @@ export const getMySalary = asyncHandler(async (req, res) => {
       totalAllowances,
       totalDeductions,
       netSalary,
+      leaveDeductions,
       currentMonth: currentMonthData,
       history: formattedHistory
     }
   });
+});
+
+// ============= HOLD (RETENTION) ==================
+// @desc    Get my hold (retention) summary
+// @route   GET /api/employees/my-hold
+// @access  Private (Employee)
+export const getMyHold = asyncHandler(async (req, res) => {
+  const employee = await Employee.findOne({ userId: req.user._id });
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+
+  const holdPercent = employee.holdPercent || 5;
+  // Calculate accrual from paid salary history
+  const now = new Date();
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - 3, 1); // older than 3 months eligible
+  let totalAccrued = 0;
+  let eligibleAccrued = 0;
+  (employee.salaryHistory || []).forEach(r => {
+    if (r.status === 'paid') {
+      const monthDate = new Date(r.month + '-01');
+      const hold = Math.round((r.netSalary * holdPercent / 100) * 100) / 100;
+      totalAccrued += hold;
+      if (monthDate < cutoff) eligibleAccrued += hold;
+    }
+  });
+
+  const approvedRequests = (employee.holdRequests || []).filter(r => r.status === 'approved');
+  const withdrawn = approvedRequests.reduce((s, r) => s + (r.amount || 0), 0);
+  const pending = (employee.holdRequests || []).filter(r => r.status === 'pending').reduce((s, r) => s + (r.amount || 0), 0);
+
+  const holdBalance = Math.max(0, totalAccrued - withdrawn);
+  const withdrawable = Math.max(0, eligibleAccrued - withdrawn - pending);
+
+  res.json({
+    success: true,
+    data: {
+      holdPercent,
+      totalAccrued: Math.round(totalAccrued * 100) / 100,
+      holdBalance: Math.round(holdBalance * 100) / 100,
+      withdrawable: Math.round(withdrawable * 100) / 100,
+      pendingRequestsAmount: Math.round(pending * 100) / 100,
+      nextEligibleMonth: new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0, 7)
+    }
+  });
+});
+
+// @desc    Request hold withdrawal
+// @route   POST /api/employees/my-hold/request
+// @access  Private (Employee)
+export const requestMyHoldWithdrawal = asyncHandler(async (req, res) => {
+  const { amount, notes } = req.body;
+  const employee = await Employee.findOne({ userId: req.user._id });
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+
+  // Compute withdrawable as in getMyHold
+  const holdPercent = employee.holdPercent || 5;
+  const now = new Date();
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+  let eligibleAccrued = 0;
+  (employee.salaryHistory || []).forEach(r => {
+    if (r.status === 'paid') {
+      const monthDate = new Date(r.month + '-01');
+      const hold = Math.round((r.netSalary * holdPercent / 100) * 100) / 100;
+      if (monthDate < cutoff) eligibleAccrued += hold;
+    }
+  });
+  const withdrawn = (employee.holdRequests || []).filter(r => r.status === 'approved').reduce((s, r) => s + (r.amount || 0), 0);
+  const pending = (employee.holdRequests || []).filter(r => r.status === 'pending').reduce((s, r) => s + (r.amount || 0), 0);
+  const withdrawable = Math.max(0, eligibleAccrued - withdrawn - pending);
+
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ message: 'Invalid amount' });
+  }
+  if (amount > withdrawable) {
+    return res.status(400).json({ message: `Requested amount exceeds withdrawable balance (₹${withdrawable})` });
+  }
+
+  employee.holdRequests.push({ amount, status: 'pending', requestedAt: new Date(), notes: notes || '' });
+  await employee.save();
+
+  res.status(201).json({ success: true, message: 'Withdrawal request submitted for approval' });
 });
 
 // @desc    Get my employee profile

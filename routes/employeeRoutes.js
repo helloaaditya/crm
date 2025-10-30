@@ -9,6 +9,7 @@ import {
   deleteEmployee,
   markAttendance,
   getAttendanceHistory,
+  updateAttendanceEntry,
   applyLeave,
   updateLeaveStatus,
   processSalary,
@@ -29,6 +30,8 @@ import {
   markMyAttendance,
   getMyAttendance,
   getMySalary,
+  getMyHold,
+  requestMyHoldWithdrawal,
   getMyProjects,
   submitMyWorkUpdate,
   applyMyLeave,
@@ -60,6 +63,8 @@ router.get('/my-attendance', getMyAttendance);
 
 // My Salary
 router.get('/my-salary', getMySalary);
+router.get('/my-hold', getMyHold);
+router.post('/my-hold/request', requestMyHoldWithdrawal);
 
 // My Projects
 router.get('/my-projects', getMyProjects);
@@ -107,6 +112,7 @@ router.delete('/reminders/reset', checkPermission('canDelete'), resetAllReminder
 // Attendance (Admin)
 router.post('/:id/attendance', markAttendance);
 router.get('/:id/attendance', getAttendanceHistory);
+router.put('/:id/attendance/:attendanceId', checkPermission('canEdit'), updateAttendanceEntry);
 
 // Leave Management (Admin)
 router.post('/:id/leave', applyLeave);

@@ -6,9 +6,13 @@ import { toast } from 'react-toastify'
 function MySalary() {
   const [salaryData, setSalaryData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [hold, setHold] = useState(null)
+  const [requesting, setRequesting] = useState(false)
+  const [requestAmount, setRequestAmount] = useState('')
 
   useEffect(() => {
     fetchSalary()
+    fetchHold()
   }, [])
 
   const fetchSalary = async () => {
@@ -44,6 +48,33 @@ function MySalary() {
       toast.error('Failed to download payslip');
     }
   };
+
+  const fetchHold = async () => {
+    try {
+      const res = await API.employees.myHold.get()
+      setHold(res.data.data)
+    } catch (e) {
+      console.error('Error fetching hold:', e)
+    }
+  }
+
+  const requestWithdraw = async () => {
+    if (!hold) return
+    const amt = Number(requestAmount)
+    if (!amt || amt <= 0) return toast.error('Enter a valid amount')
+    if (amt > hold.withdrawable) return toast.error(`Max withdrawable is ₹${hold.withdrawable}`)
+    try {
+      setRequesting(true)
+      await API.employees.myHold.request({ amount: amt })
+      toast.success('Withdrawal request submitted')
+      setRequestAmount('')
+      fetchHold()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to submit request')
+    } finally {
+      setRequesting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -151,6 +182,54 @@ function MySalary() {
           </div>
         </div>
       </div>
+
+      {/* Hold (Retention) */}
+      {hold && (
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6 border-b bg-blue-50">
+            <h3 className="text-lg font-semibold text-gray-800">Salary Hold (Retention)</h3>
+            <p className="text-sm text-gray-600">{hold.holdPercent}% of paid salary is held. Withdrawable after 3 months.</p>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Total Accrued</p>
+              <p className="text-2xl font-bold">₹{hold.totalAccrued?.toLocaleString()}</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Current Balance</p>
+              <p className="text-2xl font-bold">₹{hold.holdBalance?.toLocaleString()}</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Withdrawable Now</p>
+              <p className="text-2xl font-bold text-green-700">₹{hold.withdrawable?.toLocaleString()}</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Pending Requests</p>
+              <p className="text-2xl font-bold text-orange-700">₹{hold.pendingRequestsAmount?.toLocaleString()}</p>
+            </div>
+            <div className="md:col-span-4 flex flex-col sm:flex-row gap-2 items-end">
+              <div className="flex-1">
+                <label className="block text-sm text-gray-700 mb-1">Request Withdrawal Amount</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={requestAmount}
+                  onChange={(e) => setRequestAmount(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder={`Max ₹${hold.withdrawable}`}
+                />
+              </div>
+              <button
+                onClick={requestWithdraw}
+                disabled={requesting || (Number(requestAmount) || 0) <= 0}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+              >
+                {requesting ? 'Submitting...' : 'Request Withdrawal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Current Month Status */}
       {salaryData.currentMonth && (
