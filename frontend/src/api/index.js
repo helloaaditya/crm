@@ -125,6 +125,12 @@ export const employeeAPI = {
   getSalaryHistory: (id) => api.get(`/employees/${id}/salary-history`),
   getSalaryPreview: (id, month) => api.get(`/employees/${id}/salary-preview`, { params: { month } }),
   generatePayslip: (id, month) => api.get(`/employees/${id}/payslip/${month}`),
+  // Hold Requests (admin)
+  holdRequests: {
+    list: (params) => api.get('/employees/hold-requests', { params }),
+    approve: (requestId, data) => api.put(`/employees/hold-requests/${requestId}/approve`, data),
+    reject: (requestId, data) => api.put(`/employees/hold-requests/${requestId}/reject`, data)
+  },
   
   // Work Updates
   addWorkUpdate: (id, data) => api.post(`/employees/${id}/work-update`, data),

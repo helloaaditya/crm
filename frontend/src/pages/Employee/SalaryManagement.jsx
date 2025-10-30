@@ -9,6 +9,8 @@ const SalaryManagement = () => {
   const [showModal, setShowModal] = useState(false)
   const [salaryHistory, setSalaryHistory] = useState([])
   const [preview, setPreview] = useState(null)
+  const [holdRequests, setHoldRequests] = useState([])
+  const [holdLoading, setHoldLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
@@ -30,6 +32,7 @@ const SalaryManagement = () => {
 
   useEffect(() => {
     fetchEmployees()
+    fetchHoldRequests()
   }, [])
 
   const fetchEmployees = async () => {
@@ -106,6 +109,38 @@ const SalaryManagement = () => {
     }
   }, [formData.month])
 
+  const fetchHoldRequests = async (status = 'pending') => {
+    try {
+      setHoldLoading(true)
+      const res = await API.employees.holdRequests.list({ status })
+      setHoldRequests(res.data.data || [])
+    } catch (e) {
+      console.error('Error fetching hold requests:', e)
+    } finally {
+      setHoldLoading(false)
+    }
+  }
+
+  const approveHold = async (reqId) => {
+    try {
+      await API.employees.holdRequests.approve(reqId, { paymentMethod: 'bank_transfer' })
+      toast.success('Withdrawal approved')
+      fetchHoldRequests()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Approve failed')
+    }
+  }
+
+  const rejectHold = async (reqId) => {
+    try {
+      await API.employees.holdRequests.reject(reqId, {})
+      toast.success('Withdrawal rejected')
+      fetchHoldRequests()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Reject failed')
+    }
+  }
+
   const handleUpdateSalaryStructure = async () => {
     if (!selectedEmployee) return
 
@@ -151,6 +186,52 @@ const SalaryManagement = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Hold Requests (Admin) */}
+        <div className="lg:col-span-3">
+          <div className="bg-white rounded-lg shadow mb-6">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800">Pending Hold Withdrawal Requests</h2>
+              <button onClick={() => fetchHoldRequests()} className="text-sm text-primary hover:text-blue-700">Refresh</button>
+            </div>
+            <div className="p-6">
+              {holdLoading ? (
+                <p className="text-center text-gray-600">Loading...</p>
+              ) : holdRequests.length === 0 ? (
+                <p className="text-center text-gray-600">No pending requests</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4">Employee</th>
+                        <th className="text-left py-3 px-4">Amount</th>
+                        <th className="text-left py-3 px-4">Requested</th>
+                        <th className="text-left py-3 px-4">Hold Balance</th>
+                        <th className="text-left py-3 px-4">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {holdRequests.map((r) => (
+                        <tr key={r._id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-gray-800">{r.employeeName} ({r.empCode})</div>
+                          </td>
+                          <td className="py-3 px-4">₹{Number(r.amount).toLocaleString()}</td>
+                          <td className="py-3 px-4">{r.requestedAt ? new Date(r.requestedAt).toLocaleDateString() : '-'}</td>
+                          <td className="py-3 px-4">₹{Number(r.holdBalanceAtFetch || 0).toLocaleString()}</td>
+                          <td className="py-3 px-4 space-x-2">
+                            <button onClick={() => approveHold(r._id)} className="px-3 py-1 bg-green-600 text-white rounded">Approve</button>
+                            <button onClick={() => rejectHold(r._id)} className="px-3 py-1 bg-red-600 text-white rounded">Reject</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
         {/* Employee List */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow">

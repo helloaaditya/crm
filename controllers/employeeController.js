@@ -1367,6 +1367,79 @@ export const resetMyReminders = asyncHandler(async (req, res) => {
   });
 });
 
+// ============= HOLD REQUESTS (ADMIN) ==================
+// @desc    List hold requests (flattened) with optional status filter
+// @route   GET /api/employees/hold-requests
+// @access  Private (Admin/accounts)
+export const listHoldRequests = asyncHandler(async (req, res) => {
+  const { status } = req.query;
+  const employees = await Employee.find({}).select('name employeeId holdRequests holdBalance');
+  const all = [];
+  employees.forEach(emp => {
+    (emp.holdRequests || []).forEach(r => {
+      if (!status || r.status === status) {
+        all.push({
+          _id: r._id,
+          employeeId: emp._id,
+          employeeName: emp.name,
+          empCode: emp.employeeId,
+          amount: r.amount,
+          status: r.status,
+          requestedAt: r.requestedAt,
+          processedAt: r.processedAt,
+          notes: r.notes,
+          holdBalanceAtFetch: emp.holdBalance || 0
+        });
+      }
+    });
+  });
+  // Latest first
+  all.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+  res.json({ success: true, data: all });
+});
+
+// @desc    Approve a hold withdrawal request
+// @route   PUT /api/employees/hold-requests/:requestId/approve
+// @access  Private (Admin/accounts)
+export const approveHoldRequest = asyncHandler(async (req, res) => {
+  const { requestId } = req.params;
+  const { paymentMethod, referenceNumber, notes } = req.body;
+
+  const employee = await Employee.findOne({ 'holdRequests._id': requestId });
+  if (!employee) return res.status(404).json({ message: 'Request not found' });
+  const request = employee.holdRequests.id(requestId);
+  if (request.status !== 'pending') return res.status(400).json({ message: 'Request not pending' });
+  const amount = request.amount || 0;
+  if ((employee.holdBalance || 0) < amount) return res.status(400).json({ message: 'Insufficient hold balance' });
+
+  // Deduct balance and mark approved
+  employee.holdBalance = Math.max(0, (employee.holdBalance || 0) - amount);
+  request.status = 'approved';
+  request.processedAt = new Date();
+  if (notes) request.notes = notes;
+  await employee.save();
+
+  // For now, record meta in response (Payment creation can be wired later if needed)
+  res.json({ success: true, message: 'Withdrawal approved', data: { employeeId: employee._id, amount, paymentMethod, referenceNumber, holdBalance: employee.holdBalance } });
+});
+
+// @desc    Reject a hold withdrawal request
+// @route   PUT /api/employees/hold-requests/:requestId/reject
+// @access  Private (Admin/accounts)
+export const rejectHoldRequest = asyncHandler(async (req, res) => {
+  const { requestId } = req.params;
+  const { notes } = req.body;
+  const employee = await Employee.findOne({ 'holdRequests._id': requestId });
+  if (!employee) return res.status(404).json({ message: 'Request not found' });
+  const request = employee.holdRequests.id(requestId);
+  if (request.status !== 'pending') return res.status(400).json({ message: 'Request not pending' });
+  request.status = 'rejected';
+  request.processedAt = new Date();
+  if (notes) request.notes = notes;
+  await employee.save();
+  res.json({ success: true, message: 'Withdrawal rejected' });
+});
+
 // @desc    Get human-readable address from coordinates
 // @route   GET /api/employees/geocode
 // @access  Private

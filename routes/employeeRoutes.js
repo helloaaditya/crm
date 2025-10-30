@@ -41,7 +41,10 @@ import {
   createReminder,
   updateReminder,
   resetMyReminders,
-  resetAllReminders
+  resetAllReminders,
+  listHoldRequests,
+  approveHoldRequest,
+  rejectHoldRequest
 } from '../controllers/employeeController.js';
 
 const router = express.Router();
@@ -124,6 +127,11 @@ router.post('/:id/salary', checkPermission('canHandleAccounts'), processSalary);
 router.get('/:id/salary-history', getSalaryHistory);
 router.get('/:id/salary-preview', getSalaryPreview);
 router.get('/:id/payslip/:month', generatePayslip);
+
+// Hold Requests (Admin)
+router.get('/hold-requests', checkPermission('canHandleAccounts'), listHoldRequests);
+router.put('/hold-requests/:requestId/approve', checkPermission('canHandleAccounts'), approveHoldRequest);
+router.put('/hold-requests/:requestId/reject', checkPermission('canHandleAccounts'), rejectHoldRequest);
 
 // Work Updates (Admin)
 router.post('/:id/work-update', addWorkUpdate);
