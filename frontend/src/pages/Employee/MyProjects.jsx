@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { FiCheckCircle, FiClock, FiUser, FiFileText, FiCalendar, FiSearch, FiFilter, FiX, FiSend, FiImage, FiFile, FiMic, FiMicOff, FiTrash2 } from 'react-icons/fi'
+import { useState, useEffect, useMemo } from 'react'
+import { FiCheckCircle, FiClock, FiUser, FiFileText, FiCalendar, FiSearch, FiFilter, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
@@ -9,10 +9,6 @@ const MyProjects = () => {
   const [loading, setLoading] = useState(true)
   const [completingProject, setCompletingProject] = useState(null)
   const { user } = useAuth()
-  const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [selectedProjectId, setSelectedProjectId] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [updateForm, setUpdateForm] = useState({ description: '', images: [], audioNotes: [], videoRecordings: [] })
   
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState('')
@@ -44,42 +40,7 @@ const MyProjects = () => {
     }
   }
 
-  const openUpdateModal = (projectId) => {
-    setSelectedProjectId(projectId)
-    setShowUpdateModal(true)
-  }
-
-  const handleUpload = async (e, type) => {
-    const files = Array.from(e.target.files)
-    if (files.length === 0) return
-    try {
-      const fd = new FormData()
-      files.forEach(f => fd.append('files', f))
-      fd.append('type', type)
-      const res = await API.employees.uploadWorkUpdateFiles(fd)
-      const uploadedUrls = res.data.data.map(f => f.url)
-      setUpdateForm(prev => ({ ...prev, [type]: [...prev[type], ...uploadedUrls] }))
-    } catch (err) {
-      toast.error('File upload failed')
-    }
-  }
-
-  const submitUpdate = async (e) => {
-    e.preventDefault()
-    if (!selectedProjectId) return toast.error('No project selected')
-    if (!updateForm.description.trim()) return toast.error('Enter description')
-    try {
-      setSubmitting(true)
-      await API.employees.myWorkUpdate({ projectId: selectedProjectId, ...updateForm })
-      toast.success('Work update submitted')
-      setShowUpdateModal(false)
-      setUpdateForm({ description: '', images: [], audioNotes: [], videoRecordings: [] })
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit')
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  
 
   const handleMarkComplete = async (projectId) => {
     if (!window.confirm('Are you sure you want to mark this project as complete?')) return
@@ -194,6 +155,7 @@ const MyProjects = () => {
   }
 
   return (
+    <>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -389,12 +351,7 @@ const MyProjects = () => {
                           </>
                         )}
                       </button>
-                    <button
-                      onClick={() => openUpdateModal(project.project?._id)}
-                      className="w-full mt-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center justify-center"
-                    >
-                      <FiSend className="mr-2" /> Submit Update
-                    </button>
+                    
                     </div>
                   )}
                 </div>
@@ -421,71 +378,8 @@ const MyProjects = () => {
         )}
       </div>
     </div>
+    </>
   )
 }
 
 export default MyProjects
-
-// Submit Update Modal
-// Simple modal for sending work update
-// Placed at end to avoid layout changes
-function UpdateModal({ open, onClose, onSubmit, form, setForm, onUpload, submitting, projectId }) {
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Submit Work Update</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><FiX /></button>
-        </div>
-        <form onSubmit={onSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Project</label>
-              <input readOnly value={projectId} className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Work Description <span className="text-red-500">*</span></label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-                rows="5"
-                placeholder="Describe the work completed..."
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Upload Images</label>
-              <div className="flex items-center gap-2">
-                <label className="flex-1 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-blue-400">
-                  <FiImage className="inline mr-2" />
-                  <span className="text-sm text-gray-600">Choose images...</span>
-                  <input type="file" accept="image/*" multiple onChange={(e)=>onUpload(e,'images')} className="hidden" />
-                </label>
-                {form.images.length > 0 && <span className="text-sm text-green-600">{form.images.length} file(s)</span>}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Upload Videos</label>
-              <div className="flex items-center gap-2">
-                <label className="flex-1 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-blue-400">
-                  <FiFile className="inline mr-2" />
-                  <span className="text-sm text-gray-600">Choose videos...</span>
-                  <input type="file" accept="video/*" multiple onChange={(e)=>onUpload(e,'videoRecordings')} className="hidden" />
-                </label>
-                {form.videoRecordings.length > 0 && <span className="text-sm text-green-600">{form.videoRecordings.length} file(s)</span>}
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 mt-6">
-            <button type="submit" disabled={submitting} className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 flex items-center justify-center">
-              <FiSend className="mr-2" /> {submitting ? 'Submitting...' : 'Submit Update'}
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}

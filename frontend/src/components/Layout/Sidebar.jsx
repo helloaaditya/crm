@@ -38,6 +38,7 @@ const Sidebar = () => {
     { name: 'My Projects', icon: FiBriefcase, path: '/my-projects', module: 'all', employeeOnly: true },
     { name: 'My Salary', icon: FiDollarSign, path: '/my-salary', module: 'all', employeeOnly: true },
     { name: 'My Leave', icon: FiCalendar, path: '/my-leave', module: 'all', employeeOnly: true },
+    { name: 'Work Updates', icon: FiSend, path: '/work-updates', module: 'all', employeeOnly: true },
     { name: 'Calendar', icon: FiBell, path: '/calendar-reminders', module: 'all', notificationCount: counts.reminders },
     
     // Accounts Section
