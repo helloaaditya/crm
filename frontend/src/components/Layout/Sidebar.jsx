@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard 
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase 
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -45,6 +45,8 @@ const Sidebar = () => {
     { name: 'Accounts', icon: FiKey, path: '/accounts', module: 'all', adminOnly: true },
     // Expenses - main_admin only
     { name: 'Expenses', icon: FiCreditCard, path: '/expenses', module: 'all', mainAdminOnly: true },
+    // Bulk Import - admin/main_admin only
+    { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
     
     // Common
     { name: 'Settings', icon: FiSettings, path: '/settings', module: 'all'},

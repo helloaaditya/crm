@@ -46,6 +46,7 @@ import {
   approveHoldRequest,
   rejectHoldRequest
 } from '../controllers/employeeController.js';
+import { employeeBulkSample, employeeBulkUpload } from '../controllers/importController.js';
 
 const router = express.Router();
 
@@ -103,6 +104,10 @@ router.use(moduleAccess('employee', 'all'));
 router.get('/hold-requests', checkPermission('canHandleAccounts'), listHoldRequests);
 router.put('/hold-requests/:requestId/approve', checkPermission('canHandleAccounts'), approveHoldRequest);
 router.put('/hold-requests/:requestId/reject', checkPermission('canHandleAccounts'), rejectHoldRequest);
+
+// Bulk Import (Admin) - before any '/:id' routes
+router.get('/bulk/sample', checkPermission('canCreate'), employeeBulkSample);
+router.post('/bulk/upload', checkPermission('canCreate'), uploadMemory.single('file'), employeeBulkUpload);
 
 // Employees
 router.get('/', getEmployees);

@@ -18,6 +18,7 @@ import Accounts from './pages/Accounts'
 import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
 import Expenses from './pages/Expenses'
+import BulkImport from './pages/BulkImport'
 
 // Employee Self-Service Pages
 import MyDashboard from './pages/Employee/MyDashboard'
@@ -87,6 +88,8 @@ function App() {
           <Route path="accounts" element={<Accounts />} />
           {/* Expenses (Main Admin Only UI; menu restricts visibility) */}
           <Route path="expenses" element={<Expenses />} />
+          {/* Bulk Import (Admin Only via menu visibility) */}
+          <Route path="bulk-import" element={<BulkImport />} />
           
           {/* Employee Self-Service Routes */}
           <Route path="my-dashboard" element={<MyDashboard />} />

@@ -18,7 +18,11 @@ export const customerAPI = {
   create: (data) => api.post('/customers', data),
   update: (id, data) => api.put(`/customers/${id}`, data),
   delete: (id) => api.delete(`/customers/${id}`),
-  getStats: () => api.get('/customers/stats')
+  getStats: () => api.get('/customers/stats'),
+  bulk: {
+    sample: () => api.get('/customers/bulk/sample', { responseType: 'text' }),
+    upload: (formData) => api.post('/customers/bulk/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+  }
 };
 
 // ============= PROJECTS =============
@@ -116,6 +120,10 @@ export const employeeAPI = {
   markAttendance: (id, data) => api.post(`/employees/${id}/attendance`, data),
   getAttendance: (id, params) => api.get(`/employees/${id}/attendance`, { params }),
   updateAttendance: (id, attendanceId, data) => api.put(`/employees/${id}/attendance/${attendanceId}`, data),
+  bulk: {
+    sample: () => api.get('/employees/bulk/sample', { responseType: 'text' }),
+    upload: (formData) => api.post('/employees/bulk/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
   
   // Leave
   applyLeave: (id, data) => api.post(`/employees/${id}/leave`, data),
