@@ -178,6 +178,13 @@ const Attendance = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ]
 
+  const formatCoordinates = (coords) => {
+    if (!Array.isArray(coords) || coords.length < 2) return null
+    const [lng, lat] = coords
+    if (typeof lat !== 'number' || typeof lng !== 'number' || !isFinite(lat) || !isFinite(lng)) return null
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+  }
+
   return (
     <div className="p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
@@ -393,12 +400,10 @@ const Attendance = () => {
                               <FiMapPin className="mr-1" size={14} />
                               <span className="truncate max-w-xs">{record.checkInLocation.address}</span>
                             </div>
-                          ) : record.checkInLocation?.coordinates ? (
+                          ) : formatCoordinates(record.checkInLocation?.coordinates) ? (
                             <div className="flex items-center text-sm text-gray-600">
                               <FiMapPin className="mr-1" size={14} />
-                              <span className="truncate max-w-xs">
-                                {record.checkInLocation.coordinates[1].toFixed(4)}, {record.checkInLocation.coordinates[0].toFixed(4)}
-                              </span>
+                              <span className="truncate max-w-xs">{formatCoordinates(record.checkInLocation.coordinates)}</span>
                             </div>
                           ) : '-'}
                         </td>

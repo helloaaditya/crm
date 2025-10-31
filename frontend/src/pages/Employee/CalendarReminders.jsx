@@ -12,6 +12,7 @@ function CalendarReminders() {
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [birthdays, setBirthdays] = useState([]) // For storing employee birthdays
+  const [todayBirthdays, setTodayBirthdays] = useState([]) // For storing today's birthdays
   const [formData, setFormData] = useState({
     title: '',
     type: 'vendor_payment',
@@ -51,10 +52,12 @@ function CalendarReminders() {
       if (!user) return;
       
       const today = new Date()
+      today.setHours(0, 0, 0, 0) // Reset time to start of day
       const next30Days = new Date()
       next30Days.setDate(today.getDate() + 30)
+      next30Days.setHours(23, 59, 59, 999) // End of day
       
-      let upcomingBirthdays = [];
+      let allBirthdays = [];
       
       // Check if user is admin
       const isAdmin = user && (user.role === 'admin' || user.role === 'main_admin');
@@ -65,7 +68,7 @@ function CalendarReminders() {
           const response = await API.employees.getAll({ limit: 1000 })
           const employees = response.data.data
           
-          upcomingBirthdays = employees
+          allBirthdays = employees
             .filter(employee => employee.dateOfBirth)
             .map(employee => {
               const dob = new Date(employee.dateOfBirth)
@@ -84,17 +87,32 @@ function CalendarReminders() {
         } catch (adminError) {
           console.error('Error fetching all employees for birthdays:', adminError)
           // Fall back to current user's birthday only
-          upcomingBirthdays = await getCurrentUserBirthday(today, next30Days);
+          allBirthdays = await getCurrentUserBirthday(today, next30Days);
         }
       } else {
         // For regular employees, only show their own birthday
-        upcomingBirthdays = await getCurrentUserBirthday(today, next30Days);
+        allBirthdays = await getCurrentUserBirthday(today, next30Days);
       }
       
-      setBirthdays(upcomingBirthdays)
+      // Separate today's birthdays from upcoming birthdays
+      const todayBday = allBirthdays.filter(b => {
+        const bday = new Date(b.birthdayThisYear)
+        bday.setHours(0, 0, 0, 0)
+        return bday.getTime() === today.getTime()
+      })
+      
+      const upcomingBday = allBirthdays.filter(b => {
+        const bday = new Date(b.birthdayThisYear)
+        bday.setHours(0, 0, 0, 0)
+        return bday.getTime() > today.getTime()
+      })
+      
+      setTodayBirthdays(todayBday)
+      setBirthdays(upcomingBday)
     } catch (error) {
       console.error('Error fetching birthdays:', error)
       // Don't show error to user as this is not critical
+      setTodayBirthdays([])
       setBirthdays([])
     }
   }
@@ -259,7 +277,7 @@ function CalendarReminders() {
     r.status === 'pending' && new Date(r.date) < new Date()
   )
 
-  // Combine reminders and birthdays for the upcoming section
+  // Combine reminders and upcoming birthdays (excluding today's birthdays which are shown separately)
   const allUpcomingItems = [
     ...upcomingReminders.map(r => ({ ...r, isBirthday: false })),
     ...birthdays.map(b => ({
@@ -275,6 +293,21 @@ function CalendarReminders() {
       googleMeetLink: '' // Birthdays don't have a preset link
     }))
   ].sort((a, b) => new Date(a.date) - new Date(b.date))
+  
+  // Format today's birthdays for display
+  const todayBirthdayItems = todayBirthdays.map(b => ({
+    _id: `birthday-today-${b._id}`,
+    title: `${b.name}'s Birthday`,
+    type: 'employee_birthday',
+    date: b.birthdayThisYear,
+    description: `Today is ${b.name}'s birthday! 🎉`,
+    status: 'pending',
+    priority: 'high',
+    isBirthday: true,
+    isToday: true,
+    employee: b,
+    googleMeetLink: ''
+  }))
 
   // Calculate the actual count of pending items (excluding birthdays unless filtering)
   const pendingRemindersCount = reminders.filter(r => r.status === 'pending').length;
@@ -326,6 +359,17 @@ function CalendarReminders() {
             <FiClock className="text-blue-500" size={20} />
           </div>
         </div>
+        {todayBirthdays.length > 0 && (
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-white opacity-90">Today's Birthdays</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{todayBirthdays.length}</p>
+              </div>
+              <span className="text-3xl">🎂</span>
+            </div>
+          </div>
+        )}
         <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -378,6 +422,37 @@ function CalendarReminders() {
         </div>
       </div>
 
+      {/* Today's Birthdays - Prominent Display */}
+      {todayBirthdayItems.length > 0 && (
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg p-4 sm:p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <span className="text-3xl mr-3">🎂</span>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">
+              Today's Birthdays ({todayBirthdayItems.length})
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {todayBirthdayItems.map((item) => (
+              <div
+                key={item._id}
+                className="bg-white bg-opacity-95 rounded-lg p-4 border-2 border-white"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🎉</span>
+                    <h3 className="font-semibold text-gray-800">{item.employee.name}</h3>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                {item.employee.employeeId && (
+                  <p className="text-xs text-gray-500">ID: {item.employee.employeeId}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Overdue Alerts */}
       {overdueReminders.length > 0 && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
@@ -390,21 +465,31 @@ function CalendarReminders() {
         </div>
       )}
 
-      {/* Reminders List */}
+      {/* Upcoming Reminders & Birthdays */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6">
           {loading ? (
             <p className="text-center text-gray-600">Loading reminders...</p>
-          ) : allUpcomingItems.length === 0 ? (
-            <p className="text-center text-gray-600">No upcoming reminders</p>
+          ) : allUpcomingItems.length === 0 && todayBirthdayItems.length === 0 ? (
+            <p className="text-center text-gray-600">No upcoming reminders or birthdays</p>
           ) : (
             <div className="space-y-4">
+              {allUpcomingItems.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <FiClock className="mr-2 text-blue-500" />
+                    Upcoming Reminders & Birthdays
+                  </h3>
+                </div>
+              )}
               {allUpcomingItems.map((item) => (
                 <div
                   key={item._id}
                   className={`p-4 rounded-lg border-2 ${
                     new Date(item.date) < new Date() && item.status === 'pending'
                       ? 'border-red-300 bg-red-50'
+                      : item.isBirthday
+                      ? 'border-purple-200 bg-purple-50'
                       : 'border-gray-200'
                   }`}
                 >

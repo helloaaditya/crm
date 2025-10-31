@@ -87,9 +87,6 @@ const Login = () => {
                 <input type="checkbox" className="mr-2" />
                 <span className="text-sm text-gray-600">Remember me</span>
               </label>
-              <a href="#" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </a>
             </div>
 
             {/* Submit Button */}
@@ -111,8 +108,8 @@ const Login = () => {
 
           {/* Demo Credentials */}
           <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 font-medium mb-2">Demo Credentials:</p>
-            <p className="text-xs text-gray-500">Username: admin</p>
+            <p className="text-xs text-gray-600 font-medium mb-2">Demo Credentials for Admin:</p>
+            <p className="text-xs text-gray-500">Username: Sanjana Enterprises</p>
             <p className="text-xs text-gray-500">Password: admin123</p>
           </div>
         </div>
