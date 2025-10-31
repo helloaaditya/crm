@@ -17,6 +17,7 @@ import Salary from './pages/Employee/SalaryManagement'
 import Accounts from './pages/Accounts'
 import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
+import Expenses from './pages/Expenses'
 
 // Employee Self-Service Pages
 import MyDashboard from './pages/Employee/MyDashboard'
@@ -84,6 +85,8 @@ function App() {
           
           {/* Accounts Route (Admin Only) */}
           <Route path="accounts" element={<Accounts />} />
+          {/* Expenses (Main Admin Only UI; menu restricts visibility) */}
+          <Route path="expenses" element={<Expenses />} />
           
           {/* Employee Self-Service Routes */}
           <Route path="my-dashboard" element={<MyDashboard />} />

@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool 
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard 
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -43,6 +43,8 @@ const Sidebar = () => {
     
     // Accounts Section
     { name: 'Accounts', icon: FiKey, path: '/accounts', module: 'all', adminOnly: true },
+    // Expenses - main_admin only
+    { name: 'Expenses', icon: FiCreditCard, path: '/expenses', module: 'all', mainAdminOnly: true },
     
     // Common
     { name: 'Settings', icon: FiSettings, path: '/settings', module: 'all'},
@@ -51,6 +53,10 @@ const Sidebar = () => {
   // Filter menu items based on user module access
   const isAdmin = user?.role === 'admin' || user?.role === 'main_admin'
   const filteredMenuItems = menuItems.filter(item => {
+    // Main admin only items
+    if (item.mainAdminOnly && user?.role !== 'main_admin') {
+      return false
+    }
     // Check admin-only items
     if (item.adminOnly && !isAdmin) {
       return false

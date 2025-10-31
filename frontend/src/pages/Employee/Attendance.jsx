@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
-import { FiCalendar, FiCheckCircle, FiXCircle, FiClock, FiMapPin, FiFilter, FiDownload } from 'react-icons/fi'
+import { FiCalendar, FiCheckCircle, FiXCircle, FiClock, FiMapPin, FiFilter, FiDownload, FiEdit, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
+import { useAuth } from '../../context/AuthContext'
 
 const Attendance = () => {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin' || user?.role === 'main_admin'
   const [employees, setEmployees] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState('')
   const [attendance, setAttendance] = useState([])
@@ -11,6 +14,8 @@ const Attendance = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [filterStatus, setFilterStatus] = useState('all')
+  const [editingEntry, setEditingEntry] = useState(null)
+  const [editForm, setEditForm] = useState({ checkInTime: '', checkOutTime: '', status: '', notes: '' })
 
   useEffect(() => {
     fetchEmployees()
@@ -66,6 +71,41 @@ const Attendance = () => {
       fetchAttendance()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to mark attendance')
+    }
+  }
+
+  const openEditModal = (entry) => {
+    setEditingEntry(entry)
+    const checkInTimeStr = entry.checkInTime ? new Date(entry.checkInTime).toISOString().slice(0, 16) : ''
+    const checkOutTimeStr = entry.checkOutTime ? new Date(entry.checkOutTime).toISOString().slice(0, 16) : ''
+    setEditForm({
+      checkInTime: checkInTimeStr,
+      checkOutTime: checkOutTimeStr,
+      status: entry.status || '',
+      notes: entry.notes || ''
+    })
+  }
+
+  const closeEditModal = () => {
+    setEditingEntry(null)
+    setEditForm({ checkInTime: '', checkOutTime: '', status: '', notes: '' })
+  }
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault()
+    if (!selectedEmployee || !editingEntry) return
+    try {
+      const payload = {}
+      if (editForm.checkInTime) payload.checkInTime = new Date(editForm.checkInTime).toISOString()
+      if (editForm.checkOutTime) payload.checkOutTime = new Date(editForm.checkOutTime).toISOString()
+      if (editForm.status) payload.status = editForm.status
+      if (editForm.notes !== undefined) payload.notes = editForm.notes
+      await API.employees.updateAttendance(selectedEmployee, editingEntry._id, payload)
+      toast.success('Attendance updated successfully')
+      closeEditModal()
+      fetchAttendance()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update attendance')
     }
   }
 
@@ -321,6 +361,7 @@ const Attendance = () => {
                       <th className="text-left py-3 px-4">Work Hours</th>
                       <th className="text-left py-3 px-4">Location</th>
                       <th className="text-left py-3 px-4">Notes</th>
+                      {isAdmin && <th className="text-left py-3 px-4">Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -364,6 +405,17 @@ const Attendance = () => {
                         <td className="py-3 px-4 text-sm text-gray-600">
                           {record.notes || '-'}
                         </td>
+                        {isAdmin && (
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => openEditModal(record)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Edit Attendance"
+                            >
+                              <FiEdit size={16} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -420,6 +472,17 @@ const Attendance = () => {
                         </div>
                       )}
                     </div>
+                    {isAdmin && (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          onClick={() => openEditModal(record)}
+                          className="flex items-center px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                        >
+                          <FiEdit className="mr-1" size={14} />
+                          Edit
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -427,6 +490,96 @@ const Attendance = () => {
           )}
         </div>
       </div>
+
+      {/* Edit Attendance Modal */}
+      {editingEntry && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Attendance</h2>
+              <button
+                onClick={closeEditModal}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Check In Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editForm.checkInTime}
+                  onChange={(e) => setEditForm({ ...editForm, checkInTime: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-44"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Check Out Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editForm.checkOutTime}
+                  onChange={(e) => setEditForm({ ...editForm, checkOutTime: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-44"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-44"
+                >
+                  <option value="">Auto (based on hours)</option>
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="half_day">Half Day</option>
+                  <option value="leave">Leave</option>
+                  <option value="holiday">Holiday</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-44"
+                  placeholder="Optional notes..."
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 min-h-44"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 min-h-44"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

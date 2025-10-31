@@ -98,10 +98,10 @@ export const login = asyncHandler(async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
-  // Find user and include password
-  const user = await User.findOne({ email }).select('+password');
+  // Find user by username (name) or email and include password
+  const user = await User.findOne({ $or: [ { email: username }, { name: username } ] }).select('+password');
 
   if (!user) {
     return res.status(401).json({ message: 'Invalid credentials' });

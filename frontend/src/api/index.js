@@ -115,6 +115,7 @@ export const employeeAPI = {
   // Attendance
   markAttendance: (id, data) => api.post(`/employees/${id}/attendance`, data),
   getAttendance: (id, params) => api.get(`/employees/${id}/attendance`, { params }),
+  updateAttendance: (id, attendanceId, data) => api.put(`/employees/${id}/attendance/${attendanceId}`, data),
   
   // Leave
   applyLeave: (id, data) => api.post(`/employees/${id}/leave`, data),
