@@ -28,17 +28,17 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter (allow common media + docs)
+// File filter (allow common media + docs + CSV/Excel for bulk import)
 const fileFilter = (req, file, cb) => {
   // Allowed file types
-  const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|m4a|m4b|aac|oga|ogg|3gp|3gpp|mp4|webm|avi|pdf|doc|docx|xls|xlsx|txt/;
+  const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|m4a|m4b|aac|oga|ogg|3gp|3gpp|mp4|webm|avi|pdf|doc|docx|xls|xlsx|txt|csv|vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
   if (extname && mimetype) {
     return cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only images, PDFs, and documents are allowed.'));
+    cb(new Error('Invalid file type. Only images, PDFs, documents, and CSV/Excel are allowed.'));
   }
 };
 

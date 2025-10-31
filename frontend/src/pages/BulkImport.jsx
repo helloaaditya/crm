@@ -118,7 +118,7 @@ const BulkImport = () => {
               <div className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center justify-center cursor-pointer disabled:opacity-50">
                 <FiUpload className="mr-2" /> {uploading ? 'Uploading...' : 'Upload CSV'}
               </div>
-              <input type="file" accept=".csv" onChange={handleUpload} className="hidden" disabled={uploading} />
+              <input type="file" accept=".csv,.xls,.xlsx" onChange={handleUpload} className="hidden" disabled={uploading} />
             </label>
           </div>
         </div>
