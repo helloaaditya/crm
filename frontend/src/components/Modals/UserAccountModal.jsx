@@ -118,7 +118,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
       if (formData.modules.includes('all')) {
         submitData.module = 'all';
       } else if (formData.modules.includes('none') || formData.modules.length === 0) {
-        submitData.module = 'all'; // Default to 'all' instead of 'none' for better access
+        submitData.module = 'none'; // Default to 'none' for self-service only access
       } else {
         // For multiple specific modules, join them with commas
         submitData.module = formData.modules.join(',');
@@ -157,8 +157,8 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
       const newModules = [...prev.modules].filter(m => m !== 'all' && m !== 'none')
       if (newModules.includes(moduleValue)) {
         const filtered = newModules.filter(m => m !== moduleValue)
-        // If nothing left after removing, default to all instead of none
-        return { ...prev, modules: filtered.length === 0 ? ['all'] : filtered }
+        // If nothing left after removing, default to none (self-service only)
+        return { ...prev, modules: filtered.length === 0 ? [] : filtered }
       } else {
         return { ...prev, modules: [...newModules, moduleValue] }
       }
