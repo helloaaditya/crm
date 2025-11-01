@@ -78,36 +78,23 @@ function WorkUpdates() {
       // Use ref for immediate access (state might not be updated yet)
       const currentAudioBlob = audioBlobRef.current || audioBlob
       
-      console.log('🎤 AUDIO CHECK - audioBlob from ref:', !!audioBlobRef.current)
-      console.log('🎤 AUDIO CHECK - audioBlob from state:', !!audioBlob)
-      console.log('🎤 AUDIO CHECK - using blob:', !!currentAudioBlob)
-      console.log('🎤 AUDIO CHECK - blob type:', currentAudioBlob?.type)
-      console.log('🎤 AUDIO CHECK - blob size:', currentAudioBlob?.size)
-      
       if (currentAudioBlob) {
-        console.log('✅ Starting audio upload to S3...')
         const audioFormData = new FormData()
         // Convert blob to file with proper name and type
         const audioFile = new File([currentAudioBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' })
         audioFormData.append('files', audioFile)
         
-        console.log('📤 Uploading audio file:', audioFile.name, 'Size:', audioFile.size)
-        
         try {
           const uploadResponse = await API.employees.uploadWorkUpdateFiles(audioFormData)
-          console.log('✅ Upload response:', uploadResponse.data)
           const uploadedFiles = uploadResponse.data.data || []
           uploadedAudioUrls = [...uploadedAudioUrls, ...uploadedFiles.map(f => f.url)]
-          console.log('✅ S3 URLs:', uploadedAudioUrls)
-          toast.success('Audio uploaded successfully to S3!')
+          toast.success('Audio uploaded successfully!')
         } catch (uploadError) {
-          console.error('❌ Audio upload error:', uploadError)
+          console.error('Audio upload error:', uploadError)
           toast.error('Failed to upload audio recording')
           setLoading(false)
           return
         }
-      } else {
-        console.log('⚠️ No audioBlob found, skipping audio upload')
       }
       
       // Submit work update with all data
@@ -181,34 +168,25 @@ function WorkUpdates() {
   // Voice recording functions
   const startRecording = async () => {
     try {
-      console.log('🎤 START RECORDING...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
       setMediaRecorder(recorder)
       setIsRecording(true)
 
       const chunks = []
-      recorder.ondataavailable = e => {
-        console.log('🎤 Data available, chunk size:', e.data.size)
-        chunks.push(e.data)
-      }
+      recorder.ondataavailable = e => chunks.push(e.data)
       recorder.onstop = () => {
-        console.log('🎤 STOP RECORDING - Total chunks:', chunks.length)
         const blob = new Blob(chunks, { type: 'audio/webm' })
-        console.log('🎤 Created blob - Type:', blob.type, 'Size:', blob.size)
         
         // Store in BOTH ref (immediate) and state (for UI)
         audioBlobRef.current = blob
         setAudioBlob(blob)
-        console.log('🎤 audioBlob stored in ref AND state!')
         
         const audioUrl = URL.createObjectURL(blob)
         setRecordedAudio(audioUrl)
-        console.log('🎤 Audio URL created:', audioUrl)
       }
 
       recorder.start()
-      console.log('🎤 Recorder started')
       
       // Start timer
       setRecordingTime(0)
@@ -222,18 +200,13 @@ function WorkUpdates() {
   }
 
   const stopRecording = () => {
-    console.log('🛑 STOP RECORDING called')
     if (mediaRecorder && isRecording) {
-      console.log('🛑 Stopping mediaRecorder...')
       mediaRecorder.stop()
       setIsRecording(false)
       clearInterval(recordingInterval.current)
       
       // Stop all tracks
       mediaRecorder.stream.getTracks().forEach(track => track.stop())
-      console.log('🛑 MediaRecorder stopped, waiting for onstop event...')
-    } else {
-      console.log('⚠️ Cannot stop - mediaRecorder:', !!mediaRecorder, 'isRecording:', isRecording)
     }
   }
 
@@ -266,7 +239,6 @@ function WorkUpdates() {
   const addRecordingToForm = async () => {
     const currentBlob = audioBlobRef.current || audioBlob
     if (currentBlob) {
-      console.log('📤 Uploading audio from "Add to Update" button...')
       setLoading(true)
       
       try {
@@ -280,18 +252,17 @@ function WorkUpdates() {
         const s3Url = uploadedFiles[0]?.url
         
         if (s3Url) {
-          console.log('✅ Audio uploaded to S3:', s3Url)
           setFormData(prev => ({
             ...prev,
-            audioNotes: [...prev.audioNotes, s3Url]  // ← S3 URL, not blob!
+            audioNotes: [...prev.audioNotes, s3Url]
           }))
-          toast.success('Voice note uploaded to S3 and added to your update!')
+          toast.success('Voice note added to your update!')
           deleteRecording()
         } else {
-          toast.error('Failed to get S3 URL')
+          toast.error('Failed to upload audio')
         }
       } catch (error) {
-        console.error('❌ Audio upload error:', error)
+        console.error('Audio upload error:', error)
         toast.error('Failed to upload audio')
       } finally {
         setLoading(false)
