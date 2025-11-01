@@ -18,11 +18,14 @@ const MediaViewer = ({ isOpen, onClose, media, currentIndex = 0, onIndexChange }
     setCurrentIdx(currentIndex)
   }, [currentIndex])
 
+  // Only call onIndexChange when currentIdx actually changes, not when the function reference changes
+  const prevIdxRef = useRef(currentIdx)
   useEffect(() => {
-    if (onIndexChange) {
+    if (prevIdxRef.current !== currentIdx && onIndexChange) {
       onIndexChange(currentIdx)
+      prevIdxRef.current = currentIdx
     }
-  }, [currentIdx, onIndexChange])
+  }, [currentIdx])
 
   useEffect(() => {
     if (isOpen) {

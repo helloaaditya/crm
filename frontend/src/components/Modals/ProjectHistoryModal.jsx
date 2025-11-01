@@ -60,6 +60,12 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
     }
   }
 
+  // Filter out invalid blob URLs (from old data before S3 upload fix)
+  const filterValidUrls = (urls) => {
+    if (!Array.isArray(urls)) return []
+    return urls.filter(url => url && !url.startsWith('blob:'))
+  }
+
   const MediaGallery = ({ mediaArray, title = "Media Files" }) => {
     if (!mediaArray || mediaArray.length === 0) return null
 
@@ -146,14 +152,14 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
               )}
               
               {/* Audio Notes - inline simple players */}
-              {item.audioNotes && item.audioNotes.length > 0 && (
+              {item.audioNotes && filterValidUrls(item.audioNotes).length > 0 && (
                 <div className="mt-3">
                   <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     <FiMic className="text-green-500" />
-                    Audio Notes ({item.audioNotes.length})
+                    Audio Notes ({filterValidUrls(item.audioNotes).length})
                   </h5>
                   <div className="space-y-2">
-                    {item.audioNotes.map((audio, idx) => (
+                    {filterValidUrls(item.audioNotes).map((audio, idx) => (
                       <audio key={idx} controls className="w-full">
                         <source src={audio} />
                       </audio>
@@ -203,14 +209,14 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
               )}
               
               {/* Audio Notes - inline simple players */}
-              {item.audioNotes && item.audioNotes.length > 0 && (
+              {item.audioNotes && filterValidUrls(item.audioNotes).length > 0 && (
                 <div className="mt-3">
                   <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     <FiMic className="text-green-500" />
-                    Audio Notes ({item.audioNotes.length})
+                    Audio Notes ({filterValidUrls(item.audioNotes).length})
                   </h5>
                   <div className="space-y-2">
-                    {item.audioNotes.map((audio, idx) => (
+                    {filterValidUrls(item.audioNotes).map((audio, idx) => (
                       <audio key={idx} controls className="w-full">
                         <source src={audio} />
                       </audio>
