@@ -33,7 +33,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
         } else if (user.module === 'all') {
           userModules = ['all']
         } else if (user.module === 'none') {
-          userModules = ['all'] // Convert 'none' to 'all' for better access
+          userModules = ['none'] // Keep 'none' as self-service only
         } else {
           // For comma-separated modules, split them
           if (user.module.includes(',')) {

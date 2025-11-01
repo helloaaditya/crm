@@ -505,7 +505,7 @@ export const assignEmployee = asyncHandler(async (req, res) => {
 // @route   POST /api/projects/:id/remove-employee
 // @access  Private
 export const removeEmployee = asyncHandler(async (req, res) => {
-  const { employeeId } = req.body;
+  const employeeId = req.params.employeeId; // Get from URL parameter
 
   console.log('Removing employee from project:', { projectId: req.params.id, employeeId });
 

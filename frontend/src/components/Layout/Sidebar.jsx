@@ -72,12 +72,19 @@ const Sidebar = () => {
       return false
     }
     // Check module access
-    // If user has 'none' module, only show items with module: 'all' (self-service)
-    if (user?.module === 'none') {
-      return item.module === 'all'
+    // Handle both array and string module formats for backward compatibility
+    const userModules = Array.isArray(user?.module) ? user.module : [user?.module]
+    
+    // If user has 'none' module, only show items with employeeOnly flag (self-service)
+    if (userModules.includes('none')) {
+      return item.module === 'all' && (item.employeeOnly || !item.adminView)
     }
-    // Otherwise, normal module filtering
-    return item.module === 'all' || user?.module === 'all' || user?.module === item.module
+    // If user has 'all' access, show all allowed items
+    if (userModules.includes('all')) {
+      return true
+    }
+    // Otherwise, check if item's module is in user's allowed modules
+    return item.module === 'all' || userModules.includes(item.module)
   })
 
   return (
