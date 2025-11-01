@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { BellIcon, CheckIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { BellIcon, CheckIcon, TrashIcon, XMarkIcon, BellAlertIcon } from '@heroicons/react/24/outline';
 import API from '../api';
 import { formatDistanceToNow } from 'date-fns';
+import useNotificationPermission from '../hooks/useNotificationPermission';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,9 @@ const NotificationBell = () => {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all' or 'unread'
   const dropdownRef = useRef(null);
+  const previousUnreadCount = useRef(0);
+  
+  const { permission, isSupported, requestPermission, showNotification } = useNotificationPermission();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -62,7 +66,29 @@ const NotificationBell = () => {
   const fetchUnreadCount = async () => {
     try {
       const response = await API.notifications.getUnreadCount();
-      setUnreadCount(response.data.data.count || 0);
+      const newCount = response.data.data.count || 0;
+      
+      // Check if there are new notifications
+      if (newCount > previousUnreadCount.current && previousUnreadCount.current !== 0) {
+        // Fetch the latest notification to show in browser notification
+        const notifResponse = await API.notifications.getAll({ limit: 1, unreadOnly: true });
+        const latestNotification = notifResponse.data.data[0];
+        
+        if (latestNotification && permission === 'granted') {
+          showNotification(
+            latestNotification.title,
+            latestNotification.message,
+            latestNotification.actionUrl,
+            {
+              requireInteraction: latestNotification.priority === 'urgent' || latestNotification.priority === 'high',
+              tag: latestNotification.type
+            }
+          );
+        }
+      }
+      
+      previousUnreadCount.current = newCount;
+      setUnreadCount(newCount);
     } catch (error) {
       console.error('Error fetching unread count:', error);
     }
@@ -228,28 +254,47 @@ const NotificationBell = () => {
             </div>
 
             {/* Action Buttons */}
-            {notifications.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={handleMarkAllAsRead}
-                    className="flex items-center space-x-1 px-3 py-1.5 sm:px-2 sm:py-1 text-xs sm:text-xs text-indigo-600 hover:bg-indigo-50 rounded"
-                  >
-                    <CheckIcon className="h-4 w-4" />
-                    <span>Mark all read</span>
-                  </button>
-                )}
-                {notifications.some(n => n.isRead) && (
-                  <button
-                    onClick={handleDeleteAllRead}
-                    className="flex items-center space-x-1 px-3 py-1.5 sm:px-2 sm:py-1 text-xs sm:text-xs text-red-600 hover:bg-red-50 rounded"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                    <span>Clear read</span>
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {/* Browser Notification Toggle */}
+              {isSupported && (
+                <button
+                  onClick={requestPermission}
+                  className={`flex items-center space-x-1 px-3 py-1.5 sm:px-2 sm:py-1 text-xs rounded ${
+                    permission === 'granted'
+                      ? 'bg-green-50 text-green-700 cursor-default'
+                      : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
+                  }`}
+                  disabled={permission === 'granted'}
+                  title={permission === 'granted' ? 'Browser notifications enabled' : 'Enable browser notifications'}
+                >
+                  <BellAlertIcon className="h-4 w-4" />
+                  <span>{permission === 'granted' ? 'Alerts On' : 'Enable Alerts'}</span>
+                </button>
+              )}
+              
+              {notifications.length > 0 && (
+                <>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="flex items-center space-x-1 px-3 py-1.5 sm:px-2 sm:py-1 text-xs text-indigo-600 hover:bg-indigo-50 rounded"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      <span>Mark all read</span>
+                    </button>
+                  )}
+                  {notifications.some(n => n.isRead) && (
+                    <button
+                      onClick={handleDeleteAllRead}
+                      className="flex items-center space-x-1 px-3 py-1.5 sm:px-2 sm:py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                      <span>Clear read</span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Notifications List */}
