@@ -38,6 +38,7 @@ export const projectAPI = {
   
   // Team assignment
   assignEmployee: (id, data) => api.post(`/projects/${id}/assign-employee`, data),
+  removeEmployee: (id, employeeId) => api.delete(`/projects/${id}/remove-employee/${employeeId}`),
   
   // Work updates & comments
   addWorkUpdate: (id, data) => api.post(`/projects/${id}/work-update`, data),
