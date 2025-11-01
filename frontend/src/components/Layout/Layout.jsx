@@ -4,7 +4,7 @@ import Header from './Header'
 
 const Layout = () => {
   return (
-    <div className="flex bg-gray-100" style={{ height: '100vh', height: '100svh' }}>
+      <div className="flex bg-gray-100" style={{ height: '100svh' }}>
       {/* Sidebar */}
       <Sidebar />
 

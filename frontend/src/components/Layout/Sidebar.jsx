@@ -106,7 +106,7 @@ const Sidebar = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="mt-4 lg:mt-6 px-3 sm:px-4 pb-20 lg:pb-0 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)', maxHeight: 'calc(100svh - 140px)' }}>
+          <nav className="mt-4 lg:mt-6 px-3 sm:px-4 pb-20 lg:pb-0 overflow-y-auto" style={{ maxHeight: 'calc(100svh - 140px)' }}>
           <div className="space-y-1">
             {filteredMenuItems.map((item) => (
               <NavLink
