@@ -35,6 +35,7 @@ function WorkUpdates() {
   const [isPlaying, setIsPlaying] = useState(false)
   const audioRef = useRef(null)
   const recordingInterval = useRef(null)
+  const audioBlobRef = useRef(null) // Store blob in ref for immediate access
 
   useEffect(() => {
     fetchProjects()
@@ -74,15 +75,20 @@ function WorkUpdates() {
       // If we have a recorded audio blob, upload it first
       let uploadedAudioUrls = [...formData.audioNotes]
       
-      console.log('🎤 AUDIO CHECK - audioBlob exists?', !!audioBlob)
-      console.log('🎤 AUDIO CHECK - audioBlob type:', audioBlob?.type)
-      console.log('🎤 AUDIO CHECK - audioBlob size:', audioBlob?.size)
+      // Use ref for immediate access (state might not be updated yet)
+      const currentAudioBlob = audioBlobRef.current || audioBlob
       
-      if (audioBlob) {
+      console.log('🎤 AUDIO CHECK - audioBlob from ref:', !!audioBlobRef.current)
+      console.log('🎤 AUDIO CHECK - audioBlob from state:', !!audioBlob)
+      console.log('🎤 AUDIO CHECK - using blob:', !!currentAudioBlob)
+      console.log('🎤 AUDIO CHECK - blob type:', currentAudioBlob?.type)
+      console.log('🎤 AUDIO CHECK - blob size:', currentAudioBlob?.size)
+      
+      if (currentAudioBlob) {
         console.log('✅ Starting audio upload to S3...')
         const audioFormData = new FormData()
         // Convert blob to file with proper name and type
-        const audioFile = new File([audioBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' })
+        const audioFile = new File([currentAudioBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' })
         audioFormData.append('files', audioFile)
         
         console.log('📤 Uploading audio file:', audioFile.name, 'Size:', audioFile.size)
@@ -126,6 +132,7 @@ function WorkUpdates() {
       // Reset recording states
       setRecordedAudio(null)
       setAudioBlob(null)
+      audioBlobRef.current = null // Clear ref too
       setRecordingTime(0)
       setIsPlaying(false)
     } catch (error) {
@@ -189,8 +196,12 @@ function WorkUpdates() {
         console.log('🎤 STOP RECORDING - Total chunks:', chunks.length)
         const blob = new Blob(chunks, { type: 'audio/webm' })
         console.log('🎤 Created blob - Type:', blob.type, 'Size:', blob.size)
+        
+        // Store in BOTH ref (immediate) and state (for UI)
+        audioBlobRef.current = blob
         setAudioBlob(blob)
-        console.log('🎤 audioBlob state updated!')
+        console.log('🎤 audioBlob stored in ref AND state!')
+        
         const audioUrl = URL.createObjectURL(blob)
         setRecordedAudio(audioUrl)
         console.log('🎤 Audio URL created:', audioUrl)
@@ -243,6 +254,7 @@ function WorkUpdates() {
   const deleteRecording = () => {
     setRecordedAudio(null)
     setAudioBlob(null)
+    audioBlobRef.current = null // Clear ref too
     setRecordingTime(0)
     setIsPlaying(false)
     if (audioRef.current) {
