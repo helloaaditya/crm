@@ -344,6 +344,26 @@ projectSchema.methods.markAsComplete = function(completedBy) {
   });
 };
 
+// Helper method to remove employee from project
+projectSchema.methods.removeEmployee = function(employeeId) {
+  // Remove from supervisors
+  this.supervisors = this.supervisors.filter(
+    s => s.employee.toString() !== employeeId.toString()
+  );
+  
+  // Remove from workers
+  this.workers = this.workers.filter(
+    w => w.employee.toString() !== employeeId.toString()
+  );
+  
+  // Log activity
+  this.activityHistory.push({
+    action: 'employee_removed',
+    description: `Employee removed from project`,
+    performedAt: new Date()
+  });
+};
+
 const Project = mongoose.model('Project', projectSchema);
 
 export default Project;
