@@ -516,7 +516,7 @@ export const removeEmployee = asyncHandler(async (req, res) => {
   }
 
   // Remove from project
-  project.removeEmployee(employeeId);
+  project.removeEmployee(employeeId, req.user._id);
   await project.save();
   console.log('Employee removed from project');
 

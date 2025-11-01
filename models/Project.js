@@ -345,7 +345,7 @@ projectSchema.methods.markAsComplete = function(completedBy) {
 };
 
 // Helper method to remove employee from project
-projectSchema.methods.removeEmployee = function(employeeId) {
+projectSchema.methods.removeEmployee = function(employeeId, performedBy) {
   // Remove from supervisors
   this.supervisors = this.supervisors.filter(
     s => s.employee.toString() !== employeeId.toString()
@@ -360,7 +360,8 @@ projectSchema.methods.removeEmployee = function(employeeId) {
   this.activityHistory.push({
     action: 'employee_removed',
     description: `Employee removed from project`,
-    performedAt: new Date()
+    performedBy: performedBy,
+    date: new Date()
   });
 };
 
