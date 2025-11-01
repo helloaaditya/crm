@@ -2,6 +2,7 @@ import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import Project from '../models/Project.js';
 import CalendarReminder from '../models/CalendarReminder.js';
+import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 // @desc    Get all employees
@@ -336,7 +337,7 @@ export const applyLeave = asyncHandler(async (req, res) => {
 // @route   PUT /api/employees/leave/:leaveId
 // @access  Private
 export const updateLeaveStatus = asyncHandler(async (req, res) => {
-  const { status } = req.body;
+  const { status, reason } = req.body;
 
   const employee = await Employee.findOne({ 'leaves._id': req.params.leaveId });
 
@@ -349,6 +350,26 @@ export const updateLeaveStatus = asyncHandler(async (req, res) => {
   leave.approvedBy = req.user._id;
 
   await employee.save();
+
+  // Notify employee about leave status
+  if (employee.userId) {
+    if (status === 'approved') {
+      await createNotification({
+        recipient: employee.userId,
+        ...NotificationTemplates.leaveApproved(
+          employee.name,
+          new Date(leave.startDate).toLocaleDateString('en-IN'),
+          new Date(leave.endDate).toLocaleDateString('en-IN'),
+          req.user._id
+        )
+      });
+    } else if (status === 'rejected') {
+      await createNotification({
+        recipient: employee.userId,
+        ...NotificationTemplates.leaveRejected(reason, req.user._id)
+      });
+    }
+  }
 
   res.json({
     success: true,
@@ -432,6 +453,15 @@ export const processSalary = asyncHandler(async (req, res) => {
   employee.holdBalance = (employee.holdBalance || 0) + holdAmount;
 
   await employee.save();
+
+  // Notify employee about salary processed
+  if (employee.userId) {
+    await createNotification({
+      recipient: employee.userId,
+      ...NotificationTemplates.salaryProcessed(month, payableNet.toFixed(2)),
+      triggeredBy: req.user._id
+    });
+  }
 
   res.json({
     success: true,
@@ -1169,6 +1199,25 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
         updatedBy: employee._id
       });
       await project.save();
+      
+      // Notify project supervisors and admin about work update
+      const supervisorIds = project.supervisors
+        .map(s => s.employee)
+        .filter(id => id.toString() !== employee._id.toString());
+      
+      if (supervisorIds.length > 0) {
+        const supervisors = await Employee.find({ _id: { $in: supervisorIds } }).select('userId');
+        const userIds = supervisors.map(s => s.userId).filter(Boolean);
+        
+        if (userIds.length > 0) {
+          await sendToMultipleUsers(userIds, NotificationTemplates.workUpdateSubmitted(
+            employee.name,
+            project.description || project.projectId,
+            project._id,
+            req.user._id
+          ));
+        }
+      }
     }
   }
 

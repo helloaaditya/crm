@@ -9,6 +9,7 @@ import fs from 'fs';
 import { uploadFilePathToS3 } from '../utils/s3Service.js';
 import { sendInvoiceEmail } from '../utils/emailService.js';
 import { createRazorpayOrder, verifyRazorpaySignature } from '../utils/razorpayService.js';
+import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 
 // =============== INVOICES ===============
 
@@ -257,6 +258,23 @@ export const createInvoice = asyncHandler(async (req, res) => {
   }
 
   await invoice.save();
+
+  // Populate customer for notification
+  await invoice.populate('customer', 'name');
+
+  // Notify admins about invoice generation
+  const User = (await import('../models/User.js')).default;
+  const adminUsers = await User.find({ role: { $in: ['main_admin', 'admin'] } }).select('_id');
+  if (adminUsers.length > 0) {
+    await sendToMultipleUsers(
+      adminUsers.map(u => u._id),
+      NotificationTemplates.invoiceGenerated(
+        invoice.invoiceNumber,
+        invoice.customer?.name || 'Customer',
+        invoice.totalAmount
+      )
+    );
+  }
 
   res.status(201).json({
     success: true,
@@ -913,6 +931,23 @@ export const verifyPayment = asyncHandler(async (req, res) => {
   
   await invoice.save();
 
+  // Populate invoice and customer for notification
+  await invoice.populate('customer', 'name');
+
+  // Notify admins about payment received
+  const User = (await import('../models/User.js')).default;
+  const adminUsers = await User.find({ role: { $in: ['main_admin', 'admin'] } }).select('_id');
+  if (adminUsers.length > 0) {
+    await sendToMultipleUsers(
+      adminUsers.map(u => u._id),
+      NotificationTemplates.paymentReceived(
+        invoice.invoiceNumber,
+        amount,
+        invoice.customer?.name || 'Customer'
+      )
+    );
+  }
+
   res.json({
     success: true,
     message: 'Payment verified successfully',
@@ -966,6 +1001,23 @@ export const recordManualPayment = asyncHandler(async (req, res) => {
   }
   
   await invoice.save();
+
+  // Populate invoice and customer for notification
+  await invoice.populate('customer', 'name');
+
+  // Notify admins about payment received
+  const User = (await import('../models/User.js')).default;
+  const adminUsers = await User.find({ role: { $in: ['main_admin', 'admin'] } }).select('_id');
+  if (adminUsers.length > 0) {
+    await sendToMultipleUsers(
+      adminUsers.map(u => u._id),
+      NotificationTemplates.paymentReceived(
+        invoice.invoiceNumber,
+        amount,
+        invoice.customer?.name || 'Customer'
+      )
+    );
+  }
 
   res.json({
     success: true,

@@ -3,6 +3,7 @@ import Employee from '../models/Employee.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { uploadToS3, uploadMultipleToS3, getSignedUrl } from '../utils/s3Service.js';
 import { generateInvoicePDF, generateWarrantyCertificate } from '../utils/pdfService.js';
+import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -97,6 +98,23 @@ export const createProject = asyncHandler(async (req, res) => {
     createdBy: req.user._id
   });
 
+  // Notify assigned employees
+  const assignedEmployees = [
+    ...(supervisors || []).map(s => s.employee),
+    ...(workers || []).map(w => w.employee)
+  ].filter(Boolean);
+
+  if (assignedEmployees.length > 0) {
+    await sendToMultipleUsers(
+      assignedEmployees,
+      NotificationTemplates.projectAssigned(
+        `${project.projectId} - ${project.description}`,
+        project._id,
+        req.user._id
+      )
+    );
+  }
+
   res.status(201).json({
     success: true,
     data: project
@@ -113,11 +131,29 @@ export const updateProject = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Project not found' });
   }
 
+  const oldProject = project;
   project = await Project.findByIdAndUpdate(
     req.params.id,
     req.body,
     { new: true, runValidators: true }
   );
+
+  // Notify assigned employees about project update
+  const assignedEmployees = [
+    ...(project.supervisors || []).map(s => s.employee),
+    ...(project.workers || []).map(w => w.employee)
+  ].filter(Boolean);
+
+  if (assignedEmployees.length > 0) {
+    await sendToMultipleUsers(
+      assignedEmployees,
+      NotificationTemplates.projectUpdated(
+        `${project.projectId} - ${project.description}`,
+        project._id,
+        req.user._id
+      )
+    );
+  }
 
   res.json({
     success: true,
@@ -430,6 +466,18 @@ export const assignEmployee = asyncHandler(async (req, res) => {
       
       await employee.save();
       console.log('Employee saved with assigned project');
+      
+      // Send notification to assigned employee
+      if (employee.userId) {
+        await createNotification({
+          recipient: employee.userId,
+          ...NotificationTemplates.projectAssigned(
+            project.description || project.projectId,
+            project._id,
+            req.user._id
+          )
+        });
+      }
     } else {
       console.log('Project already assigned to employee in assignedProjects array');
     }
