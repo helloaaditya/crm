@@ -71,15 +71,34 @@ function WorkUpdates() {
     try {
       setLoading(true)
       
-      // Create a copy of formData to modify
-      const submitData = { ...formData }
-      
-      // If we have a recorded audio blob, we need to upload it
+      // If we have a recorded audio blob, upload it first
+      let uploadedAudioUrls = [...formData.audioNotes]
       if (audioBlob) {
-        // In a real implementation, you would upload the blob to your server here
-        // For now, we'll add it as a temporary URL
-        const audioUrl = URL.createObjectURL(audioBlob)
-        submitData.audioNotes = [...formData.audioNotes, audioUrl]
+        const audioFormData = new FormData()
+        // Convert blob to file with proper name and type
+        const audioFile = new File([audioBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' })
+        audioFormData.append('files', audioFile)
+        
+        try {
+          const uploadResponse = await API.employees.uploadWorkUpdateFiles(audioFormData)
+          const uploadedFiles = uploadResponse.data.data || []
+          uploadedAudioUrls = [...uploadedAudioUrls, ...uploadedFiles.map(f => f.url)]
+          toast.success('Audio uploaded successfully')
+        } catch (uploadError) {
+          console.error('Audio upload error:', uploadError)
+          toast.error('Failed to upload audio recording')
+          setLoading(false)
+          return
+        }
+      }
+      
+      // Submit work update with all data
+      const submitData = {
+        projectId: formData.projectId,
+        description: formData.description,
+        images: formData.images,
+        audioNotes: uploadedAudioUrls,
+        videoRecordings: formData.videoRecordings
       }
       
       await API.employees.myWorkUpdate(submitData)

@@ -126,9 +126,18 @@ const BulkImport = () => {
         <div className="mt-6 text-sm text-gray-600">
           <div className="flex items-center mb-2"><FiDatabase className="mr-2" /> Expected columns per module:</div>
           <ul className="list-disc pl-6 space-y-1">
-            <li><b>Employees</b>: name, phone, email, role, module, basicSalary, dateOfBirth(YYYY-MM-DD)</li>
+            <li><b>Employees</b>: name, email, phone, role, module, basicSalary, dateOfBirth(YYYY-MM-DD), canView, canCreate, canEdit, canDelete, canHandleAccounts</li>
             <li><b>Customers</b>: name, phone, email, address</li>
           </ul>
+          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+            <p className="text-xs font-medium text-blue-800 mb-1">Note:</p>
+            <p className="text-xs text-blue-700">
+              • <b>Permissions</b> (canView, canCreate, etc.): Use "true"/"1" for yes, "false"/"0" for no. Leave empty to use defaults.<br/>
+              • <b>Module Access</b>: all, crm, inventory, employee, or none<br/>
+              • <b>Role</b>: supervisor, engineer, worker, technician, helper, driver, manager, admin, employee<br/>
+              • <b>Date Format</b>: YYYY-MM-DD (e.g., 1990-05-20)
+            </p>
+          </div>
         </div>
       </div>
     </div>

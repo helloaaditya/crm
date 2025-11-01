@@ -1107,11 +1107,12 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee record not found' });
   }
 
-  // If files are uploaded, upload them to S3
-  let uploadedImages = images || [];
-  let uploadedAudioNotes = audioNotes || [];
-  let uploadedVideoRecordings = videoRecordings || [];
+  // Parse arrays from body (they may come as strings from FormData)
+  let uploadedImages = Array.isArray(images) ? images : (images ? [images] : []);
+  let uploadedAudioNotes = Array.isArray(audioNotes) ? audioNotes : (audioNotes ? [audioNotes] : []);
+  let uploadedVideoRecordings = Array.isArray(videoRecordings) ? videoRecordings : (videoRecordings ? [videoRecordings] : []);
 
+  // If files are uploaded with this request, upload them to S3
   if (req.files && req.files.length > 0) {
     try {
       const { uploadMultipleFromMemory } = await import('../utils/s3Service.js');
@@ -1139,6 +1140,8 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
       });
     }
   }
+
+  console.log('Work update data:', { projectId, description, uploadedImages, uploadedAudioNotes, uploadedVideoRecordings });
 
   employee.workUpdates.push({
     date: new Date(),
@@ -1171,7 +1174,12 @@ export const submitMyWorkUpdate = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Work update submitted successfully'
+    message: 'Work update submitted successfully',
+    data: {
+      images: uploadedImages,
+      audioNotes: uploadedAudioNotes,
+      videoRecordings: uploadedVideoRecordings
+    }
   });
 });
 
