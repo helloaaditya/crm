@@ -20,18 +20,18 @@ const Sidebar = () => {
     { name: 'Customers', icon: FiUsers, path: '/customers', module: 'crm' },
     { name: 'Projects', icon: FiBriefcase, path: '/projects', module: 'crm' },
     { name: 'Invoices', icon: FiFileText, path: '/invoices', module: 'crm', notificationCount: counts.invoices },
-    { name: 'Payments', icon: FiDollarSign, path: '/payments', module: 'crm' },
+    { name: 'Payments', icon: FiDollarSign, path: '/payments', module: 'all' ,adminOnly: true },
     
     // Inventory Section
     { name: 'Materials', icon: FiPackage, path: '/inventory/materials', module: 'inventory', notificationCount: counts.lowStock },
     { name: 'Machinery', icon: FiTool, path: '/inventory/machinery', module: 'inventory' },
     { name: 'Vendors', icon: FiTruck, path: '/inventory/vendors', module: 'inventory' },
     
-    // Employee Section (Admin View)
-    { name: 'Employees', icon: FiUserCheck, path: '/employees', module: 'employee', adminView: true },
-    { name: 'Attendance', icon: FiCalendar, path: '/employees/attendance', module: 'employee', adminView: true, notificationCount: counts.attendance },
-    { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee', adminView: true },
-    { name: 'Leave Management', icon: FiCalendar, path: '/employees/leave', module: 'employee', adminView: true, notificationCount: counts.leaves },
+    // Employee Section
+    { name: 'Employees', icon: FiUserCheck, path: '/employees', module: 'employee' },
+    { name: 'Attendance', icon: FiCalendar, path: '/employees/attendance', module: 'employee', notificationCount: counts.attendance },
+    { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee' },
+    { name: 'Leave Management', icon: FiCalendar, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
     
     // Employee Self-Service (Non-Admin) - Show separately for easy access
     { name: 'My Projects', icon: FiBriefcase, path: '/my-projects', module: 'all', employeeOnly: true },
@@ -43,8 +43,10 @@ const Sidebar = () => {
     
     // Accounts Section
     { name: 'Accounts', icon: FiKey, path: '/accounts', module: 'all', adminOnly: true },
-    // Expenses - main_admin only
-    { name: 'Expenses', icon: FiCreditCard, path: '/expenses', module: 'all', mainAdminOnly: true },
+    
+    // Expense Section
+    { name: 'Expenses', icon: FiCreditCard, path: '/expenses', module: 'expense' },
+    
     // Bulk Import - admin/main_admin only
     { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
     
@@ -73,7 +75,15 @@ const Sidebar = () => {
     }
     // Check module access
     // Handle both array and string module formats for backward compatibility
-    const userModules = Array.isArray(user?.module) ? user.module : [user?.module]
+    let userModules = []
+    if (Array.isArray(user?.module)) {
+      userModules = user.module
+    } else if (user?.module) {
+      // If it's a string, split by comma for multiple modules
+      userModules = user.module.includes(',') 
+        ? user.module.split(',').map(m => m.trim())
+        : [user.module]
+    }
     
     // If user has 'none' module, only show items with employeeOnly flag (self-service)
     if (userModules.includes('none')) {

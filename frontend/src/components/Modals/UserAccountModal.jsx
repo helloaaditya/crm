@@ -344,7 +344,8 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                     {[
                       { value: 'crm', label: 'CRM Module' },
                       { value: 'inventory', label: 'Inventory Module' },
-                      { value: 'employee', label: 'Employee Module' }
+                      { value: 'employee', label: 'Employee Module' },
+                      { value: 'expense', label: 'Expense Module' }
                     ].map((module) => (
                       <label 
                         key={module.value}
