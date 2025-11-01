@@ -1,0 +1,47 @@
+{
+  "name": "Sanjana CRM",
+  "short_name": "CRM",
+  "description": "Complete CRM System for Managing Projects, Employees, and Invoices",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "View Dashboard"
+    },
+    {
+      "name": "Projects",
+      "url": "/projects",
+      "description": "Manage Projects"
+    },
+    {
+      "name": "Notifications",
+      "url": "/notifications",
+      "description": "View Notifications"
+    }
+  ]
+}
+
