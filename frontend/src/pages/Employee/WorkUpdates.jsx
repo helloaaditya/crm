@@ -263,17 +263,39 @@ function WorkUpdates() {
     }
   }
 
-  const addRecordingToForm = () => {
-    if (audioBlob) {
-      // In a real app, you would upload the blob to your server
-      // For now, we'll create a temporary URL
-      const audioUrl = URL.createObjectURL(audioBlob)
-      setFormData(prev => ({
-        ...prev,
-        audioNotes: [...prev.audioNotes, audioUrl]
-      }))
-      toast.success('Voice note added to your update')
-      deleteRecording()
+  const addRecordingToForm = async () => {
+    const currentBlob = audioBlobRef.current || audioBlob
+    if (currentBlob) {
+      console.log('📤 Uploading audio from "Add to Update" button...')
+      setLoading(true)
+      
+      try {
+        // Upload to S3
+        const audioFormData = new FormData()
+        const audioFile = new File([currentBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' })
+        audioFormData.append('files', audioFile)
+        
+        const uploadResponse = await API.employees.uploadWorkUpdateFiles(audioFormData)
+        const uploadedFiles = uploadResponse.data.data || []
+        const s3Url = uploadedFiles[0]?.url
+        
+        if (s3Url) {
+          console.log('✅ Audio uploaded to S3:', s3Url)
+          setFormData(prev => ({
+            ...prev,
+            audioNotes: [...prev.audioNotes, s3Url]  // ← S3 URL, not blob!
+          }))
+          toast.success('Voice note uploaded to S3 and added to your update!')
+          deleteRecording()
+        } else {
+          toast.error('Failed to get S3 URL')
+        }
+      } catch (error) {
+        console.error('❌ Audio upload error:', error)
+        toast.error('Failed to upload audio')
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
