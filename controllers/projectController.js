@@ -652,12 +652,16 @@ export const getProjectHistory = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Project not found' });
   }
 
-  // Helper to generate signed URL if S3 and bucket is private
+  // Helper to generate proxy URL or signed URL for S3 objects
   const proxyIfS3 = (url) => {
     try {
       if (!url) return url;
       if (url.includes('amazonaws.com')) {
-        return `/api/media/proxy?url=${encodeURIComponent(url)}`;
+        // Option 1: Use direct S3 URL if bucket is public (faster, no backend needed)
+        return url;
+        
+        // Option 2: Use media proxy (requires backend with AWS credentials)
+        // return `/api/media/proxy?url=${encodeURIComponent(url)}`;
       }
       return url;
     } catch {
