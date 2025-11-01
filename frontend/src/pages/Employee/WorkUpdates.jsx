@@ -174,21 +174,30 @@ function WorkUpdates() {
   // Voice recording functions
   const startRecording = async () => {
     try {
+      console.log('🎤 START RECORDING...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
       setMediaRecorder(recorder)
       setIsRecording(true)
 
       const chunks = []
-      recorder.ondataavailable = e => chunks.push(e.data)
+      recorder.ondataavailable = e => {
+        console.log('🎤 Data available, chunk size:', e.data.size)
+        chunks.push(e.data)
+      }
       recorder.onstop = () => {
+        console.log('🎤 STOP RECORDING - Total chunks:', chunks.length)
         const blob = new Blob(chunks, { type: 'audio/webm' })
+        console.log('🎤 Created blob - Type:', blob.type, 'Size:', blob.size)
         setAudioBlob(blob)
+        console.log('🎤 audioBlob state updated!')
         const audioUrl = URL.createObjectURL(blob)
         setRecordedAudio(audioUrl)
+        console.log('🎤 Audio URL created:', audioUrl)
       }
 
       recorder.start()
+      console.log('🎤 Recorder started')
       
       // Start timer
       setRecordingTime(0)
@@ -202,13 +211,18 @@ function WorkUpdates() {
   }
 
   const stopRecording = () => {
+    console.log('🛑 STOP RECORDING called')
     if (mediaRecorder && isRecording) {
+      console.log('🛑 Stopping mediaRecorder...')
       mediaRecorder.stop()
       setIsRecording(false)
       clearInterval(recordingInterval.current)
       
       // Stop all tracks
       mediaRecorder.stream.getTracks().forEach(track => track.stop())
+      console.log('🛑 MediaRecorder stopped, waiting for onstop event...')
+    } else {
+      console.log('⚠️ Cannot stop - mediaRecorder:', !!mediaRecorder, 'isRecording:', isRecording)
     }
   }
 
