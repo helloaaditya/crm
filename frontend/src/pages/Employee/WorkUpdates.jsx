@@ -73,23 +73,35 @@ function WorkUpdates() {
       
       // If we have a recorded audio blob, upload it first
       let uploadedAudioUrls = [...formData.audioNotes]
+      
+      console.log('🎤 AUDIO CHECK - audioBlob exists?', !!audioBlob)
+      console.log('🎤 AUDIO CHECK - audioBlob type:', audioBlob?.type)
+      console.log('🎤 AUDIO CHECK - audioBlob size:', audioBlob?.size)
+      
       if (audioBlob) {
+        console.log('✅ Starting audio upload to S3...')
         const audioFormData = new FormData()
         // Convert blob to file with proper name and type
         const audioFile = new File([audioBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' })
         audioFormData.append('files', audioFile)
         
+        console.log('📤 Uploading audio file:', audioFile.name, 'Size:', audioFile.size)
+        
         try {
           const uploadResponse = await API.employees.uploadWorkUpdateFiles(audioFormData)
+          console.log('✅ Upload response:', uploadResponse.data)
           const uploadedFiles = uploadResponse.data.data || []
           uploadedAudioUrls = [...uploadedAudioUrls, ...uploadedFiles.map(f => f.url)]
-          toast.success('Audio uploaded successfully')
+          console.log('✅ S3 URLs:', uploadedAudioUrls)
+          toast.success('Audio uploaded successfully to S3!')
         } catch (uploadError) {
-          console.error('Audio upload error:', uploadError)
+          console.error('❌ Audio upload error:', uploadError)
           toast.error('Failed to upload audio recording')
           setLoading(false)
           return
         }
+      } else {
+        console.log('⚠️ No audioBlob found, skipping audio upload')
       }
       
       // Submit work update with all data
