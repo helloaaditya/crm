@@ -2,6 +2,7 @@ import { FiBell, FiLogOut, FiSearch, FiMenu } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import NotificationBell from '../NotificationBell'
 
 const Header = () => {
   const { user, logout } = useAuth()
@@ -31,10 +32,7 @@ const Header = () => {
       {/* Right Side */}
       <div className="flex items-center space-x-2 sm:space-x-4">
         {/* Notifications */}
-        <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-          <FiBell size={18} className="sm:w-5 sm:h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <NotificationBell />
 
         {/* User Info - Mobile */}
         <div className="lg:hidden flex items-center space-x-2">

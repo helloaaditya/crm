@@ -245,6 +245,17 @@ export const invoiceSettingsAPI = {
   }
 };
 
+// ============= NOTIFICATIONS =============
+export const notificationAPI = {
+  getAll: (params) => api.get('/notifications', { params }),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markMultipleAsRead: (notificationIds) => api.put('/notifications/read-multiple', { notificationIds }),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+  delete: (id) => api.delete(`/notifications/${id}`),
+  deleteAllRead: () => api.delete('/notifications/read')
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -258,5 +269,6 @@ export default {
   reminders: reminderAPI,
   auth: authAPI,
   settings: settingsAPI,
-  invoiceSettings: invoiceSettingsAPI
+  invoiceSettings: invoiceSettingsAPI,
+  notifications: notificationAPI
 };
