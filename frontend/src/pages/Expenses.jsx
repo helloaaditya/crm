@@ -573,10 +573,15 @@ const Expenses = () => {
                   </span>
                 </div>
                 {hasExpenseAccess && (
-                  <div>
-                    <p className="text-sm text-gray-600">Employee</p>
+                  <div className="col-span-2">
+                    <p className="text-sm text-gray-600 mb-1">Employee</p>
                     <p className="font-medium text-gray-900">{viewModal.employee?.name}</p>
                     <p className="text-sm text-gray-500">{viewModal.employee?.employeeId}</p>
+                    {viewModal.employee?.bankDetails?.accountNumber && (
+                      <p className="text-xs text-green-600 mt-1">
+                        💳 {viewModal.employee.bankDetails.bankName} - {viewModal.employee.bankDetails.accountNumber}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div>

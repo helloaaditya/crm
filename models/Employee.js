@@ -234,6 +234,20 @@ const employeeSchema = new mongoose.Schema({
   pfNumber: String,
   esiNumber: String,
   
+  // Bank Details (for salary & expense payments)
+  bankDetails: {
+    accountHolderName: String,
+    bankName: String,
+    accountNumber: String,
+    ifscCode: String,
+    branch: String,
+    accountType: {
+      type: String,
+      enum: ['savings', 'current']
+    },
+    upiId: String
+  },
+  
   isActive: {
     type: Boolean,
     default: true

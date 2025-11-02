@@ -322,6 +322,11 @@ const SalaryManagement = () => {
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800">Salary Structure</h2>
                     <p className="text-sm text-gray-600">{selectedEmployee.name} ({selectedEmployee.employeeId})</p>
+                    {selectedEmployee.bankDetails?.accountNumber && (
+                      <p className="text-xs text-green-600 mt-1">
+                        💳 Bank: {selectedEmployee.bankDetails.bankName} - {selectedEmployee.bankDetails.accountNumber}
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={handleUpdateSalaryStructure}

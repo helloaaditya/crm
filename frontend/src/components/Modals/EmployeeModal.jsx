@@ -21,7 +21,16 @@ const EmployeeModal = ({ isOpen, onClose, onSuccess, employee = null }) => {
     department: 'construction',
     joiningDate: new Date().toISOString().split('T')[0],
     employmentType: 'full_time',
-    basicSalary: ''
+    basicSalary: '',
+    bankDetails: {
+      accountHolderName: '',
+      bankName: '',
+      accountNumber: '',
+      ifscCode: '',
+      branch: '',
+      accountType: 'savings',
+      upiId: ''
+    }
   })
 
   useEffect(() => {
@@ -43,7 +52,16 @@ const EmployeeModal = ({ isOpen, onClose, onSuccess, employee = null }) => {
         department: employee.department || 'construction',
         joiningDate: employee.joiningDate ? new Date(employee.joiningDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         employmentType: employee.employmentType || 'full_time',
-        basicSalary: employee.basicSalary || ''
+        basicSalary: employee.basicSalary || '',
+        bankDetails: {
+          accountHolderName: employee.bankDetails?.accountHolderName || '',
+          bankName: employee.bankDetails?.bankName || '',
+          accountNumber: employee.bankDetails?.accountNumber || '',
+          ifscCode: employee.bankDetails?.ifscCode || '',
+          branch: employee.bankDetails?.branch || '',
+          accountType: employee.bankDetails?.accountType || 'savings',
+          upiId: employee.bankDetails?.upiId || ''
+        }
       })
     } else {
       setFormData({
@@ -58,7 +76,16 @@ const EmployeeModal = ({ isOpen, onClose, onSuccess, employee = null }) => {
         department: 'construction',
         joiningDate: new Date().toISOString().split('T')[0],
         employmentType: 'full_time',
-        basicSalary: ''
+        basicSalary: '',
+        bankDetails: {
+          accountHolderName: '',
+          bankName: '',
+          accountNumber: '',
+          ifscCode: '',
+          branch: '',
+          accountType: 'savings',
+          upiId: ''
+        }
       })
     }
   }, [employee, isOpen])
@@ -312,6 +339,118 @@ const EmployeeModal = ({ isOpen, onClose, onSuccess, employee = null }) => {
                 value={formData.basicSalary}
                 onChange={(e) => setFormData({ ...formData, basicSalary: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            
+            {/* Bank Details Section */}
+            <div className="col-span-2 border-b pb-2 my-4">
+              <h3 className="text-lg font-medium text-gray-800">Bank Details (For Payments)</h3>
+              <p className="text-xs text-gray-500 mt-1">Used for salary and expense payments</p>
+            </div>
+            
+            {/* Account Holder Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Account Holder Name</label>
+              <input
+                type="text"
+                value={formData.bankDetails.accountHolderName}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  bankDetails: { ...formData.bankDetails, accountHolderName: e.target.value } 
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="As per bank account"
+              />
+            </div>
+            
+            {/* Bank Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+              <input
+                type="text"
+                value={formData.bankDetails.bankName}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  bankDetails: { ...formData.bankDetails, bankName: e.target.value } 
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="e.g., HDFC Bank, SBI"
+              />
+            </div>
+            
+            {/* Account Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+              <input
+                type="text"
+                value={formData.bankDetails.accountNumber}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  bankDetails: { ...formData.bankDetails, accountNumber: e.target.value } 
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Account number"
+              />
+            </div>
+            
+            {/* IFSC Code */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
+              <input
+                type="text"
+                value={formData.bankDetails.ifscCode}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  bankDetails: { ...formData.bankDetails, ifscCode: e.target.value } 
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="e.g., SBIN0001234"
+              />
+            </div>
+            
+            {/* Branch */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+              <input
+                type="text"
+                value={formData.bankDetails.branch}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  bankDetails: { ...formData.bankDetails, branch: e.target.value } 
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Branch name/location"
+              />
+            </div>
+            
+            {/* Account Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+              <select
+                value={formData.bankDetails.accountType}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  bankDetails: { ...formData.bankDetails, accountType: e.target.value } 
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="savings">Savings</option>
+                <option value="current">Current</option>
+              </select>
+            </div>
+            
+            {/* UPI ID */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID (Optional)</label>
+              <input
+                type="text"
+                value={formData.bankDetails.upiId}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  bankDetails: { ...formData.bankDetails, upiId: e.target.value } 
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="e.g., name@upi"
               />
             </div>
           </div>
