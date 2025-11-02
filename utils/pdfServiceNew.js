@@ -3,12 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import QRCode from 'qrcode';
 
-// Exact replica of Sanjana Enterprises Tax Invoice Format
 export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ 
-        margin: 30, 
+        margin: 40, 
         size: 'A4'
       });
       
@@ -24,347 +23,380 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       doc.pipe(stream);
 
       const companyInfo = invoiceData.companyInfo || {};
-      const pageWidth = 595.28;  // A4 width in points
-      const pageHeight = 841.89; // A4 height in points
+      const pageWidth = 595.28;
+      const pageHeight = 841.89;
+      const margin = 40;
+      const contentWidth = pageWidth - (margin * 2);
       
-      // Dark Blue Color (matching image)
-      const darkBlue = '#1e3a8a';
-      const lightBlue = '#60a5fa';
+      // Professional color scheme
+      const primaryColor = '#1e3a8a';
+      const accentColor = '#3b82f6';
+      const lightGray = '#f3f4f6';
+      const darkGray = '#4b5563';
+      const textColor = '#1f2937';
       
-      let yPos = 40;
+      let yPos = margin;
       
       // ================== HEADER SECTION ==================
       
-      // Dark blue header bar with "TAX INVOICE"
-      doc.rect(30, yPos, 350, 40)
-         .fill(darkBlue);
+      // Company header with gradient effect
+      doc.rect(margin, yPos, contentWidth, 60)
+         .fill(primaryColor);
       
-      doc.fontSize(24)
+      // Tax Invoice label
+      doc.fontSize(28)
          .font('Helvetica-Bold')
          .fillColor('#ffffff')
-         .text('TAX INVOICE', 40, yPos + 10);
+         .text('TAX INVOICE', margin + 20, yPos + 15);
       
-      // Company Logo and Name (Right Side)
-      // You can add logo image here if available
-      doc.fontSize(18)
+      // Company name and logo area
+      doc.fontSize(22)
          .font('Helvetica-Bold')
-         .fillColor(lightBlue)
-         .text('Sanjana', 420, yPos);
+         .fillColor('#ffffff')
+         .text('Sanjana', pageWidth - margin - 150, yPos + 10, { width: 140, align: 'right' });
       
+      doc.fontSize(11)
+         .font('Helvetica-Bold')
+         .fillColor(lightGray)
+         .text('ENTERPRISES', pageWidth - margin - 150, yPos + 37, { width: 140, align: 'right' });
+      
+      yPos += 75;
+      
+      // ================== INVOICE INFO SECTION ==================
+      
+      // Two-column layout for Invoice To and Invoice Details
+      const leftColX = margin;
+      const rightColX = pageWidth - margin - 200;
+      const colStartY = yPos;
+      
+      // LEFT COLUMN - Invoice To
       doc.fontSize(10)
          .font('Helvetica-Bold')
-         .fillColor(darkBlue)
-         .text('ENTERPRISES', 420, yPos + 22);
+         .fillColor(primaryColor)
+         .text('INVOICE TO', leftColX, yPos);
       
-      yPos += 45;
+      yPos += 18;
       
-      // ================== INVOICE TO & INVOICE DETAILS ==================
-      
-      // Left Side - Invoice To
-      doc.fontSize(10)
+      doc.fontSize(11)
          .font('Helvetica-Bold')
-         .fillColor('#000000')
-         .text('INVOICE TO:', 30, yPos);
+         .fillColor(textColor)
+         .text(invoiceData.customerName || '', leftColX, yPos);
       
-      yPos += 12;
+      yPos += 15;
       
       doc.fontSize(9)
-         .font('Helvetica-Bold')
-         .fillColor('#000000')
-         .text(invoiceData.customerName || '', 30, yPos);
-      
-      yPos += 12;
-      
-      doc.fontSize(8)
          .font('Helvetica')
-         .fillColor('#333333');
+         .fillColor(darkGray);
       
       if (invoiceData.customerAddress) {
         const addr = typeof invoiceData.customerAddress === 'object'
-          ? `${invoiceData.customerAddress.street || invoiceData.customerAddress.address || ''}, ${invoiceData.customerAddress.city || ''}, ${invoiceData.customerAddress.state || ''} - ${invoiceData.customerAddress.pincode || ''}`
+          ? `${invoiceData.customerAddress.street || invoiceData.customerAddress.address || ''}\n${invoiceData.customerAddress.city || ''}, ${invoiceData.customerAddress.state || ''} - ${invoiceData.customerAddress.pincode || ''}`
           : String(invoiceData.customerAddress);
         
-        doc.text(addr, 30, yPos, { width: 250 });
-        yPos += doc.heightOfString(addr, { width: 250 }) + 5;
+        doc.text(addr, leftColX, yPos, { width: 280, lineGap: 3 });
       }
       
-       // RIGHT COLUMN - Invoice Details
-       yPos = colStartY;
+      // RIGHT COLUMN - Invoice Details
+      yPos = colStartY;
       
-       const detailsBox = [
-         { label: 'Invoice No.', value: invoiceData.invoiceNumber || '' },
-         { label: 'Date', value: new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString('en-IN') },
-         { label: 'Payment Mode', value: invoiceData.paymentMode || 'As per terms' },
-         { label: 'Order No.', value: invoiceData.buyerOrderNo || '-' },
-         { label: 'Dispatch Through', value: invoiceData.dispatchThrough || '-' },
-         { label: 'Destination', value: invoiceData.destination || invoiceData.customerAddress?.city || '-' },
-         { label: 'Delivery Terms', value: invoiceData.deliveryTerms || '-' }
-       ];
-       
-       doc.fontSize(9)
-          .font('Helvetica');
-       
-       detailsBox.forEach((detail, index) => {
-         const rowY = yPos + (index * 16);
-         
-         doc.fillColor(darkGray)
-            .text(detail.label + ':', rightColX, rowY, { width: 110 });
-         
-         doc.fillColor(textColor)
-            .font('Helvetica-Bold')
-            .text(detail.value, rightColX + 115, rowY, { width: 65, align: 'left' });
-         
-         doc.font('Helvetica');
-       });
-       
-       yPos += 140;
-       
+      const detailsBox = [
+        { label: 'Invoice No.', value: invoiceData.invoiceNumber || '' },
+        { label: 'Date', value: new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString('en-IN') },
+        { label: 'Payment Mode', value: invoiceData.paymentMode || 'As per terms' },
+        { label: 'Order No.', value: invoiceData.buyerOrderNo || '-' },
+        { label: 'Dispatch Through', value: invoiceData.dispatchThrough || '-' },
+        { label: 'Destination', value: invoiceData.destination || invoiceData.customerAddress?.city || '-' },
+        { label: 'Delivery Terms', value: invoiceData.deliveryTerms || '-' }
+      ];
+      
+      doc.fontSize(9)
+         .font('Helvetica');
+      
+      detailsBox.forEach((detail, index) => {
+        const rowY = yPos + (index * 16);
+        
+        doc.fillColor(darkGray)
+           .text(detail.label + ':', rightColX, rowY, { width: 110 });
+        
+        doc.fillColor(textColor)
+           .font('Helvetica-Bold')
+           .text(detail.value, rightColX + 115, rowY, { width: 65, align: 'left' });
+        
+        doc.font('Helvetica');
+      });
+      
+      yPos += 140;
+      
       // ================== ITEMS TABLE ==================
-      yPos = Math.max(yPos, detailY) + 15;
       
-      // Table Header (taller for multi-line headers)
-      doc.rect(30, yPos, 535, 24)
-         .fill(darkBlue);
+      // Table header with professional styling
+      doc.rect(margin, yPos, contentWidth, 30)
+         .fill(primaryColor);
       
-      doc.fontSize(8)
+      doc.fontSize(9)
          .font('Helvetica-Bold')
          .fillColor('#ffffff');
       
-      const colPositions = {
-        slNo: 35,
-        desc: 70,
-        hsn: 240,
-        qty: 290,
-        unit: 330,
-        price: 370,
-        dis: 425,
-        amount: 480
+      // Column definitions with proper spacing
+      const cols = {
+        slNo: { x: margin + 10, width: 30, label: 'No.' },
+        desc: { x: margin + 45, width: 200, label: 'Item Description' },
+        hsn: { x: margin + 250, width: 60, label: 'HSN/SAC' },
+        qty: { x: margin + 315, width: 45, label: 'Qty' },
+        unit: { x: margin + 365, width: 40, label: 'Unit' },
+        rate: { x: margin + 410, width: 55, label: 'Rate (₹)' },
+        disc: { x: margin + 470, width: 35, label: 'Disc%' },
+        amount: { x: margin + 510, width: 55, label: 'Amount (₹)' }
       };
       
-      doc.text('SL.', colPositions.slNo, yPos + 6, { width: 30 });
-      doc.text('NO.', colPositions.slNo, yPos + 12, { width: 30 });
+      Object.values(cols).forEach(col => {
+        doc.text(col.label, col.x, yPos + 10, { width: col.width, align: col === cols.slNo ? 'center' : 'left' });
+      });
       
-      doc.text('ITEM DESCRIPTION', colPositions.desc, yPos + 6, { width: 165 });
+      yPos += 30;
       
-      doc.text('HSN/', colPositions.hsn, yPos + 6, { width: 40 });
-      doc.text('SAC', colPositions.hsn, yPos + 12, { width: 40 });
-      
-      doc.text('QUAN', colPositions.qty, yPos + 4, { width: 35 });
-      doc.text('TITY', colPositions.qty, yPos + 10, { width: 35 });
-      
-      doc.text('UNIT', colPositions.unit, yPos + 6, { width: 35 });
-      
-      doc.text('PRICE', colPositions.price, yPos + 6, { width: 45 });
-      
-      doc.text('DIS.', colPositions.dis, yPos + 6, { width: 35 });
-      doc.text('%', colPositions.dis, yPos + 12, { width: 35 });
-      
-      doc.text('AMOUNT', colPositions.amount, yPos + 6, { width: 75 });
-      
-      yPos += 24;
-      
-      // Table Rows
+      // Table rows
       const items = invoiceData.items || [];
-      const rowHeight = 18;
+      const rowHeight = 25;
       
-      doc.fontSize(8)
+      doc.fontSize(9)
          .font('Helvetica')
-         .fillColor('#000000');
+         .fillColor(textColor);
       
       items.forEach((item, index) => {
-        // Draw row border
-        doc.rect(30, yPos, 535, rowHeight)
-           .stroke('#cccccc');
+        // Alternating row colors
+        if (index % 2 === 0) {
+          doc.rect(margin, yPos, contentWidth, rowHeight)
+             .fill(lightGray);
+        }
         
-        // Extract HSN code from item or material
-        const hsnCode = item.hsnCode || item.material?.hsinNumber || item.material?.hsnCode || '0000';
+        // Row border
+        doc.rect(margin, yPos, contentWidth, rowHeight)
+           .stroke('#d1d5db');
         
-        doc.text((index + 1).toString(), colPositions.slNo, yPos + 5);
-        doc.text(item.description || item.name || item.material?.name, colPositions.desc, yPos + 5, { width: 165 });
-        doc.text(hsnCode, colPositions.hsn, yPos + 5);
-        doc.text(item.quantity.toString(), colPositions.qty, yPos + 5);
-        doc.text(item.unit || item.material?.unit || 'Nos', colPositions.unit, yPos + 5);
-        doc.text('Rs. ' + item.rate.toFixed(2), colPositions.price, yPos + 5);
-        doc.text(item.discount || '0', colPositions.dis, yPos + 5);
-        doc.text('Rs. ' + item.amount.toFixed(2), colPositions.amount, yPos + 5);
+        const textY = yPos + 8;
+        
+        doc.fillColor(textColor);
+        doc.text((index + 1).toString(), cols.slNo.x, textY, { width: cols.slNo.width, align: 'center' });
+        doc.text(item.description || item.name, cols.desc.x, textY, { width: cols.desc.width, ellipsis: true });
+        doc.text(item.hsnCode || '0000', cols.hsn.x, textY, { width: cols.hsn.width });
+        doc.text(item.quantity.toString(), cols.qty.x, textY, { width: cols.qty.width, align: 'right' });
+        doc.text(item.unit || 'Nos', cols.unit.x, textY, { width: cols.unit.width });
+        doc.text('Rs.' + item.rate.toFixed(2), cols.rate.x, textY, { width: cols.rate.width, align: 'right' });
+        doc.text(item.discount || '0', cols.disc.x, textY, { width: cols.disc.width, align: 'center' });
+        doc.font('Helvetica-Bold')
+           .text(item.amount.toFixed(2), cols.amount.x, textY, { width: cols.amount.width, align: 'right' });
+        doc.font('Helvetica');
         
         yPos += rowHeight;
       });
       
-      // Add 5 empty rows if less than 5 items
-      for (let i = items.length; i < 5; i++) {
-        doc.rect(30, yPos, 535, rowHeight)
-           .stroke('#cccccc');
+      // Empty rows to maintain table structure
+      const minRows = 5;
+      for (let i = items.length; i < minRows; i++) {
+        if (i % 2 === 0) {
+          doc.rect(margin, yPos, contentWidth, rowHeight)
+             .fill(lightGray);
+        }
+        doc.rect(margin, yPos, contentWidth, rowHeight)
+           .stroke('#d1d5db');
         yPos += rowHeight;
       }
       
-      // ================== AMOUNT IN WORDS & TOTAL ==================
-      yPos += 3;
+      yPos += 15;
       
-      doc.fontSize(8)
+      // ================== AMOUNT SECTION ==================
+      
+      // Amount in words
+      doc.fontSize(9)
          .font('Helvetica-Bold')
-         .fillColor('#000000')
-         .text('AMOUNT IN WORDS:', 30, yPos);
+         .fillColor(primaryColor)
+         .text('Amount in Words:', margin, yPos);
+      
+      yPos += 15;
       
       const amountInWords = convertNumberToWords(invoiceData.subtotal || 0);
-      doc.font('Helvetica')
-         .text(amountInWords + ' Rupees Only', 30, yPos + 10, { width: 350 });
-      
-      // Total Box
-      doc.rect(440, yPos, 125, 25)
-         .fill(darkBlue);
-      
       doc.fontSize(10)
          .font('Helvetica-Bold')
-         .fillColor('#ffffff')
-         .text('TOTAL:', 445, yPos + 8);
+         .fillColor(textColor)
+         .text(amountInWords + ' Rupees Only', margin, yPos, { width: 350 });
+      
+      // Subtotal box
+      const totalBoxY = yPos - 15;
+      const totalBoxX = pageWidth - margin - 150;
+      
+      doc.rect(totalBoxX, totalBoxY, 150, 35)
+         .fill(primaryColor);
       
       doc.fontSize(11)
-         .text('Rs. ' + (invoiceData.subtotal || 0).toFixed(2), 490, yPos + 7);
+         .font('Helvetica-Bold')
+         .fillColor('#ffffff')
+         .text('SUBTOTAL', totalBoxX + 10, totalBoxY + 10, { width: 80 });
       
-      yPos += 30;
+      doc.fontSize(14)
+         .text('₹ ' + (invoiceData.subtotal || 0).toFixed(2), totalBoxX + 10, totalBoxY + 10, { width: 130, align: 'right' });
       
-      // ================== TAX BREAKDOWN TABLE ==================
+      yPos += 50;
       
-      // Tax Table Header (taller for multi-line headers)
-      doc.rect(30, yPos, 535, 28)
-         .fill(darkBlue);
+      // ================== TAX BREAKDOWN ==================
       
-      doc.fontSize(7)
+      doc.rect(margin, yPos, contentWidth, 25)
+         .fill(primaryColor);
+      
+      doc.fontSize(9)
          .font('Helvetica-Bold')
          .fillColor('#ffffff');
       
-      // HSN/SAC column
-      doc.text('HSN/', 35, yPos + 7, { width: 40 });
-      doc.text('SAC', 35, yPos + 14, { width: 40 });
+      const taxCols = {
+        hsn: { x: margin + 10, width: 70, label: 'HSN/SAC' },
+        taxable: { x: margin + 85, width: 80, label: 'Taxable Value' },
+        cgstRate: { x: margin + 170, width: 50, label: 'CGST %' },
+        cgstAmt: { x: margin + 225, width: 70, label: 'CGST Amt' },
+        sgstRate: { x: margin + 300, width: 50, label: 'SGST %' },
+        sgstAmt: { x: margin + 355, width: 70, label: 'SGST Amt' },
+        total: { x: margin + 430, width: 85, label: 'Total Tax' }
+      };
       
-      // Taxable Value column
-      doc.text('TAXABLE', 95, yPos + 7, { width: 50 });
-      doc.text('VALUE', 95, yPos + 14, { width: 50 });
+      Object.values(taxCols).forEach(col => {
+        doc.text(col.label, col.x, yPos + 8, { width: col.width, align: 'center' });
+      });
       
-      // CGST columns
-      doc.text('CGST', 170, yPos + 3, { width: 70, align: 'center' });
-      doc.text('RATE', 155, yPos + 15, { width: 35, align: 'center' });
-      doc.text('AMOUNT', 195, yPos + 15, { width: 45, align: 'center' });
+      yPos += 25;
       
-      // SGST/UTGST columns
-      doc.text('SGST/UTGST', 260, yPos + 3, { width: 80, align: 'center' });
-      doc.text('RATE', 255, yPos + 15, { width: 35, align: 'center' });
-      doc.text('AMOUNT', 295, yPos + 15, { width: 45, align: 'center' });
-      
-      // Total Amount column
-      doc.text('TOTAL', 370, yPos + 7, { width: 50 });
-      doc.text('AMOUNT', 365, yPos + 14, { width: 50 });
-      
-      yPos += 28;
-      
-      // Tax rows (simplified - showing totals)
-      const taxRowHeight = 18;
-      
-      doc.fontSize(8)
-         .font('Helvetica')
-         .fillColor('#000000');
-      
-      // Row 1 - Aggregated taxes
-      doc.rect(30, yPos, 535, taxRowHeight)
-         .stroke('#cccccc');
+      // Tax row
+      doc.rect(margin, yPos, contentWidth, 25)
+         .fill(lightGray)
+         .stroke('#d1d5db');
       
       const taxableValue = invoiceData.subtotal || 0;
       const cgstAmount = invoiceData.cgst || 0;
       const sgstAmount = invoiceData.sgst || 0;
       const totalTax = cgstAmount + sgstAmount + (invoiceData.igst || 0);
-      const cgstRate = taxableValue > 0 ? ((cgstAmount / taxableValue) * 100).toFixed(1) : '0';
-      const sgstRate = taxableValue > 0 ? ((sgstAmount / taxableValue) * 100).toFixed(1) : '0';
+      const cgstRate = taxableValue > 0 ? ((cgstAmount / taxableValue) * 100).toFixed(1) : '0.0';
+      const sgstRate = taxableValue > 0 ? ((sgstAmount / taxableValue) * 100).toFixed(1) : '0.0';
       
-      doc.text('Various', 35, yPos + 5);
-      doc.text('Rs. ' + taxableValue.toFixed(2), 95, yPos + 5);
-      doc.text(cgstRate + '%', 160, yPos + 5);
-      doc.text('Rs. ' + cgstAmount.toFixed(2), 195, yPos + 5);
-      doc.text(sgstRate + '%', 260, yPos + 5);
-      doc.text('Rs. ' + sgstAmount.toFixed(2), 295, yPos + 5);
-      doc.text('Rs. ' + totalTax.toFixed(2), 365, yPos + 5);
+      doc.fontSize(9)
+         .font('Helvetica')
+         .fillColor(textColor);
       
-      yPos += taxRowHeight;
+      const taxY = yPos + 8;
+      doc.text('Various', taxCols.hsn.x, taxY, { width: taxCols.hsn.width, align: 'center' });
+      doc.text('₹' + taxableValue.toFixed(2), taxCols.taxable.x, taxY, { width: taxCols.taxable.width, align: 'right' });
+      doc.text(cgstRate + '%', taxCols.cgstRate.x, taxY, { width: taxCols.cgstRate.width, align: 'center' });
+      doc.text('₹' + cgstAmount.toFixed(2), taxCols.cgstAmt.x, taxY, { width: taxCols.cgstAmt.width, align: 'right' });
+      doc.text(sgstRate + '%', taxCols.sgstRate.x, taxY, { width: taxCols.sgstRate.width, align: 'center' });
+      doc.text('₹' + sgstAmount.toFixed(2), taxCols.sgstAmt.x, taxY, { width: taxCols.sgstAmt.width, align: 'right' });
+      doc.font('Helvetica-Bold')
+         .text('₹' + totalTax.toFixed(2), taxCols.total.x, taxY, { width: taxCols.total.width, align: 'right' });
       
-      // Row 2 - Empty
-      doc.rect(30, yPos, 535, taxRowHeight)
-         .stroke('#cccccc');
+      yPos += 40;
       
-      yPos += taxRowHeight + 3;
-      
-      // ================== TAX AMOUNT IN WORDS ==================
-      doc.fontSize(8)
+      // Tax amount in words
+      doc.fontSize(9)
          .font('Helvetica-Bold')
-         .fillColor('#000000')
-         .text('TAX AMOUNT IN WORDS:', 30, yPos);
+         .fillColor(primaryColor)
+         .text('Tax Amount in Words:', margin, yPos);
+      
+      yPos += 15;
       
       const taxAmountInWords = convertNumberToWords(totalTax);
-      doc.font('Helvetica')
-         .text(taxAmountInWords + ' Rupees Only', 30, yPos + 10, { width: 535 });
+      doc.fontSize(9)
+         .font('Helvetica')
+         .fillColor(darkGray)
+         .text(taxAmountInWords + ' Rupees Only', margin, yPos, { width: contentWidth });
       
-      yPos += 22;
+      yPos += 30;
+      
+      // ================== GRAND TOTAL ==================
+      
+      const grandTotal = taxableValue + totalTax;
+      
+      doc.rect(pageWidth - margin - 200, yPos, 200, 40)
+         .fill(accentColor);
+      
+      doc.fontSize(13)
+         .font('Helvetica-Bold')
+         .fillColor('#ffffff')
+         .text('GRAND TOTAL', pageWidth - margin - 190, yPos + 10, { width: 100 });
+      
+      doc.fontSize(16)
+         .text('₹ ' + grandTotal.toFixed(2), pageWidth - margin - 190, yPos + 10, { width: 180, align: 'right' });
+      
+      yPos += 55;
       
       // ================== DECLARATION ==================
-      doc.fontSize(8)
+      
+      doc.fontSize(9)
          .font('Helvetica-Bold')
-         .fillColor('#000000')
-         .text('DECLARATION:', 30, yPos);
+         .fillColor(primaryColor)
+         .text('DECLARATION', margin, yPos);
       
-      yPos += 10;
+      yPos += 15;
       
-      doc.fontSize(7)
+      doc.fontSize(8)
          .font('Helvetica')
-         .fillColor('#333333')
+         .fillColor(darkGray)
          .text(
-           'WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED AND THAT ALL PARTICULARS ARE TRUE AND CORRECT.',
-           30,
+           'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
+           margin,
            yPos,
-           { width: 535 }
+           { width: contentWidth, lineGap: 2 }
          );
       
-      yPos += 18;
+      yPos += 30;
       
       // ================== BANK DETAILS & QR CODE ==================
       
-      // Bank Details
-      doc.fontSize(8)
-         .font('Helvetica-Bold')
-         .fillColor('#000000')
-         .text('COMPANY\'S BANK DETAILS', 30, yPos);
+      const footerSectionY = yPos;
       
-      yPos += 12;
+      // Bank details box
+      doc.rect(margin, yPos, 280, 90)
+         .stroke('#d1d5db');
+      
+      doc.fontSize(9)
+         .font('Helvetica-Bold')
+         .fillColor(primaryColor)
+         .text('BANK DETAILS', margin + 10, yPos + 10);
+      
+      yPos += 25;
       
       doc.fontSize(8)
          .font('Helvetica')
-         .fillColor('#333333');
+         .fillColor(textColor);
       
       const bankDetails = invoiceData.bankDetails || {};
-      doc.text('BANK NAME : ' + (bankDetails.bankName || 'AXIS BANK'), 30, yPos);
+      doc.text('Bank Name: ' + (bankDetails.bankName || 'AXIS BANK'), margin + 10, yPos, { width: 260 });
       yPos += 12;
-      doc.text('A/C NO. : ' + (bankDetails.accountNumber || '910020023507337'), 30, yPos);
+      doc.text('Account No: ' + (bankDetails.accountNumber || '910020023507337'), margin + 10, yPos, { width: 260 });
       yPos += 12;
-      doc.text('BRANCH & IFS CODE: ' + (bankDetails.branch || 'SAHAKARNAGAR') + ' & ' + (bankDetails.ifscCode || 'UTIB0000561'), 30, yPos);
+      doc.text('Branch: ' + (bankDetails.branch || 'SAHAKARNAGAR'), margin + 10, yPos, { width: 260 });
+      yPos += 12;
+      doc.text('IFSC Code: ' + (bankDetails.ifscCode || 'UTIB0000561'), margin + 10, yPos, { width: 260 });
       
-      // QR Code and Authorized Sign
-      const qrY = yPos - 45;
+      // QR Code and signature box
+      const rightBoxX = margin + 290;
+      yPos = footerSectionY;
+      
+      doc.rect(rightBoxX, yPos, 225, 90)
+         .stroke('#d1d5db');
       
       // Generate QR Code
       if (bankDetails.upiId) {
         const upiString = `upi://pay?pa=${bankDetails.upiId}&pn=${encodeURIComponent(
           companyInfo.name || 'Sanjana Enterprises'
-        )}&am=${invoiceData.totalAmount}&cu=INR`;
+        )}&am=${grandTotal}&cu=INR`;
         
-        QRCode.toDataURL(upiString, { width: 80, height: 80, margin: 0 }, (err, url) => {
+        QRCode.toDataURL(upiString, { width: 80, height: 80, margin: 1 }, (err, url) => {
           if (!err && url) {
-            doc.fontSize(7)
+            doc.fontSize(8)
                .font('Helvetica-Bold')
-               .fillColor('#000000')
-               .text('PAYMENT VIA QR CODE', 370, qrY);
+               .fillColor(primaryColor)
+               .text('Scan to Pay', rightBoxX + 10, yPos + 10);
             
             try {
               const base64 = url.split(',')[1];
               const buffer = Buffer.from(base64, 'base64');
-              doc.image(buffer, 390, qrY + 12, { width: 70, height: 70 });
+              doc.image(buffer, rightBoxX + 15, yPos + 25, { width: 60, height: 60 });
             } catch (error) {
               console.log('QR code error:', error);
             }
@@ -377,29 +409,34 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       }
       
       function finishPDF() {
-        // Authorized Sign
-        doc.fontSize(8)
-           .font('Helvetica')
-           .fillColor('#000000')
-           .text('AUTHORISED SIGN', 470, qrY + 90);
+        // Authorized signature
+        doc.fontSize(9)
+           .font('Helvetica-Bold')
+           .fillColor(textColor)
+           .text('For Sanjana Enterprises', rightBoxX + 90, footerSectionY + 30);
         
-        doc.moveTo(460, qrY + 85)
-           .lineTo(555, qrY + 85)
+        doc.moveTo(rightBoxX + 90, footerSectionY + 70)
+           .lineTo(rightBoxX + 210, footerSectionY + 70)
            .stroke('#000000');
         
-        // ================== FOOTER ==================
-        const footerY = pageHeight - 30;
+        doc.fontSize(8)
+           .font('Helvetica')
+           .text('Authorized Signatory', rightBoxX + 90, footerSectionY + 75, { width: 120, align: 'center' });
         
-        doc.rect(0, footerY, pageWidth, 20)
-           .fill(darkBlue);
+        // ================== FOOTER ==================
+        
+        const footerY = pageHeight - 25;
+        
+        doc.rect(0, footerY - 5, pageWidth, 30)
+           .fill(primaryColor);
         
         doc.fontSize(8)
            .font('Helvetica')
            .fillColor('#ffffff')
            .text(
-             'THIS IS A COMPUTER GENERATED INVOICE',
+             'This is a computer generated invoice',
              0,
-             footerY + 6,
+             footerY + 5,
              { width: pageWidth, align: 'center' }
            );
         
@@ -475,9 +512,6 @@ function convertNumberToWords(num) {
   return result.trim();
 }
 
-// Warranty Certificate (keep existing one)
 export const generateWarrantyCertificate = async (warrantyData) => {
-  // ... keep existing warranty code
   return Promise.resolve({ filename: 'warranty.pdf', filepath: '/path/to/warranty.pdf' });
 };
-
