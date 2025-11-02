@@ -122,9 +122,11 @@ invoiceSchema.pre('validate', async function(next) {
     try {
       const year = new Date().getFullYear().toString().slice(-2);
       const month = String(new Date().getMonth() + 1).padStart(2, '0');
-      const pattern = new RegExp(`^INV${year}${month}\\d{4}$`);
+      const prefix = `INV${year}${month}`;
       
-      // Find ALL invoices matching the pattern for this month
+      // Find ALL invoices for this month with EXACT format: INV + YY + MM + 4 digits
+      const pattern = new RegExp(`^${prefix}\\d{4}$`);
+      
       const invoices = await mongoose.model('Invoice')
         .find({ invoiceNumber: { $regex: pattern } })
         .select('invoiceNumber')
@@ -133,19 +135,29 @@ invoiceSchema.pre('validate', async function(next) {
       let nextNumber = 1;
       
       if (invoices && invoices.length > 0) {
-        // Extract the numeric parts and find the maximum
+        // Extract ONLY the last 4 digits from properly formatted invoices
         const numbers = invoices.map(inv => {
-          const numPart = inv.invoiceNumber.slice(-4); // Last 4 digits
-          return parseInt(numPart, 10);
-        }).filter(num => !isNaN(num)); // Filter out any NaN values
+          // Only process if invoice number has exact length (INV + YY + MM + 4 digits = 13 chars)
+          if (inv.invoiceNumber.length === 13) {
+            const numPart = inv.invoiceNumber.slice(-4); // Last 4 characters
+            const parsed = parseInt(numPart, 10);
+            // Only return valid 4-digit numbers (1-9999)
+            return (!isNaN(parsed) && parsed >= 1 && parsed <= 9999) ? parsed : 0;
+          }
+          return 0;
+        }).filter(num => num > 0);
         
         if (numbers.length > 0) {
           const maxNumber = Math.max(...numbers);
-          nextNumber = maxNumber + 1;
+          // Ensure we don't exceed 9999, reset to 1 if needed
+          nextNumber = maxNumber >= 9999 ? 1 : maxNumber + 1;
         }
       }
       
-      this.invoiceNumber = `INV${year}${month}${String(nextNumber).padStart(4, '0')}`;
+      // Ensure nextNumber is always 4 digits (0001-9999)
+      const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
+      this.invoiceNumber = `${prefix}${sequenceNumber}`;
+      
     } catch (error) {
       return next(error);
     }
