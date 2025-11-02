@@ -25,6 +25,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import invoiceSettingsRoutes from './routes/invoiceSettingsRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import expenseRoutes from './routes/expenseRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -134,6 +135,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/invoice-settings', invoiceSettingsRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 // Health check endpoints
 app.get('/health', async (req, res) => {

@@ -259,6 +259,23 @@ export const notificationAPI = {
   deleteAllRead: () => api.delete('/notifications/read')
 };
 
+// ============= EXPENSES =============
+export const expenseAPI = {
+  getAll: (params) => api.get('/expenses', { params }),
+  getById: (id) => api.get(`/expenses/${id}`),
+  getMyExpenses: () => api.get('/expenses/my-expenses'),
+  create: (data) => api.post('/expenses/my-expense', data),
+  update: (id, data) => api.put(`/expenses/my-expense/${id}`, data),
+  delete: (id) => api.delete(`/expenses/my-expense/${id}`),
+  approve: (id, data) => api.put(`/expenses/${id}/approve`, data),
+  reject: (id, data) => api.put(`/expenses/${id}/reject`, data),
+  pay: (id, data) => api.put(`/expenses/${id}/pay`, data),
+  getStats: (params) => api.get('/expenses/stats', { params }),
+  uploadDocuments: (formData) => api.post('/expenses/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -273,5 +290,6 @@ export default {
   auth: authAPI,
   settings: settingsAPI,
   invoiceSettings: invoiceSettingsAPI,
-  notifications: notificationAPI
+  notifications: notificationAPI,
+  expenses: expenseAPI
 };
