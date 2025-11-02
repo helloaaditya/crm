@@ -140,7 +140,7 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       // Column definitions with proper spacing
       const cols = {
         slNo: { x: margin + 10, width: 30, label: 'No.' },
-        desc: { x: margin + 45, width: 200, label: 'Item Description' },
+        desc: { x: margin + 45, width: 120, label: 'Item Description' },
         hsn: { x: margin + 250, width: 60, label: 'HSN/SAC' },
         qty: { x: margin + 315, width: 45, label: 'Qty' },
         unit: { x: margin + 365, width: 40, label: 'Unit' },

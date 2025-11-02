@@ -121,6 +121,8 @@ export const employeeAPI = {
   markAttendance: (id, data) => api.post(`/employees/${id}/attendance`, data),
   getAttendance: (id, params) => api.get(`/employees/${id}/attendance`, { params }),
   updateAttendance: (id, attendanceId, data) => api.put(`/employees/${id}/attendance/${attendanceId}`, data),
+  autoGenerateAttendance: () => api.post('/employees/attendance/auto-generate'),
+  generateMissingAttendance: (id) => api.post(`/employees/${id}/attendance/generate-missing`),
   bulk: {
     sample: () => api.get('/employees/bulk/sample', { responseType: 'text' }),
     upload: (formData) => api.post('/employees/bulk/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
