@@ -39,7 +39,7 @@ const employeeSchema = new mongoose.Schema({
   designation: {
     type: String,
     required: true,
-    enum: ['supervisor', 'engineer', 'worker', 'technician', 'manager', 'helper', 'driver', 'other']
+    enum: ['supervisor', 'engineer', 'worker', 'technician', 'manager', 'helper', 'driver', 'admin', 'other']
   },
   role: {
     type: String,

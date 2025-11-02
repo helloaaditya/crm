@@ -68,35 +68,55 @@ export const getExpense = asyncHandler(async (req, res) => {
 });
 
 // @desc    Create expense (employee self-service)
-// @route   POST /api/expenses
+// @route   POST /api/expenses/my-expense
 // @access  Private
 export const createExpense = asyncHandler(async (req, res) => {
+  console.log('Creating expense for user:', req.user._id, req.user.name);
+  console.log('Request body:', req.body);
+  
   const { category, description, amount, expenseDate, project, documents, notes } = req.body;
   
   // Get employee record for the logged-in user
   const employee = await Employee.findOne({ userId: req.user._id });
   
+  console.log('Employee found:', employee ? `${employee.name} (${employee.employeeId})` : 'NOT FOUND');
+  
   if (!employee) {
-    return res.status(404).json({ message: 'Employee record not found' });
+    return res.status(404).json({ 
+      message: 'Employee record not found. Please contact admin to create your employee profile.',
+      userId: req.user._id
+    });
   }
   
-  const expense = await Expense.create({
+  // Validate required fields
+  if (!category || !description || !amount) {
+    return res.status(400).json({ 
+      message: 'Category, description, and amount are required fields',
+      received: { category, description, amount }
+    });
+  }
+  
+  const expenseData = {
     employee: employee._id,
     submittedBy: req.user._id,
     category,
     description,
-    amount,
+    amount: Number(amount),
     expenseDate: expenseDate || new Date(),
-    project,
-    documents: documents || [],
-    notes,
+    project: project || null,
+    documents: Array.isArray(documents) ? documents : [],
+    notes: notes || '',
     activityLog: [{
       action: 'submitted',
       performedBy: req.user._id,
       date: new Date(),
       notes: 'Expense submitted for approval'
     }]
-  });
+  };
+  
+  console.log('Creating expense with data:', expenseData);
+  
+  const expense = await Expense.create(expenseData);
   
   // Notify expense approvers (users with expense module access)
   const approvers = await User.find({
