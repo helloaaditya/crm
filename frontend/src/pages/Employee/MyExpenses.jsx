@@ -112,12 +112,22 @@ function MyExpenses() {
     
     try {
       setLoading(true)
-      await API.expenses.create(formData)
+      
+      // Ensure documents is an array, not a string
+      const submitData = {
+        ...formData,
+        documents: Array.isArray(formData.documents) ? formData.documents : []
+      }
+      
+      console.log('Submitting expense:', submitData)
+      
+      await API.expenses.create(submitData)
       toast.success('Expense submitted successfully! 🎉')
       setShowModal(false)
       resetForm()
       fetchExpenses()
     } catch (error) {
+      console.error('Submit error:', error)
       toast.error(error.response?.data?.message || 'Failed to submit expense')
     } finally {
       setLoading(false)

@@ -32,7 +32,7 @@ export const getExpenses = asyncHandler(async (req, res) => {
   }
   
   const expenses = await Expense.find(query)
-    .populate('employee', 'name employeeId phone email')
+    .populate('employee', 'name employeeId phone email bankDetails')
     .populate('submittedBy', 'name')
     .populate('project', 'projectId description')
     .populate('approvedBy', 'name')
@@ -50,7 +50,7 @@ export const getExpenses = asyncHandler(async (req, res) => {
 // @access  Private
 export const getExpense = asyncHandler(async (req, res) => {
   const expense = await Expense.findById(req.params.id)
-    .populate('employee', 'name employeeId phone email basicSalary')
+    .populate('employee', 'name employeeId phone email basicSalary bankDetails')
     .populate('submittedBy', 'name email')
     .populate('project', 'projectId description customer')
     .populate('approvedBy', 'name')

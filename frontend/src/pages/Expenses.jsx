@@ -577,11 +577,6 @@ const Expenses = () => {
                     <p className="text-sm text-gray-600 mb-1">Employee</p>
                     <p className="font-medium text-gray-900">{viewModal.employee?.name}</p>
                     <p className="text-sm text-gray-500">{viewModal.employee?.employeeId}</p>
-                    {viewModal.employee?.bankDetails?.accountNumber && (
-                      <p className="text-xs text-green-600 mt-1">
-                        💳 {viewModal.employee.bankDetails.bankName} - {viewModal.employee.bankDetails.accountNumber}
-                      </p>
-                    )}
                   </div>
                 )}
                 <div>
@@ -629,6 +624,43 @@ const Expenses = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-2">Notes</p>
                   <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{viewModal.notes}</p>
+                </div>
+              )}
+              
+              {/* Bank Details for Payment Processing (Admin Only) */}
+              {hasExpenseAccess && viewModal.employee?.bankDetails?.accountNumber && (
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-gray-800 mb-3">💳 Payment Information</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-600">Account Holder</p>
+                      <p className="font-semibold text-gray-900">{viewModal.employee.bankDetails.accountHolderName || viewModal.employee.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Bank Name</p>
+                      <p className="font-semibold text-gray-900">{viewModal.employee.bankDetails.bankName}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Account Number</p>
+                      <p className="font-mono font-bold text-gray-900">{viewModal.employee.bankDetails.accountNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">IFSC Code</p>
+                      <p className="font-mono font-semibold text-gray-900">{viewModal.employee.bankDetails.ifscCode}</p>
+                    </div>
+                    {viewModal.employee.bankDetails.branch && (
+                      <div>
+                        <p className="text-gray-600">Branch</p>
+                        <p className="font-medium text-gray-900">{viewModal.employee.bankDetails.branch}</p>
+                      </div>
+                    )}
+                    {viewModal.employee.bankDetails.upiId && (
+                      <div>
+                        <p className="text-gray-600">UPI ID</p>
+                        <p className="font-mono font-semibold text-blue-700">{viewModal.employee.bankDetails.upiId}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               

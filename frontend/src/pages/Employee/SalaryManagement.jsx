@@ -316,17 +316,53 @@ const SalaryManagement = () => {
             </div>
           ) : (
             <>
+              {/* Bank Details Card */}
+              {selectedEmployee.bankDetails?.accountNumber && (
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg shadow mb-6 p-6">
+                  <h3 className="text-md font-semibold text-gray-800 mb-4 flex items-center">
+                    💳 Payment Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-600">Account Holder</p>
+                      <p className="font-semibold text-gray-900">{selectedEmployee.bankDetails.accountHolderName || selectedEmployee.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Bank Name</p>
+                      <p className="font-semibold text-gray-900">{selectedEmployee.bankDetails.bankName}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Account Number</p>
+                      <p className="font-mono font-bold text-gray-900">{selectedEmployee.bankDetails.accountNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">IFSC Code</p>
+                      <p className="font-mono font-semibold text-gray-900">{selectedEmployee.bankDetails.ifscCode}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Branch</p>
+                      <p className="font-medium text-gray-900">{selectedEmployee.bankDetails.branch}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Account Type</p>
+                      <p className="font-medium text-gray-900 capitalize">{selectedEmployee.bankDetails.accountType}</p>
+                    </div>
+                    {selectedEmployee.bankDetails.upiId && (
+                      <div className="col-span-2">
+                        <p className="text-gray-600">UPI ID</p>
+                        <p className="font-mono font-semibold text-blue-700">{selectedEmployee.bankDetails.upiId}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               {/* Salary Structure */}
               <div className="bg-white rounded-lg shadow mb-6">
                 <div className="p-6 border-b flex justify-between items-center">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800">Salary Structure</h2>
                     <p className="text-sm text-gray-600">{selectedEmployee.name} ({selectedEmployee.employeeId})</p>
-                    {selectedEmployee.bankDetails?.accountNumber && (
-                      <p className="text-xs text-green-600 mt-1">
-                        💳 Bank: {selectedEmployee.bankDetails.bankName} - {selectedEmployee.bankDetails.accountNumber}
-                      </p>
-                    )}
                   </div>
                   <button
                     onClick={handleUpdateSalaryStructure}
