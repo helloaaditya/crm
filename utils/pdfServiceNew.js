@@ -88,49 +88,37 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
         yPos += doc.heightOfString(addr, { width: 250 }) + 5;
       }
       
-      // Right Side - Invoice Details
-      let detailY = 90;
-      const labelX = 390;
-      const valueX = 520;
+       // RIGHT COLUMN - Invoice Details
+       yPos = colStartY;
       
-      doc.fontSize(8)
-         .font('Helvetica')
-         .fillColor('#000000');
-      
-      // Invoice #
-      doc.text('INVOICE #', labelX, detailY);
-      doc.text(invoiceData.invoiceNumber || '', valueX, detailY);
-      detailY += 12;
-      
-      // Date
-      doc.text('DATE:', labelX, detailY);
-      doc.text(new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString('en-IN'), valueX, detailY);
-      detailY += 12;
-      
-      // Mode/Terms of Payment
-      doc.text('MODE/TERMS OF PAYMENT:', labelX, detailY);
-      doc.text(invoiceData.paymentMode || 'As per terms', valueX, detailY);
-      detailY += 12;
-      
-      // Buyer's Order #
-      doc.text('BUYER\'S ORDER #:', labelX, detailY);
-      doc.text(invoiceData.buyerOrderNo || '-', valueX, detailY);
-      detailY += 12;
-      
-      // Dispatch Through
-      doc.text('DISPATCH THROUGH:', labelX, detailY);
-      doc.text(invoiceData.dispatchThrough || '-', valueX, detailY);
-      detailY += 12;
-      
-      // Destination
-      doc.text('DESTINATION:', labelX, detailY);
-      doc.text(invoiceData.destination || invoiceData.customerAddress?.city || '-', valueX, detailY);
-      detailY += 12;
-      
-      // Terms of Delivery
-      doc.text('TERMS OF DELIVERY:', labelX, detailY);
-      doc.text(invoiceData.deliveryTerms || '-', valueX, detailY);
-      
+       const detailsBox = [
+         { label: 'Invoice No.', value: invoiceData.invoiceNumber || '' },
+         { label: 'Date', value: new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString('en-IN') },
+         { label: 'Payment Mode', value: invoiceData.paymentMode || 'As per terms' },
+         { label: 'Order No.', value: invoiceData.buyerOrderNo || '-' },
+         { label: 'Dispatch Through', value: invoiceData.dispatchThrough || '-' },
+         { label: 'Destination', value: invoiceData.destination || invoiceData.customerAddress?.city || '-' },
+         { label: 'Delivery Terms', value: invoiceData.deliveryTerms || '-' }
+       ];
+       
+       doc.fontSize(9)
+          .font('Helvetica');
+       
+       detailsBox.forEach((detail, index) => {
+         const rowY = yPos + (index * 16);
+         
+         doc.fillColor(darkGray)
+            .text(detail.label + ':', rightColX, rowY, { width: 110 });
+         
+         doc.fillColor(textColor)
+            .font('Helvetica-Bold')
+            .text(detail.value, rightColX + 115, rowY, { width: 65, align: 'left' });
+         
+         doc.font('Helvetica');
+       });
+       
+       yPos += 140;
+       
       // ================== ITEMS TABLE ==================
       yPos = Math.max(yPos, detailY) + 15;
       

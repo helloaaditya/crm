@@ -1,20 +1,36 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import Invoice from '../models/Invoice.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from root directory
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const fixInvoiceNumbers = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    
+    if (!mongoUri) {
+      console.error('❌ MONGO_URI not found in .env file!');
+      console.log('💡 Make sure you have a .env file in the root directory with MONGO_URI set');
+      process.exit(1);
+    }
+    
+    console.log('🔌 Connecting to MongoDB...');
+    await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB');
 
-    // Find all invoices with corrupted numbers (length > 13)
+    // Find all invoices with corrupted numbers (length !== 11)
+    // Correct format: INV(3) + YY(2) + MM(2) + 4digits(4) = 11 characters
     const allInvoices = await Invoice.find({}).select('invoiceNumber invoiceDate').lean();
     
     console.log(`\n📊 Total invoices found: ${allInvoices.length}`);
     
-    const corrupted = allInvoices.filter(inv => inv.invoiceNumber && inv.invoiceNumber.length !== 13);
+    const corrupted = allInvoices.filter(inv => inv.invoiceNumber && inv.invoiceNumber.length !== 11);
     console.log(`❌ Corrupted invoice numbers: ${corrupted.length}`);
     
     if (corrupted.length > 0) {
@@ -60,7 +76,7 @@ const fixInvoiceNumbers = async () => {
         
         let maxNumber = 0;
         validInvoices.forEach(inv => {
-          if (inv.invoiceNumber.length === 13) {
+          if (inv.invoiceNumber.length === 11) {
             const num = parseInt(inv.invoiceNumber.slice(-4), 10);
             if (!isNaN(num) && num > maxNumber) {
               maxNumber = num;
@@ -84,7 +100,7 @@ const fixInvoiceNumbers = async () => {
     }
     
     // Show summary of valid invoices
-    const valid = allInvoices.filter(inv => inv.invoiceNumber && inv.invoiceNumber.length === 13);
+    const valid = allInvoices.filter(inv => inv.invoiceNumber && inv.invoiceNumber.length === 11);
     console.log(`\n✅ Valid invoice numbers: ${valid.length}`);
     
     if (valid.length > 0 && valid.length <= 20) {

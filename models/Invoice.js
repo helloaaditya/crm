@@ -137,8 +137,11 @@ invoiceSchema.pre('validate', async function(next) {
       if (invoices && invoices.length > 0) {
         // Extract ONLY the last 4 digits from properly formatted invoices
         const numbers = invoices.map(inv => {
-          // Only process if invoice number has exact length (INV + YY + MM + 4 digits = 13 chars)
-          if (inv.invoiceNumber.length === 13) {
+          // Calculate expected length: INV(3) + YY(2) + MM(2) + 4digits(4) = 11 chars
+          const expectedLength = prefix.length + 4; // "INV2511" + "0001" = 11
+          
+          // Only process if invoice number has exact expected length
+          if (inv.invoiceNumber.length === expectedLength) {
             const numPart = inv.invoiceNumber.slice(-4); // Last 4 characters
             const parsed = parseInt(numPart, 10);
             // Only return valid 4-digit numbers (1-9999)
