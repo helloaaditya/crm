@@ -96,6 +96,20 @@ export const createExpense = asyncHandler(async (req, res) => {
     });
   }
   
+  // Parse documents if it's a string (double-stringified)
+  let parsedDocuments = documents || [];
+  if (typeof documents === 'string') {
+    try {
+      parsedDocuments = JSON.parse(documents);
+      console.log('Parsed documents from string:', parsedDocuments);
+    } catch (e) {
+      console.error('Failed to parse documents:', e);
+      parsedDocuments = [];
+    }
+  } else if (Array.isArray(documents)) {
+    parsedDocuments = documents;
+  }
+  
   const expenseData = {
     employee: employee._id,
     submittedBy: req.user._id,
@@ -104,7 +118,7 @@ export const createExpense = asyncHandler(async (req, res) => {
     amount: Number(amount),
     expenseDate: expenseDate || new Date(),
     project: project || null,
-    documents: Array.isArray(documents) ? documents : [],
+    documents: parsedDocuments,
     notes: notes || '',
     activityLog: [{
       action: 'submitted',
@@ -114,7 +128,7 @@ export const createExpense = asyncHandler(async (req, res) => {
     }]
   };
   
-  console.log('Creating expense with data:', expenseData);
+  console.log('Creating expense with data:', { ...expenseData, documents: `[${parsedDocuments.length} documents]` });
   
   const expense = await Expense.create(expenseData);
   
