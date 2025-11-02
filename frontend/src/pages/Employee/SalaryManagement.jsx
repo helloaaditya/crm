@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { FiDollarSign, FiPlus, FiEdit2, FiCheck, FiDownload, FiCalendar } from 'react-icons/fi'
+import { FiDollarSign, FiPlus, FiEdit2, FiCheck, FiDownload, FiCalendar, FiSearch, FiUser } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
 const SalaryManagement = () => {
   const [employees, setEmployees] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [salaryHistory, setSalaryHistory] = useState([])
@@ -167,6 +168,18 @@ const SalaryManagement = () => {
 
   const { totalAllowances, totalDeductions, grossSalary, netSalary } = calculateTotals()
 
+  // Filter employees based on search term
+  const filteredEmployees = employees.filter(emp => {
+    if (!searchTerm) return true
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      emp.name?.toLowerCase().includes(searchLower) ||
+      emp.employeeId?.toLowerCase().includes(searchLower) ||
+      emp.phone?.includes(searchTerm) ||
+      emp.role?.toLowerCase().includes(searchLower)
+    )
+  })
+
   return (
     <div className="p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
@@ -236,11 +249,39 @@ const SalaryManagement = () => {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow">
             <div className="p-4 border-b">
-              <h2 className="font-semibold text-gray-800">Employees</h2>
+              <h2 className="font-semibold text-gray-800 mb-3">Employees ({filteredEmployees.length})</h2>
+              
+              {/* Search Input */}
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by name, ID, phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="p-4 max-h-[calc(100vh-300px)] overflow-y-auto">
-              <div className="space-y-2">
-                {employees.map(emp => (
+            <div className="p-4 max-h-[calc(100vh-400px)] overflow-y-auto">
+              {filteredEmployees.length === 0 ? (
+                <div className="text-center py-8">
+                  <FiUser className="mx-auto text-gray-400 mb-2" size={48} />
+                  <p className="text-gray-600">
+                    {searchTerm ? 'No employees found' : 'No employees available'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredEmployees.map(emp => (
                   <div
                     key={emp._id}
                     onClick={() => handleEmployeeSelect(emp)}
@@ -258,8 +299,9 @@ const SalaryManagement = () => {
                       ₹{emp.basicSalary?.toLocaleString() || 0}
                     </p>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
