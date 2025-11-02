@@ -134,8 +134,8 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       // ================== ITEMS TABLE ==================
       yPos = Math.max(yPos, detailY) + 25;
       
-      // Table Header
-      doc.rect(30, yPos, 535, 20)
+      // Table Header (taller for multi-line headers)
+      doc.rect(30, yPos, 535, 24)
          .fill(darkBlue);
       
       doc.fontSize(8)
@@ -144,25 +144,36 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       
       const colPositions = {
         slNo: 35,
-        desc: 55,
-        hsn: 230,
-        qty: 280,
-        unit: 315,
-        price: 350,
-        dis: 395,
-        amount: 440
+        desc: 70,
+        hsn: 240,
+        qty: 290,
+        unit: 330,
+        price: 370,
+        dis: 425,
+        amount: 480
       };
       
-      doc.text('SL. NO.', colPositions.slNo, yPos + 6);
-      doc.text('ITEM DESCRIPTION', colPositions.desc, yPos + 6);
-      doc.text('HSN/SAC', colPositions.hsn, yPos + 6);
-      doc.text('QUANTITY', colPositions.qty, yPos + 6);
-      doc.text('UNIT', colPositions.unit, yPos + 6);
-      doc.text('PRICE', colPositions.price, yPos + 6);
-      doc.text('DIS. %', colPositions.dis, yPos + 6);
-      doc.text('AMOUNT', colPositions.amount, yPos + 6);
+      doc.text('SL.', colPositions.slNo, yPos + 6, { width: 30 });
+      doc.text('NO.', colPositions.slNo, yPos + 12, { width: 30 });
       
-      yPos += 20;
+      doc.text('ITEM DESCRIPTION', colPositions.desc, yPos + 6, { width: 165 });
+      
+      doc.text('HSN/', colPositions.hsn, yPos + 6, { width: 40 });
+      doc.text('SAC', colPositions.hsn, yPos + 12, { width: 40 });
+      
+      doc.text('QUAN', colPositions.qty, yPos + 4, { width: 35 });
+      doc.text('TITY', colPositions.qty, yPos + 10, { width: 35 });
+      
+      doc.text('UNIT', colPositions.unit, yPos + 6, { width: 35 });
+      
+      doc.text('PRICE', colPositions.price, yPos + 6, { width: 45 });
+      
+      doc.text('DIS.', colPositions.dis, yPos + 6, { width: 35 });
+      doc.text('%', colPositions.dis, yPos + 12, { width: 35 });
+      
+      doc.text('AMOUNT', colPositions.amount, yPos + 6, { width: 75 });
+      
+      yPos += 24;
       
       // Table Rows
       const items = invoiceData.items || [];
@@ -178,13 +189,13 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
            .stroke('#cccccc');
         
         doc.text((index + 1).toString(), colPositions.slNo, yPos + 5);
-        doc.text(item.description || item.name, colPositions.desc, yPos + 5, { width: 170 });
+        doc.text(item.description || item.name, colPositions.desc, yPos + 5, { width: 165 });
         doc.text(item.hsnCode || '0000', colPositions.hsn, yPos + 5);
         doc.text(item.quantity.toString(), colPositions.qty, yPos + 5);
         doc.text(item.unit || 'Nos', colPositions.unit, yPos + 5);
-        doc.text(item.rate.toFixed(2), colPositions.price, yPos + 5);
+        doc.text('₹' + item.rate.toFixed(2), colPositions.price, yPos + 5);
         doc.text(item.discount || '0', colPositions.dis, yPos + 5);
-        doc.text(item.amount.toFixed(2), colPositions.amount, yPos + 5);
+        doc.text('₹' + item.amount.toFixed(2), colPositions.amount, yPos + 5);
         
         yPos += rowHeight;
       });
@@ -218,32 +229,43 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
          .text('TOTAL:', 445, yPos + 8);
       
       doc.fontSize(11)
-         .text('₹ ' + (invoiceData.subtotal || 0).toFixed(2), 500, yPos + 7);
+         .text('₹ ' + (invoiceData.subtotal || 0).toFixed(2), 495, yPos + 7);
       
       yPos += 40;
       
       // ================== TAX BREAKDOWN TABLE ==================
       
-      // Tax Table Header
-      doc.rect(30, yPos, 535, 20)
+      // Tax Table Header (taller for multi-line headers)
+      doc.rect(30, yPos, 535, 28)
          .fill(darkBlue);
       
       doc.fontSize(7)
          .font('Helvetica-Bold')
          .fillColor('#ffffff');
       
-      doc.text('HSN/SAC', 35, yPos + 7);
-      doc.text('TAXABLE', 100, yPos + 3);
-      doc.text('VALUE', 105, yPos + 10);
-      doc.text('CGST', 170, yPos + 7);
-      doc.text('RATE', 165, yPos + 12, { width: 20 });
-      doc.text('AMOUNT', 195, yPos + 12, { width: 30 });
-      doc.text('SCST/UTGST', 255, yPos + 7);
-      doc.text('RATE', 255, yPos + 12, { width: 20 });
-      doc.text('AMOUNT', 285, yPos + 12, { width: 30 });
-      doc.text('AMOUNT', 350, yPos + 7);
+      // HSN/SAC column
+      doc.text('HSN/', 35, yPos + 7, { width: 40 });
+      doc.text('SAC', 35, yPos + 14, { width: 40 });
       
-      yPos += 20;
+      // Taxable Value column
+      doc.text('TAXABLE', 95, yPos + 7, { width: 50 });
+      doc.text('VALUE', 95, yPos + 14, { width: 50 });
+      
+      // CGST columns
+      doc.text('CGST', 170, yPos + 3, { width: 70, align: 'center' });
+      doc.text('RATE', 155, yPos + 15, { width: 35, align: 'center' });
+      doc.text('AMOUNT', 195, yPos + 15, { width: 45, align: 'center' });
+      
+      // SGST/UTGST columns
+      doc.text('SGST/UTGST', 260, yPos + 3, { width: 80, align: 'center' });
+      doc.text('RATE', 255, yPos + 15, { width: 35, align: 'center' });
+      doc.text('AMOUNT', 295, yPos + 15, { width: 45, align: 'center' });
+      
+      // Total Amount column
+      doc.text('TOTAL', 370, yPos + 7, { width: 50 });
+      doc.text('AMOUNT', 365, yPos + 14, { width: 50 });
+      
+      yPos += 28;
       
       // Tax rows (simplified - showing totals)
       const taxRowHeight = 18;
@@ -264,12 +286,12 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       const sgstRate = taxableValue > 0 ? ((sgstAmount / taxableValue) * 100).toFixed(1) : '0';
       
       doc.text('Various', 35, yPos + 5);
-      doc.text(taxableValue.toFixed(2), 100, yPos + 5);
-      doc.text(cgstRate + '%', 165, yPos + 5);
-      doc.text(cgstAmount.toFixed(2), 195, yPos + 5);
-      doc.text(sgstRate + '%', 255, yPos + 5);
-      doc.text(sgstAmount.toFixed(2), 285, yPos + 5);
-      doc.text(totalTax.toFixed(2), 350, yPos + 5);
+      doc.text('₹' + taxableValue.toFixed(2), 95, yPos + 5);
+      doc.text(cgstRate + '%', 160, yPos + 5);
+      doc.text('₹' + cgstAmount.toFixed(2), 195, yPos + 5);
+      doc.text(sgstRate + '%', 260, yPos + 5);
+      doc.text('₹' + sgstAmount.toFixed(2), 295, yPos + 5);
+      doc.text('₹' + totalTax.toFixed(2), 365, yPos + 5);
       
       yPos += taxRowHeight;
       
