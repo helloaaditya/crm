@@ -124,17 +124,25 @@ invoiceSchema.pre('validate', async function(next) {
       const month = String(new Date().getMonth() + 1).padStart(2, '0');
       const pattern = new RegExp(`^INV${year}${month}\\d{4}$`);
       
-      // Find the highest invoice number for this month
-      const lastInvoice = await mongoose.model('Invoice')
-        .findOne({ invoiceNumber: { $regex: pattern } })
-        .sort({ invoiceNumber: -1 })
+      // Find ALL invoices matching the pattern for this month
+      const invoices = await mongoose.model('Invoice')
+        .find({ invoiceNumber: { $regex: pattern } })
         .select('invoiceNumber')
         .lean();
       
       let nextNumber = 1;
-      if (lastInvoice && lastInvoice.invoiceNumber) {
-        const lastNumber = parseInt(lastInvoice.invoiceNumber.slice(-4));
-        nextNumber = lastNumber + 1;
+      
+      if (invoices && invoices.length > 0) {
+        // Extract the numeric parts and find the maximum
+        const numbers = invoices.map(inv => {
+          const numPart = inv.invoiceNumber.slice(-4); // Last 4 digits
+          return parseInt(numPart, 10);
+        }).filter(num => !isNaN(num)); // Filter out any NaN values
+        
+        if (numbers.length > 0) {
+          const maxNumber = Math.max(...numbers);
+          nextNumber = maxNumber + 1;
+        }
       }
       
       this.invoiceNumber = `INV${year}${month}${String(nextNumber).padStart(4, '0')}`;

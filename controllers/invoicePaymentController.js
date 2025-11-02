@@ -463,7 +463,8 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
   
   const invoice = await Invoice.findById(req.params.id)
     .populate('customer')
-    .populate('project');
+    .populate('project')
+    .populate('items.material');
 
   if (!invoice) {
     console.log('Invoice not found for ID:', req.params.id);
