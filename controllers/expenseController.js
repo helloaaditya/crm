@@ -475,12 +475,12 @@ export const uploadExpenseDocuments = asyncHandler(async (req, res) => {
     // If using S3
     if (process.env.S3_BUCKET_NAME && process.env.AWS_ACCESS_KEY_ID) {
       console.log('Using S3 upload...');
-      const { uploadToS3 } = await import('../utils/s3Service.js');
+      const { uploadBufferToS3 } = await import('../utils/s3Service.js');
       
-      const uploadPromises = req.files.map(async (file) => {
-        const s3Key = `expenses/${Date.now()}-${file.originalname}`;
+      const uploadPromises = req.files.map(async (file, index) => {
+        const s3Key = `expenses/${Date.now()}-${index}-${file.originalname}`;
         console.log('Uploading to S3:', s3Key);
-        const result = await uploadToS3(file.buffer, s3Key, file.mimetype);
+        const result = await uploadBufferToS3(file.buffer, s3Key, file.mimetype);
         return {
           url: result.url,
           type: 'receipt',
