@@ -29,6 +29,9 @@ import notificationRoutes from './routes/notificationRoutes.js';
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 
+// Import utilities
+import { initializeCronJobs, stopCronJobs } from './utils/cronJobs.js';
+
 // Load environment variables
 dotenv.config();
 
@@ -271,6 +274,10 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await connectDB();
+  
+  // Initialize cron jobs after DB connection
+  initializeCronJobs();
+  
   app.listen(PORT, () => {
     console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   });
@@ -281,7 +288,21 @@ startServer();
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   console.error('❌ Unhandled Rejection:', err.message);
+  stopCronJobs();
   process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM signal received: closing HTTP server');
+  stopCronJobs();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('👋 SIGINT signal received: closing HTTP server');
+  stopCronJobs();
+  process.exit(0);
 });
 
 export default app;

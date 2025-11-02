@@ -4,6 +4,7 @@ import Project from '../models/Project.js';
 import CalendarReminder from '../models/CalendarReminder.js';
 import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, validateAndUpdateAttendance } from '../utils/attendanceService.js';
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -176,43 +177,21 @@ export const markAttendance = asyncHandler(async (req, res) => {
 
   const { date, status, checkInTime, checkOutTime, location, notes } = req.body;
 
-  // Check if attendance already marked for the date
-  const existingAttendance = employee.attendance.find(
-    a => new Date(a.date).toDateString() === new Date(date).toDateString()
-  );
-
-  if (existingAttendance) {
-    return res.status(400).json({ message: 'Attendance already marked for this date' });
-  }
-
-  // Calculate work hours and auto-determine status only if both checkInTime and checkOutTime are provided
-  let workHours = 0;
-  let finalStatus = status; // Default to provided status
+  // Use the validation service to update or create attendance
+  validateAndUpdateAttendance(employee, date, checkInTime, checkOutTime, location);
   
-  if (checkInTime && checkOutTime) {
-    const checkIn = new Date(checkInTime);
-    const checkOut = new Date(checkOutTime);
-    workHours = (checkOut - checkIn) / (1000 * 60 * 60); // Hours
-    
-    // Automatically determine attendance status based on work hours
-    if (workHours >= 8.25) { // 8 hours 15 minutes
-      finalStatus = 'present';
-    } else if (workHours >= 4) { // 4 hours
-      finalStatus = 'half_day';
-    } else {
-      finalStatus = 'absent';
-    }
-  }
-
-  employee.attendance.push({
-    date,
-    status: finalStatus,
-    checkInTime,
-    checkOutTime,
-    location,
-    workHours,
-    notes
+  // Add notes if provided
+  const dateObj = new Date(date);
+  dateObj.setHours(0, 0, 0, 0);
+  const attendanceRecord = employee.attendance.find(a => {
+    const attDate = new Date(a.date);
+    attDate.setHours(0, 0, 0, 0);
+    return attDate.getTime() === dateObj.getTime();
   });
+  
+  if (attendanceRecord && notes) {
+    attendanceRecord.notes = notes;
+  }
 
   await employee.save();
 
@@ -296,6 +275,39 @@ export const updateAttendanceEntry = asyncHandler(async (req, res) => {
 
   await employee.save();
   res.json({ success: true, data: entry, message: 'Attendance entry updated' });
+});
+
+// @desc    Auto-generate missing attendance records for all employees
+// @route   POST /api/employees/attendance/auto-generate
+// @access  Private (Admin only)
+export const autoGenerateAllAttendance = asyncHandler(async (req, res) => {
+  const result = await autoGenerateAttendanceRecords();
+  
+  if (result.success) {
+    res.json({
+      success: true,
+      data: result,
+      message: `Successfully generated ${result.created} attendance records for ${result.processed} employees`
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: result.error || 'Failed to generate attendance records'
+    });
+  }
+});
+
+// @desc    Generate missing attendance for specific employee
+// @route   POST /api/employees/:id/attendance/generate-missing
+// @access  Private
+export const generateMissingAttendance = asyncHandler(async (req, res) => {
+  const result = await generateMissingAttendanceForEmployee(req.params.id);
+  
+  res.json({
+    success: true,
+    data: result,
+    message: result.message
+  });
 });
 
 // @desc    Apply for leave

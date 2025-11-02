@@ -10,6 +10,8 @@ import {
   markAttendance,
   getAttendanceHistory,
   updateAttendanceEntry,
+  autoGenerateAllAttendance,
+  generateMissingAttendance,
   applyLeave,
   updateLeaveStatus,
   processSalary,
@@ -124,6 +126,8 @@ router.delete('/:id', checkPermission('canDelete'), deleteEmployee);
 router.delete('/reminders/reset', checkPermission('canDelete'), resetAllReminders);
 
 // Attendance (Admin)
+router.post('/attendance/auto-generate', checkPermission('canCreate'), autoGenerateAllAttendance);
+router.post('/:id/attendance/generate-missing', checkPermission('canCreate'), generateMissingAttendance);
 router.post('/:id/attendance', markAttendance);
 router.get('/:id/attendance', getAttendanceHistory);
 router.put('/:id/attendance/:attendanceId', checkPermission('canEdit'), updateAttendanceEntry);
