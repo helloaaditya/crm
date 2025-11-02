@@ -137,16 +137,16 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
          .font('Helvetica-Bold')
          .fillColor('#ffffff');
       
-      // Column definitions with proper spacing
+      // Column definitions with proper spacing (adjusted to prevent truncation)
       const cols = {
-        slNo: { x: margin + 10, width: 30, label: 'No.' },
-        desc: { x: margin + 45, width: 200, label: 'Item Description' },
-        hsn: { x: margin + 250, width: 60, label: 'HSN/SAC' },
-        qty: { x: margin + 315, width: 45, label: 'Qty' },
-        unit: { x: margin + 365, width: 40, label: 'Unit' },
-        rate: { x: margin + 410, width: 55, label: 'Rate (₹)' },
-        disc: { x: margin + 470, width: 35, label: 'Disc%' },
-        amount: { x: margin + 510, width: 55, label: 'Amount (₹)' }
+        slNo: { x: margin + 5, width: 25, label: 'No.' },
+        desc: { x: margin + 35, width: 140, label: 'Item Description' },
+        hsn: { x: margin + 180, width: 55, label: 'HSN/SAC' },
+        qty: { x: margin + 240, width: 40, label: 'Qty' },
+        unit: { x: margin + 285, width: 35, label: 'Unit' },
+        rate: { x: margin + 325, width: 60, label: 'Rate (Rs)' },
+        disc: { x: margin + 390, width: 40, label: 'Disc%' },
+        amount: { x: margin + 435, width: 80, label: 'Amount' }
       };
       
       Object.values(cols).forEach(col => {
@@ -182,10 +182,10 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
         doc.text(item.hsnCode || '0000', cols.hsn.x, textY, { width: cols.hsn.width });
         doc.text(item.quantity.toString(), cols.qty.x, textY, { width: cols.qty.width, align: 'right' });
         doc.text(item.unit || 'Nos', cols.unit.x, textY, { width: cols.unit.width });
-        doc.text('Rs.' + item.rate.toFixed(2), cols.rate.x, textY, { width: cols.rate.width, align: 'right' });
+        doc.text('Rs. ' + item.rate.toFixed(2), cols.rate.x, textY, { width: cols.rate.width, align: 'right' });
         doc.text(item.discount || '0', cols.disc.x, textY, { width: cols.disc.width, align: 'center' });
         doc.font('Helvetica-Bold')
-           .text(item.amount.toFixed(2), cols.amount.x, textY, { width: cols.amount.width, align: 'right' });
+           .text('Rs. ' + item.amount.toFixed(2), cols.amount.x, textY, { width: cols.amount.width, align: 'right' });
         doc.font('Helvetica');
         
         yPos += rowHeight;
@@ -234,7 +234,7 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
          .text('SUBTOTAL', totalBoxX + 10, totalBoxY + 10, { width: 80 });
       
       doc.fontSize(14)
-         .text('₹ ' + (invoiceData.subtotal || 0).toFixed(2), totalBoxX + 10, totalBoxY + 10, { width: 130, align: 'right' });
+         .text('Rs. ' + (invoiceData.subtotal || 0).toFixed(2), totalBoxX + 10, totalBoxY + 10, { width: 130, align: 'right' });
       
       yPos += 50;
       
@@ -281,13 +281,13 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       
       const taxY = yPos + 8;
       doc.text('Various', taxCols.hsn.x, taxY, { width: taxCols.hsn.width, align: 'center' });
-      doc.text('₹' + taxableValue.toFixed(2), taxCols.taxable.x, taxY, { width: taxCols.taxable.width, align: 'right' });
+      doc.text('Rs. ' + taxableValue.toFixed(2), taxCols.taxable.x, taxY, { width: taxCols.taxable.width, align: 'right' });
       doc.text(cgstRate + '%', taxCols.cgstRate.x, taxY, { width: taxCols.cgstRate.width, align: 'center' });
-      doc.text('₹' + cgstAmount.toFixed(2), taxCols.cgstAmt.x, taxY, { width: taxCols.cgstAmt.width, align: 'right' });
+      doc.text('Rs. ' + cgstAmount.toFixed(2), taxCols.cgstAmt.x, taxY, { width: taxCols.cgstAmt.width, align: 'right' });
       doc.text(sgstRate + '%', taxCols.sgstRate.x, taxY, { width: taxCols.sgstRate.width, align: 'center' });
-      doc.text('₹' + sgstAmount.toFixed(2), taxCols.sgstAmt.x, taxY, { width: taxCols.sgstAmt.width, align: 'right' });
+      doc.text('Rs. ' + sgstAmount.toFixed(2), taxCols.sgstAmt.x, taxY, { width: taxCols.sgstAmt.width, align: 'right' });
       doc.font('Helvetica-Bold')
-         .text('₹' + totalTax.toFixed(2), taxCols.total.x, taxY, { width: taxCols.total.width, align: 'right' });
+         .text('Rs. ' + totalTax.toFixed(2), taxCols.total.x, taxY, { width: taxCols.total.width, align: 'right' });
       
       yPos += 40;
       
@@ -320,7 +320,7 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
          .text('GRAND TOTAL', pageWidth - margin - 190, yPos + 10, { width: 100 });
       
       doc.fontSize(16)
-         .text('₹ ' + grandTotal.toFixed(2), pageWidth - margin - 190, yPos + 10, { width: 180, align: 'right' });
+         .text('Rs. ' + grandTotal.toFixed(2), pageWidth - margin - 190, yPos + 10, { width: 180, align: 'right' });
       
       yPos += 55;
       
