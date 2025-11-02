@@ -3,6 +3,8 @@ import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { createNotification, NotificationTemplates } from './notificationController.js';
+import fs from 'fs';
+import path from 'path';
 
 // @desc    Get all expenses
 // @route   GET /api/expenses
@@ -460,45 +462,77 @@ export const getExpenseStats = asyncHandler(async (req, res) => {
 // @route   POST /api/expenses/upload
 // @access  Private
 export const uploadExpenseDocuments = asyncHandler(async (req, res) => {
+  console.log('Upload request received:', {
+    filesCount: req.files?.length || 0,
+    hasS3: !!process.env.S3_BUCKET_NAME
+  });
+  
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ message: 'No files uploaded' });
   }
   
-  // If using S3
-  if (process.env.S3_BUCKET_NAME) {
-    const { uploadToS3 } = await import('../utils/s3Service.js');
+  try {
+    // If using S3
+    if (process.env.S3_BUCKET_NAME && process.env.AWS_ACCESS_KEY_ID) {
+      console.log('Using S3 upload...');
+      const { uploadToS3 } = await import('../utils/s3Service.js');
+      
+      const uploadPromises = req.files.map(async (file) => {
+        const s3Key = `expenses/${Date.now()}-${file.originalname}`;
+        console.log('Uploading to S3:', s3Key);
+        const result = await uploadToS3(file.buffer, s3Key, file.mimetype);
+        return {
+          url: result.url,
+          type: 'receipt',
+          uploadDate: new Date()
+        };
+      });
+      
+      const documents = await Promise.all(uploadPromises);
+      console.log('S3 upload successful:', documents.length, 'files');
+      
+      return res.json({
+        success: true,
+        data: documents,
+        message: 'Documents uploaded successfully'
+      });
+    }
     
-    const uploadPromises = req.files.map(async (file) => {
-      const s3Key = `expenses/${Date.now()}-${file.originalname}`;
-      const result = await uploadToS3(file.buffer, s3Key, file.mimetype);
+    // Local upload fallback
+    console.log('Using local upload...');
+    
+    // Ensure documents directory exists
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      console.log('Created uploads/documents directory');
+    }
+    
+    // Save files locally
+    const documents = req.files.map((file, index) => {
+      const filename = `expense-${Date.now()}-${index}-${file.originalname}`;
+      const filepath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filepath, file.buffer);
+      console.log('Saved file locally:', filename);
+      
       return {
-        url: result.url,
+        url: `/uploads/documents/${filename}`,
         type: 'receipt',
         uploadDate: new Date()
       };
     });
     
-    const documents = await Promise.all(uploadPromises);
+    console.log('Local upload successful:', documents.length, 'files');
     
-    return res.json({
+    res.json({
       success: true,
       data: documents,
       message: 'Documents uploaded successfully'
     });
+  } catch (error) {
+    console.error('Upload error:', error);
+    throw error;
   }
-  
-  // Local upload fallback
-  const documents = req.files.map(file => ({
-    url: `/uploads/documents/${file.filename}`,
-    type: 'receipt',
-    uploadDate: new Date()
-  }));
-  
-  res.json({
-    success: true,
-    data: documents,
-    message: 'Documents uploaded successfully'
-  });
 });
 
 export default {
