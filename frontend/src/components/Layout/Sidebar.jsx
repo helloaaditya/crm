@@ -39,6 +39,7 @@ const Sidebar = () => {
     { name: 'My Attendance', icon: FiClock, path: '/my-attendance', module: 'all', employeeOnly: true },
     { name: 'My Salary', icon: FiDollarSign, path: '/my-salary', module: 'all', employeeOnly: true },
     { name: 'My Leave', icon: FiCalendar, path: '/my-leave', module: 'all', employeeOnly: true },
+    { name: 'My Expenses', icon: FiCreditCard, path: '/my-expenses', module: 'all', employeeOnly: true },
     { name: 'Calendar', icon: FiBell, path: '/calendar-reminders', module: 'all', notificationCount: counts.reminders },
     
     // Accounts Section

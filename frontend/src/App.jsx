@@ -28,6 +28,7 @@ import MyLeave from './pages/Employee/MyLeave'
 import MyProjects from './pages/Employee/MyProjects'
 import WorkUpdates from './pages/Employee/WorkUpdates'
 import CalendarReminders from './pages/Employee/CalendarReminders'
+import MyExpenses from './pages/Employee/MyExpenses'
 
 // Layout
 import Layout from './components/Layout/Layout'
@@ -99,6 +100,7 @@ function App() {
           <Route path="my-projects" element={<MyProjects />} />
           <Route path="work-updates" element={<WorkUpdates />} />
           <Route path="calendar-reminders" element={<CalendarReminders />} />
+          <Route path="my-expenses" element={<MyExpenses />} />
           
           {/* Other Routes */}
           <Route path="reminders" element={<Reminders />} />
