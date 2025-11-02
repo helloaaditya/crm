@@ -176,12 +176,15 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
         
         const textY = yPos + 8;
         
+        // Extract HSN code from item or material
+        const hsnCode = item.hsnCode || item.material?.hsinNumber || item.material?.hsnCode || '0000';
+        
         doc.fillColor(textColor);
         doc.text((index + 1).toString(), cols.slNo.x, textY, { width: cols.slNo.width, align: 'center' });
-        doc.text(item.description || item.name, cols.desc.x, textY, { width: cols.desc.width, ellipsis: true });
-        doc.text(item.hsnCode || '0000', cols.hsn.x, textY, { width: cols.hsn.width });
+        doc.text(item.description || item.name || item.material?.name, cols.desc.x, textY, { width: cols.desc.width, ellipsis: true });
+        doc.text(hsnCode, cols.hsn.x, textY, { width: cols.hsn.width });
         doc.text(item.quantity.toString(), cols.qty.x, textY, { width: cols.qty.width, align: 'right' });
-        doc.text(item.unit || 'Nos', cols.unit.x, textY, { width: cols.unit.width });
+        doc.text(item.unit || item.material?.unit || 'Nos', cols.unit.x, textY, { width: cols.unit.width });
         doc.text('Rs. ' + item.rate.toFixed(2), cols.rate.x, textY, { width: cols.rate.width, align: 'right' });
         doc.text(item.discount || '0', cols.disc.x, textY, { width: cols.disc.width, align: 'center' });
         doc.font('Helvetica-Bold')
