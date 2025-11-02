@@ -82,11 +82,11 @@ function MyExpenses() {
       files.forEach(file => uploadFormData.append('files', file))
       
       const response = await API.expenses.uploadDocuments(uploadFormData)
-      const uploadedDocs = response.data.data || []
+      const uploadedUrls = response.data.data || [] // Now just an array of URLs
       
       setFormData(prev => ({
         ...prev,
-        documents: [...prev.documents, ...uploadedDocs]
+        documents: [...prev.documents, ...uploadedUrls]
       }))
       
       toast.success(`${files.length} document(s) uploaded`)
@@ -446,7 +446,7 @@ function MyExpenses() {
                 {formData.documents.length > 0 && (
                   <div className="mt-3 space-y-2">
                     <p className="text-sm font-medium text-gray-700">Uploaded Documents ({formData.documents.length})</p>
-                    {formData.documents.map((doc, idx) => (
+                    {formData.documents.map((url, idx) => (
                       <div key={idx} className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
                         <span className="text-sm text-gray-700 flex items-center">
                           <FiFileText className="mr-2 text-blue-600" />
@@ -569,10 +569,10 @@ function MyExpenses() {
                 <div>
                   <p className="text-sm text-gray-600 mb-3">Uploaded Documents ({viewModal.documents.length})</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {viewModal.documents.map((doc, idx) => (
+                    {viewModal.documents.map((url, idx) => (
                       <a
                         key={idx}
-                        href={doc.url}
+                        href={url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center p-4 border-2 rounded-lg hover:bg-blue-50 hover:border-blue-400 transition-colors"

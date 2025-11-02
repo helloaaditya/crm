@@ -604,10 +604,10 @@ const Expenses = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-2">Attachments ({viewModal.documents.length})</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {viewModal.documents.map((doc, idx) => (
+                    {viewModal.documents.map((url, idx) => (
                       <a
                         key={idx}
-                        href={doc.url}
+                        href={url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center p-3 border rounded-lg hover:bg-gray-50"

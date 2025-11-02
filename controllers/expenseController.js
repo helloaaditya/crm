@@ -96,19 +96,23 @@ export const createExpense = asyncHandler(async (req, res) => {
     });
   }
   
-  // Parse documents if it's a string (double-stringified)
-  let parsedDocuments = documents || [];
-  if (typeof documents === 'string') {
-    try {
-      parsedDocuments = JSON.parse(documents);
-      console.log('Parsed documents from string:', parsedDocuments);
-    } catch (e) {
-      console.error('Failed to parse documents:', e);
-      parsedDocuments = [];
-    }
-  } else if (Array.isArray(documents)) {
-    parsedDocuments = documents;
+  // Extract document URLs (simplified)
+  let documentUrls = [];
+  if (documents && Array.isArray(documents)) {
+    documentUrls = documents.map(doc => {
+      // If doc is an object with url property, extract it
+      if (typeof doc === 'object' && doc.url) {
+        return doc.url;
+      }
+      // If doc is already a string URL, use it
+      if (typeof doc === 'string') {
+        return doc;
+      }
+      return null;
+    }).filter(Boolean);
   }
+  
+  console.log('Extracted document URLs:', documentUrls);
   
   const expenseData = {
     employee: employee._id,
@@ -118,7 +122,7 @@ export const createExpense = asyncHandler(async (req, res) => {
     amount: Number(amount),
     expenseDate: expenseDate || new Date(),
     project: project || null,
-    documents: parsedDocuments,
+    documents: documentUrls,
     notes: notes || '',
     activityLog: [{
       action: 'submitted',
@@ -128,7 +132,7 @@ export const createExpense = asyncHandler(async (req, res) => {
     }]
   };
   
-  console.log('Creating expense with data:', { ...expenseData, documents: `[${parsedDocuments.length} documents]` });
+  console.log('Creating expense with', documentUrls.length, 'document URLs');
   
   const expense = await Expense.create(expenseData);
   
@@ -515,11 +519,7 @@ export const uploadExpenseDocuments = asyncHandler(async (req, res) => {
         const s3Key = `expenses/${Date.now()}-${index}-${file.originalname}`;
         console.log('Uploading to S3:', s3Key);
         const result = await uploadBufferToS3(file.buffer, s3Key, file.mimetype);
-        return {
-          url: result.url,
-          type: 'receipt',
-          uploadDate: new Date()
-        };
+      return result.url; // Just return the URL string
       });
       
       const documents = await Promise.all(uploadPromises);
@@ -549,11 +549,7 @@ export const uploadExpenseDocuments = asyncHandler(async (req, res) => {
       fs.writeFileSync(filepath, file.buffer);
       console.log('Saved file locally:', filename);
       
-      return {
-        url: `/uploads/documents/${filename}`,
-        type: 'receipt',
-        uploadDate: new Date()
-      };
+      return `/uploads/documents/${filename}`; // Just return the URL string
     });
     
     console.log('Local upload successful:', documents.length, 'files');

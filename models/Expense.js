@@ -44,12 +44,8 @@ const expenseSchema = new mongoose.Schema({
     ref: 'Project'
   },
   
-  // Documents & Receipts
-  documents: [{
-    url: String,
-    type: String, // 'receipt', 'invoice', 'bill', 'other'
-    uploadDate: { type: Date, default: Date.now }
-  }],
+  // Documents & Receipts (simplified to avoid casting issues)
+  documents: [String], // Array of document URLs
   
   // Approval Workflow
   status: {
