@@ -365,15 +365,19 @@ export const processExpensePayment = asyncHandler(async (req, res) => {
   
   const { paymentMode, transactionReference, paidAmount, remarks } = req.body;
   
-  const amountToPay = paidAmount || expense.amount;
+  // Admin enters the actual payment amount (may differ from original requested amount)
+  if (!paidAmount || paidAmount <= 0) {
+    return res.status(400).json({ message: 'Please enter valid payment amount' });
+  }
   
-  if (amountToPay <= 0 || amountToPay > expense.amount) {
-    return res.status(400).json({ message: 'Invalid payment amount' });
+  // Update expense amount if it was 0 (employee didn't enter it)
+  if (expense.amount === 0) {
+    expense.amount = paidAmount;
   }
   
   expense.status = 'paid';
   expense.paymentStatus = 'paid';
-  expense.paidAmount = amountToPay;
+  expense.paidAmount = paidAmount;
   expense.paymentDate = new Date();
   expense.paymentMode = paymentMode || 'bank_transfer';
   expense.transactionReference = transactionReference || '';
