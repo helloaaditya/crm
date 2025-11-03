@@ -1,4 +1,4 @@
-import API from '../api';
+import api from '../api/axios';
 
 // Convert base64 VAPID key to Uint8Array
 const urlBase64ToUint8Array = (base64String) => {
@@ -85,8 +85,8 @@ export const subscribeToPushNotifications = async () => {
     }
 
     // Get VAPID public key from backend
-    const { data } = await API.get('/push/vapid-public-key');
-    const vapidPublicKey = data.publicKey;
+    const response = await api.get('/push/vapid-public-key');
+    const vapidPublicKey = response.data.publicKey;
 
     if (!vapidPublicKey) {
       throw new Error('VAPID public key not found');
@@ -101,7 +101,7 @@ export const subscribeToPushNotifications = async () => {
     console.log('Push subscription:', subscription);
 
     // Send subscription to backend
-    await API.post('/push/subscribe', { subscription });
+    await api.post('/push/subscribe', { subscription });
 
     return subscription;
   } catch (error) {
@@ -123,7 +123,7 @@ export const unsubscribeFromPushNotifications = async () => {
       await subscription.unsubscribe();
       
       // Notify backend
-      await API.post('/push/unsubscribe', { endpoint });
+      await api.post('/push/unsubscribe', { endpoint });
       
       console.log('Unsubscribed from push notifications');
     }
@@ -157,7 +157,7 @@ export const getPushSubscription = async () => {
  */
 export const sendTestPushNotification = async () => {
   try {
-    const response = await API.post('/push/test');
+    const response = await api.post('/push/test');
     return response.data;
   } catch (error) {
     console.error('Error sending test notification:', error);
