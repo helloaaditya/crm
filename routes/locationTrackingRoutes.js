@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect, checkRole } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import {
   startTracking,
   updateLocation,
@@ -22,9 +22,9 @@ router.post('/stop', stopTracking);
 router.get('/my-status', getMyTrackingStatus);
 
 // Admin routes - for viewing employee locations
-router.get('/active', checkRole('admin', 'main_admin'), getActiveLocations);
-router.get('/history/:employeeId', checkRole('admin', 'main_admin'), getLocationHistory);
-router.get('/stats', checkRole('admin', 'main_admin'), getTrackingStats);
+router.get('/active', authorize('admin', 'main_admin'), getActiveLocations);
+router.get('/history/:employeeId', authorize('admin', 'main_admin'), getLocationHistory);
+router.get('/stats', authorize('admin', 'main_admin'), getTrackingStats);
 
 export default router;
 
