@@ -1638,59 +1638,6 @@ export const geocodeLocation = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Generate payslip PDF
-// @route   GET /api/employees/:id/payslip/:month
-// @access  Private
-export const generatePayslip = asyncHandler(async (req, res) => {
-  const { id, month } = req.params;
-  
-  try {
-    // Find employee
-    const employee = await Employee.findById(id)
-      .populate('userId', 'name');
-    
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-    
-    // Find salary record for the specified month
-    const salaryRecord = employee.salaryHistory.find(s => s.month === month);
-    
-    if (!salaryRecord) {
-      return res.status(404).json({ message: `No salary record found for ${month}` });
-    }
-    
-    // Prepare payslip data
-    const payslipData = {
-      employeeId: employee.employeeId,
-      employeeName: employee.userId?.name || employee.name,
-      department: employee.department,
-      designation: employee.designation,
-      month: salaryRecord.month,
-      paymentDate: salaryRecord.paidDate,
-      basicSalary: salaryRecord.basicSalary,
-      allowances: employee.allowances,
-      deductions: employee.deductions,
-      totalDeductions: salaryRecord.totalDeductions,
-      grossAmount: salaryRecord.basicSalary + salaryRecord.totalAllowances,
-      netAmount: salaryRecord.netSalary
-    };
-    
-    // Generate PDF
-    const { generatePayslipPDF } = await import('../utils/pdfService.js');
-    const pdf = await generatePayslipPDF(payslipData);
-    
-    res.json({
-      success: true,
-      data: {
-        pdfUrl: `/uploads/payslips/${pdf.filename}`
-      }
-    });
-  } catch (error) {
-    console.error('Payslip generation error:', error);
-    res.status(500).json({ message: 'Failed to generate payslip' });
-  }
-});
 
 // @desc    Generate my payslip PDF (Employee Self-Service)
 // @route   GET /api/employees/my-payslip/:month
