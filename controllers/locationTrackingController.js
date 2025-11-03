@@ -68,6 +68,42 @@ export const updateLocation = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee record not found' });
   }
   
+  // Check for stop detection (if location hasn't changed much)
+  let isStopPoint = false;
+  let stopDuration = null;
+  
+  // Get last location for this session
+  const lastLocation = await LocationTracking.findOne({
+    sessionId,
+    employee: employee._id
+  }).sort({ createdAt: -1 });
+  
+  if (lastLocation) {
+    // Calculate distance between current and last location (Haversine formula)
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = lastLocation.location.coordinates[1] * Math.PI / 180;
+    const φ2 = latitude * Math.PI / 180;
+    const Δφ = (latitude - lastLocation.location.coordinates[1]) * Math.PI / 180;
+    const Δλ = (longitude - lastLocation.location.coordinates[0]) * Math.PI / 180;
+    
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in meters
+    
+    console.log(`📏 Distance from last location: ${distance.toFixed(1)}m`);
+    
+    // If distance < 50 meters, consider it a stop
+    if (distance < 50) {
+      isStopPoint = true;
+      // Calculate stop duration
+      const timeDiff = (new Date() - new Date(lastLocation.createdAt)) / 1000; // seconds
+      stopDuration = Math.round(timeDiff);
+      console.log(`⏸️ Stop detected! Duration: ${stopDuration}s`);
+    }
+  }
+  
   // Create new location record
   const locationRecord = await LocationTracking.create({
     employee: employee._id,
@@ -82,11 +118,13 @@ export const updateLocation = asyncHandler(async (req, res) => {
     speed,
     heading,
     batteryLevel,
+    isStopPoint,
+    stopDuration,
     isActive: true,
     trackingDate: new Date()
   });
   
-  console.log('✅ Location updated:', locationRecord._id);
+  console.log('✅ Location updated:', locationRecord._id, isStopPoint ? '⏸️ STOP' : '🚶 MOVING');
   
   res.status(201).json({
     success: true,

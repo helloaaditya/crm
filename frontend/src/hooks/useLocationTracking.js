@@ -149,7 +149,7 @@ const useLocationTracking = () => {
       }
     );
     
-    // Set interval to send location updates every 45 seconds
+    // Set interval to send location updates every 30 seconds (more frequent)
     intervalIdRef.current = setInterval(() => {
       console.log('⏰ Interval timer fired - sending location update');
       if (lastLocationRef.current) {
@@ -169,7 +169,7 @@ const useLocationTracking = () => {
       } else {
         console.warn('⚠️ No lastLocationRef available');
       }
-    }, 45000); // 45 seconds
+    }, 30000); // 30 seconds for more accurate tracking
     
     console.log('🚀 Location tracking started with session:', newSessionId);
   }, [sendLocationUpdate]);

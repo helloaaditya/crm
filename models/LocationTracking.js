@@ -62,6 +62,17 @@ const locationTrackingSchema = new mongoose.Schema({
     type: Number
   },
   
+  // Is this a stop point? (employee stayed at this location)
+  isStopPoint: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Duration of stop in seconds (if isStopPoint is true)
+  stopDuration: {
+    type: Number
+  },
+  
   // Is this tracking session currently active?
   isActive: {
     type: Boolean,

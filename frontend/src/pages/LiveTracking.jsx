@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Custom icon for active employees
+// Custom icon for active employees (green)
 const activeEmployeeIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
@@ -22,6 +22,26 @@ const activeEmployeeIcon = new L.Icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
+});
+
+// Custom icon for stop points (red)
+const stopPointIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [20, 33],
+  iconAnchor: [10, 33],
+  popupAnchor: [1, -28],
+  shadowSize: [33, 33]
+});
+
+// Custom icon for movement points (blue)
+const movementPointIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [15, 25],
+  iconAnchor: [7, 25],
+  popupAnchor: [1, -20],
+  shadowSize: [25, 25]
 });
 
 // Component to auto-fit map bounds
@@ -158,13 +178,13 @@ const LiveTracking = () => {
     fetchStats();
   }, []);
 
-  // Auto-refresh every 15 seconds
+  // Auto-refresh every 10 seconds for more real-time updates
   useEffect(() => {
     if (autoRefresh) {
       intervalRef.current = setInterval(() => {
         fetchActiveLocations();
         fetchStats();
-      }, 15000); // 15 seconds
+      }, 10000); // 10 seconds for better real-time tracking
     }
 
     return () => {
@@ -296,13 +316,49 @@ const LiveTracking = () => {
           </div>
         </div>
         {historicalRoute.length > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-            <p className="text-sm text-blue-800">
-              📊 <strong>{historicalRoute.length} location points</strong> recorded on {selectedDate}
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Route shown in blue on the map below
-            </p>
+          <div className="mt-4 space-y-2">
+            <div className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+              <p className="text-sm text-blue-800">
+                📊 <strong>{historicalRoute.length} location points</strong> recorded on {selectedDate}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Blue route line on map below with markers for stops and waypoints
+              </p>
+            </div>
+            
+            {/* Stop statistics */}
+            {historicalRoute.filter(loc => loc.isStopPoint).length > 0 && (
+              <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                <p className="text-sm text-red-800">
+                  ⏸️ <strong>{historicalRoute.filter(loc => loc.isStopPoint).length} stop points</strong> detected
+                </p>
+                <p className="text-xs text-red-600 mt-1">
+                  Red markers show locations where employee stayed for more than 30 seconds
+                </p>
+              </div>
+            )}
+            
+            {/* Journey summary */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="p-2 bg-green-50 rounded border border-green-200">
+                <p className="text-green-600 font-medium">🚀 Start</p>
+                <p className="text-gray-700 mt-1">
+                  {new Date(historicalRoute[0].timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+              <div className="p-2 bg-red-50 rounded border border-red-200">
+                <p className="text-red-600 font-medium">🏁 End</p>
+                <p className="text-gray-700 mt-1">
+                  {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+              <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                <p className="text-blue-600 font-medium">⏱️ Duration</p>
+                <p className="text-gray-700 mt-1">
+                  {Math.round((new Date(historicalRoute[historicalRoute.length - 1].timestamp) - new Date(historicalRoute[0].timestamp)) / 1000 / 60)} min
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -352,27 +408,82 @@ const LiveTracking = () => {
           {/* Historical route */}
           {historicalRoute.length > 0 && (
             <>
-              {/* Draw polyline for route */}
+              {/* Draw smooth polyline for route */}
               <Polyline
                 positions={historicalRoute.map(loc => [loc.latitude, loc.longitude])}
-                color="blue"
-                weight={3}
-                opacity={0.7}
+                color="#2563eb"
+                weight={4}
+                opacity={0.8}
+                smoothFactor={1.5}
               />
               
-              {/* Start marker */}
+              {/* Start marker (green) */}
               <Marker
                 position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
+                icon={activeEmployeeIcon}
               >
                 <Popup>
                   <div className="p-2">
-                    <h3 className="font-semibold">🚀 Start</h3>
-                    <p className="text-xs">{new Date(historicalRoute[0].timestamp).toLocaleTimeString()}</p>
+                    <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {new Date(historicalRoute[0].timestamp).toLocaleString()}
+                    </p>
                   </div>
                 </Popup>
               </Marker>
               
-              {/* End marker */}
+              {/* Stop points (red markers) */}
+              {historicalRoute.filter(loc => loc.isStopPoint).map((loc, idx) => (
+                <Marker
+                  key={`stop-${idx}`}
+                  position={[loc.latitude, loc.longitude]}
+                  icon={stopPointIcon}
+                >
+                  <Popup>
+                    <div className="p-2">
+                      <h3 className="font-semibold text-red-600">⏸️ Stop Point</h3>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {new Date(loc.timestamp).toLocaleTimeString()}
+                      </p>
+                      {loc.stopDuration && (
+                        <p className="text-xs text-gray-700 font-medium mt-1">
+                          Duration: {Math.floor(loc.stopDuration / 60)}m {loc.stopDuration % 60}s
+                        </p>
+                      )}
+                      {loc.address && (
+                        <p className="text-xs text-gray-500 mt-1">{loc.address}</p>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+              
+              {/* Movement waypoints (small blue markers every few points) */}
+              {historicalRoute
+                .filter((loc, idx) => !loc.isStopPoint && idx % 5 === 0 && idx !== 0 && idx !== historicalRoute.length - 1)
+                .map((loc, idx) => (
+                  <Marker
+                    key={`waypoint-${idx}`}
+                    position={[loc.latitude, loc.longitude]}
+                    icon={movementPointIcon}
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="font-semibold text-blue-600">📍 Waypoint</h3>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {new Date(loc.timestamp).toLocaleTimeString()}
+                        </p>
+                        {loc.speed && (
+                          <p className="text-xs text-gray-700 mt-1">
+                            Speed: {(loc.speed * 3.6).toFixed(1)} km/h
+                          </p>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              
+              {/* End marker (red flag) */}
               <Marker
                 position={[
                   historicalRoute[historicalRoute.length - 1].latitude,
@@ -381,9 +492,9 @@ const LiveTracking = () => {
               >
                 <Popup>
                   <div className="p-2">
-                    <h3 className="font-semibold">🏁 End</h3>
-                    <p className="text-xs">
-                      {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleTimeString()}
+                    <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
                     </p>
                   </div>
                 </Popup>
