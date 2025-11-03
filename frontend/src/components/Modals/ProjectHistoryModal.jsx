@@ -179,7 +179,13 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
               </p>
               {/* Images */}
               {item.images && item.images.length > 0 && (
-                <MediaGallery mediaArray={item.images} title="Images" />
+                <MediaGallery 
+                  mediaArray={item.images} 
+                  title="Images" 
+                  itemId={item._id}
+                  itemType="activity"
+                  mediaType="images"
+                />
               )}
               
               {/* Audio Notes - inline simple players */}
@@ -191,9 +197,18 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
                   </h5>
                   <div className="space-y-2">
                     {filterValidUrls(item.audioNotes).map((audio, idx) => (
-                      <audio key={idx} controls className="w-full">
-                        <source src={audio} />
-                      </audio>
+                      <div key={idx} className="relative group">
+                        <audio controls className="w-full">
+                          <source src={audio} />
+                        </audio>
+                        <button
+                          onClick={() => deleteMedia(item._id, 'activity', audio, 'audioNotes')}
+                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          title="Delete audio"
+                        >
+                          <FiTrash2 size={12} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -201,12 +216,24 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
               
               {/* Video Recordings */}
               {item.videoRecordings && item.videoRecordings.length > 0 && (
-                <MediaGallery mediaArray={item.videoRecordings} title="Video Recordings" />
+                <MediaGallery 
+                  mediaArray={item.videoRecordings} 
+                  title="Video Recordings" 
+                  itemId={item._id}
+                  itemType="activity"
+                  mediaType="videoRecordings"
+                />
               )}
               
               {/* Documents */}
               {item.documents && item.documents.length > 0 && (
-                <MediaGallery mediaArray={item.documents} title="Documents" />
+                <MediaGallery 
+                  mediaArray={item.documents} 
+                  title="Documents" 
+                  itemId={item._id}
+                  itemType="activity"
+                  mediaType="documents"
+                />
               )}
             </div>
           </div>
