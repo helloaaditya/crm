@@ -276,6 +276,17 @@ export const expenseAPI = {
   })
 };
 
+// ============= LOCATION TRACKING =============
+export const locationTrackingAPI = {
+  startTracking: (data) => api.post('/location-tracking/start', data),
+  updateLocation: (data) => api.post('/location-tracking/update', data),
+  stopTracking: (data) => api.post('/location-tracking/stop', data),
+  getMyStatus: () => api.get('/location-tracking/my-status'),
+  getActiveLocations: () => api.get('/location-tracking/active'),
+  getHistory: (employeeId, params) => api.get(`/location-tracking/history/${employeeId}`, { params }),
+  getStats: () => api.get('/location-tracking/stats')
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -291,5 +302,6 @@ export default {
   settings: settingsAPI,
   invoiceSettings: invoiceSettingsAPI,
   notifications: notificationAPI,
-  expenses: expenseAPI
+  expenses: expenseAPI,
+  locationTracking: locationTrackingAPI
 };

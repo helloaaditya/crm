@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { FiClock, FiMapPin, FiCalendar, FiCheckCircle } from 'react-icons/fi'
+import { FiClock, FiMapPin, FiCalendar, FiCheckCircle, FiNavigation } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
+import useLocationTracking from '../../hooks/useLocationTracking'
 
 function MyAttendance() {
   const { user } = useAuth()
+  const { isTracking, currentLocation, startTracking, stopTracking } = useLocationTracking()
   const [attendanceRecords, setAttendanceRecords] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
@@ -130,6 +132,8 @@ function MyAttendance() {
 
     try {
       setLoading(true)
+      
+      // Mark attendance check-in
       await API.employees.myAttendance.mark({
         type: 'checkin',
         location: {
@@ -137,7 +141,11 @@ function MyAttendance() {
           address: location?.address || 'Location not provided'
         }
       })
-      toast.success('Checked in successfully!')
+      
+      // Start live location tracking
+      startTracking()
+      
+      toast.success('Checked in successfully! 🎯 Live tracking started')
       fetchAttendance()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to check in')
@@ -157,6 +165,8 @@ function MyAttendance() {
 
     try {
       setLoading(true)
+      
+      // Mark attendance check-out
       await API.employees.myAttendance.mark({
         type: 'checkout',
         location: {
@@ -164,7 +174,11 @@ function MyAttendance() {
           address: location?.address || 'Location not provided'
         }
       })
-      toast.success('Checked out successfully!')
+      
+      // Stop live location tracking
+      await stopTracking()
+      
+      toast.success('Checked out successfully! 🛑 Tracking stopped')
       fetchAttendance()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to check out')
@@ -281,6 +295,21 @@ function MyAttendance() {
             )}
           </div>
         </div>
+        
+        {/* Live Tracking Indicator */}
+        {isTracking && (
+          <div className="mt-4 flex items-center justify-between bg-white/20 rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <FiNavigation className="animate-pulse" size={18} />
+              <span className="text-sm font-medium">Live Tracking Active</span>
+            </div>
+            {currentLocation && (
+              <span className="text-xs bg-white/30 px-2 py-1 rounded">
+                Accuracy: {Math.round(currentLocation.accuracy)}m
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}

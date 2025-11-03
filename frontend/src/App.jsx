@@ -19,6 +19,7 @@ import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
 import Expenses from './pages/Expenses'
 import BulkImport from './pages/BulkImport'
+import LiveTracking from './pages/LiveTracking'
 
 // Employee Self-Service Pages
 import MyDashboard from './pages/Employee/MyDashboard'
@@ -91,6 +92,8 @@ function App() {
           <Route path="expenses" element={<Expenses />} />
           {/* Bulk Import (Admin Only via menu visibility) */}
           <Route path="bulk-import" element={<BulkImport />} />
+          {/* Live Tracking (Admin Only) */}
+          <Route path="live-tracking" element={<LiveTracking />} />
           
           {/* Employee Self-Service Routes */}
           <Route path="my-dashboard" element={<MyDashboard />} />
