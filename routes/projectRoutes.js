@@ -27,6 +27,12 @@ import {
 const router = express.Router();
 
 router.use(protect);
+
+// Routes accessible to assigned employees (no module restriction)
+router.put('/:id/mark-complete', markProjectComplete); // Employees can mark their assigned projects complete
+router.post('/:id/work-update', uploadMemory.array('files', 20), addWorkUpdate); // Employees can add work updates
+
+// Apply module access for admin/management routes
 router.use(moduleAccess('crm', 'inventory', 'all'));
 
 router.get('/', getProjects);
@@ -36,10 +42,8 @@ router.get('/:id/history', getProjectHistory);
 router.delete('/:id/history/media', deleteProjectMedia);
 router.put('/:id', checkPermission('canEdit'), updateProject);
 router.put('/:id/status', checkPermission('canEdit'), updateProjectStatus);
-router.put('/:id/mark-complete', markProjectComplete);
 router.post('/:id/assign-employee', checkPermission('canEdit'), assignEmployee);
 router.delete('/:id/remove-employee/:employeeId', checkPermission('canEdit'), removeEmployee);
-router.post('/:id/work-update', checkPermission('canCreate'), addWorkUpdate);
 router.post('/:id/comment', checkPermission('canCreate'), addComment);
 router.post('/:id/site-visit', checkPermission('canCreate'), addSiteVisit);
 // Use memory storage for S3-only uploads
