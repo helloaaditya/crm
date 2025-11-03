@@ -1825,16 +1825,48 @@ export const generateMyPayslip = asyncHandler(async (req, res) => {
       netAmount: salaryRecord.netSalary
     };
     
-    // Generate PDF
-    const { generatePayslipPDF } = await import('../utils/pdfService.js');
-    const pdf = await generatePayslipPDF(payslipData);
+    // Get company details from settings
+    const Settings = (await import('../models/Settings.js')).default;
+    const settings = await Settings.findOne();
     
-    res.json({
-      success: true,
-      data: {
-        pdfUrl: `/uploads/payslips/${pdf.filename}`
-      }
-    });
+    const companyDetails = {
+      name: settings?.companyName || 'Sanjana Enterprises',
+      address: settings?.companyAddress || '',
+      phone: settings?.companyPhone || '',
+      email: settings?.companyEmail || ''
+    };
+    
+    // Prepare salary data for payslip
+    const salaryData = {
+      month: salaryRecord.month,
+      paymentDate: salaryRecord.paidDate,
+      paymentMode: salaryRecord.paymentMode || 'Bank Transfer',
+      workingDays: salaryRecord.presentDays || 0,
+      basicSalary: salaryRecord.basicSalary || employee.basicSalary || 0,
+      hra: employee.allowances?.hra || 0,
+      conveyance: employee.allowances?.conveyance || 0,
+      medical: employee.allowances?.medical || 0,
+      otherAllowances: employee.allowances?.other || 0,
+      pf: employee.deductions?.pf || 0,
+      esi: employee.deductions?.esi || 0,
+      professionalTax: employee.deductions?.professionalTax || 0,
+      tds: employee.deductions?.tds || 0,
+      otherDeductions: salaryRecord.otherDeductions || 0,
+      advance: salaryRecord.advanceDeduction || 0
+    };
+    
+    // Generate PDF
+    const generatePayslipPDF = (await import('../utils/payslipService.js')).default;
+    const pdfBuffer = await generatePayslipPDF(salaryData, employee, companyDetails);
+    
+    // Set response headers
+    const filename = `Payslip_${employee.employeeId}_${salaryRecord.month.replace('-', '_')}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    
+    res.send(pdfBuffer);
   } catch (error) {
     console.error('Payslip generation error:', error);
     res.status(500).json({ message: 'Failed to generate payslip' });
