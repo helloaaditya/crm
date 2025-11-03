@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import NotificationBell from '../NotificationBell'
+import PushNotificationPrompt from '../PushNotificationPrompt'
 
 const Header = () => {
   const { user, logout } = useAuth()
@@ -33,6 +34,9 @@ const Header = () => {
       <div className="flex items-center space-x-2 sm:space-x-4">
         {/* Notifications */}
         <NotificationBell />
+        
+        {/* Push Notification Toggle */}
+        <PushNotificationPrompt />
 
         {/* User Info - Mobile */}
         <div className="lg:hidden flex items-center space-x-2">

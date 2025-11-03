@@ -1,8 +1,15 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import { initializePushNotifications } from '../../utils/pushNotifications'
 
 const Layout = () => {
+  useEffect(() => {
+    // Initialize push notifications on mount
+    initializePushNotifications();
+  }, []);
+
   return (
       <div className="flex bg-gray-100" style={{ height: '100svh' }}>
       {/* Sidebar */}

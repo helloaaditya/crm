@@ -136,10 +136,60 @@ export const deleteAllRead = asyncHandler(async (req, res) => {
  */
 export const createNotification = async (data) => {
   try {
-    return await Notification.createNotification(data);
+    const notification = await Notification.createNotification(data);
+    
+    // Send push notification
+    if (notification) {
+      sendPushToUser(data.recipient, {
+        title: data.title,
+        message: data.message,
+        actionUrl: data.actionUrl,
+        priority: data.priority,
+        type: data.type,
+        _id: notification._id
+      }).catch(err => console.error('Push notification error:', err));
+    }
+    
+    return notification;
   } catch (error) {
     console.error('Error creating notification:', error);
     return null;
+  }
+};
+
+/**
+ * Send push notification to a user
+ * @param {String} userId - User ID
+ * @param {Object} payload - Notification payload
+ */
+const sendPushToUser = async (userId, payload) => {
+  try {
+    const PushSubscription = (await import('../models/PushSubscription.js')).default;
+    const { sendPushNotification } = await import('../utils/pushNotificationService.js');
+    
+    // Get all active subscriptions for the user
+    const subscriptions = await PushSubscription.find({
+      user: userId,
+      isActive: true
+    });
+    
+    if (subscriptions.length === 0) {
+      return; // No subscriptions, skip
+    }
+    
+    // Send to all subscriptions
+    const results = await Promise.allSettled(
+      subscriptions.map(sub => sendPushNotification(sub.subscription, payload))
+    );
+    
+    // Mark expired subscriptions as inactive
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value.expired) {
+        subscriptions[index].markInactive();
+      }
+    });
+  } catch (error) {
+    console.error('Error sending push to user:', error);
   }
 };
 
