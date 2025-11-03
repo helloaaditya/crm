@@ -23,27 +23,39 @@ if (vapidPublicKey && vapidPrivateKey) {
  */
 export const sendPushNotification = async (subscription, payload) => {
   try {
+    console.log('📤 Preparing push notification:', {
+      title: payload.title,
+      type: payload.type,
+      endpoint: subscription.endpoint?.substring(0, 50) + '...'
+    });
+    
     const notificationPayload = JSON.stringify({
       title: payload.title || 'CRM Notification',
       body: payload.message || payload.body,
-      icon: '/logo.png',
-      badge: '/badge.png',
+      icon: '/logo192.png',
+      badge: '/logo192.png',
       data: {
         url: payload.actionUrl || '/',
         notificationId: payload._id || payload.id,
         priority: payload.priority || 'normal'
       },
       tag: payload.type || 'notification',
-      requireInteraction: payload.priority === 'high'
+      requireInteraction: payload.priority === 'high',
+      vibrate: [200, 100, 200]
     });
 
+    console.log('📮 Sending to Web Push API...');
     await webpush.sendNotification(subscription, notificationPayload);
+    console.log('✅ Push notification sent successfully');
     return { success: true };
   } catch (error) {
-    console.error('Push notification error:', error);
+    console.error('❌ Push notification error:', error.message);
+    console.error('   Status:', error.statusCode);
+    console.error('   Body:', error.body);
     
     // If subscription is expired or invalid, return error
     if (error.statusCode === 404 || error.statusCode === 410) {
+      console.log('⚠️ Subscription expired/invalid');
       return { success: false, expired: true };
     }
     

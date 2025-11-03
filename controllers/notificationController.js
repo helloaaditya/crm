@@ -136,10 +136,13 @@ export const deleteAllRead = asyncHandler(async (req, res) => {
  */
 export const createNotification = async (data) => {
   try {
+    console.log('📧 Creating notification for user:', data.recipient);
     const notification = await Notification.createNotification(data);
+    console.log('✅ Notification created:', notification._id);
     
     // Send push notification
     if (notification) {
+      console.log('🔔 Triggering push notification...');
       sendPushToUser(data.recipient, {
         title: data.title,
         message: data.message,
@@ -147,12 +150,12 @@ export const createNotification = async (data) => {
         priority: data.priority,
         type: data.type,
         _id: notification._id
-      }).catch(err => console.error('Push notification error:', err));
+      }).catch(err => console.error('❌ Push notification error:', err));
     }
     
     return notification;
   } catch (error) {
-    console.error('Error creating notification:', error);
+    console.error('❌ Error creating notification:', error);
     return null;
   }
 };
@@ -164,6 +167,7 @@ export const createNotification = async (data) => {
  */
 const sendPushToUser = async (userId, payload) => {
   try {
+    console.log('📱 Attempting to send push to user:', userId);
     const PushSubscription = (await import('../models/PushSubscription.js')).default;
     const { sendPushNotification } = await import('../utils/pushNotificationService.js');
     
@@ -173,23 +177,39 @@ const sendPushToUser = async (userId, payload) => {
       isActive: true
     });
     
+    console.log(`📲 Found ${subscriptions.length} active subscription(s) for user`);
+    
     if (subscriptions.length === 0) {
+      console.log('⚠️ No active subscriptions found, skipping push');
       return; // No subscriptions, skip
     }
     
     // Send to all subscriptions
+    console.log('🚀 Sending push notifications...');
     const results = await Promise.allSettled(
-      subscriptions.map(sub => sendPushNotification(sub.subscription, payload))
+      subscriptions.map((sub, index) => {
+        console.log(`  → Subscription ${index + 1}: ${sub.subscription.endpoint.substring(0, 50)}...`);
+        return sendPushNotification(sub.subscription, payload);
+      })
     );
+    
+    // Log results
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const failed = results.filter(r => r.status === 'rejected' || !r.value?.success).length;
+    const expired = results.filter(r => r.status === 'fulfilled' && r.value.expired).length;
+    
+    console.log(`✅ Push results: ${successful} sent, ${failed} failed, ${expired} expired`);
     
     // Mark expired subscriptions as inactive
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value.expired) {
+        console.log(`  ⚠️ Marking subscription ${index + 1} as inactive (expired)`);
         subscriptions[index].markInactive();
       }
     });
   } catch (error) {
-    console.error('Error sending push to user:', error);
+    console.error('❌ Error sending push to user:', error);
+    console.error('Stack:', error.stack);
   }
 };
 
