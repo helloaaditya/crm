@@ -9,14 +9,28 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 import { createNotification } from './controllers/notificationController.js';
 
-dotenv.config();
+// Get directory name for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from the correct path
+dotenv.config({ path: resolve(__dirname, '.env') });
 
 const testRealNotification = async () => {
   try {
     console.log('🧪 Testing Real Notification Flow\n');
     console.log('═'.repeat(50));
+    
+    // Verify environment variables
+    if (!process.env.MONGO_URI) {
+      console.error('❌ MONGO_URI not found in .env file');
+      console.error('💡 Make sure .env file exists in the project root');
+      process.exit(1);
+    }
     
     // Connect to MongoDB
     console.log('📡 Connecting to MongoDB...');
