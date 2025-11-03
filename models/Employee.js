@@ -138,11 +138,39 @@ const employeeSchema = new mongoose.Schema({
     }
   }],
   
+  // Comp Off (Compensatory Off) Balance
+  compOffBalance: {
+    type: Number,
+    default: 0
+  },
+  
+  compOffHistory: [{
+    type: {
+      type: String,
+      enum: ['earned', 'used'], // earned when working on holiday, used when taking comp off
+      required: true
+    },
+    days: {
+      type: Number,
+      required: true
+    },
+    date: {
+      type: Date,
+      default: Date.now
+    },
+    reason: String,
+    grantedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    expiryDate: Date // Comp offs can expire (e.g., 90 days)
+  }],
+  
   // Leave Management
   leaves: [{
     leaveType: {
       type: String,
-      enum: ['sick', 'unpaid'],
+      enum: ['sick', 'unpaid', 'compoff'],
       required: true
     },
     startDate: Date,

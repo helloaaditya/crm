@@ -321,11 +321,21 @@ export const applyLeave = asyncHandler(async (req, res) => {
   }
 
   const { leaveType, startDate, endDate, reason } = req.body;
-
+  
   // Calculate number of days
   const start = new Date(startDate);
   const end = new Date(endDate);
   const numberOfDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  
+  // If comp off, check balance
+  if (leaveType === 'compoff') {
+    const compOffBalance = employee.compOffBalance || 0;
+    if (numberOfDays > compOffBalance) {
+      return res.status(400).json({ 
+        message: `Insufficient comp off balance. Available: ${compOffBalance} day(s), Requested: ${numberOfDays} day(s)` 
+      });
+    }
+  }
 
   employee.leaves.push({
     leaveType,
@@ -345,6 +355,62 @@ export const applyLeave = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Grant comp off to employee
+// @route   POST /api/employees/:id/compoff/grant
+// @access  Private (Admin)
+export const grantCompOff = asyncHandler(async (req, res) => {
+  const employee = await Employee.findById(req.params.id);
+  
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+  }
+  
+  const { days, reason, expiryDays } = req.body;
+  
+  if (!days || days <= 0) {
+    return res.status(400).json({ message: 'Invalid number of days' });
+  }
+  
+  // Calculate expiry date (default 90 days)
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + (expiryDays || 90));
+  
+  // Add to comp off balance
+  employee.compOffBalance = (employee.compOffBalance || 0) + days;
+  
+  // Add to history
+  employee.compOffHistory.push({
+    type: 'earned',
+    days,
+    date: new Date(),
+    reason: reason || 'Comp off granted for working on holiday/overtime',
+    grantedBy: req.user._id,
+    expiryDate
+  });
+  
+  await employee.save();
+  
+  // Notify employee
+  if (employee.userId) {
+    await createNotification({
+      recipient: employee.userId,
+      type: 'info',
+      title: 'Comp Off Granted',
+      message: `You have been granted ${days} day(s) of comp off. Balance: ${employee.compOffBalance} day(s)`,
+      triggeredBy: req.user._id
+    });
+  }
+  
+  res.json({
+    success: true,
+    message: `${days} comp off day(s) granted successfully`,
+    data: {
+      newBalance: employee.compOffBalance,
+      expiryDate
+    }
+  });
+});
+
 // @desc    Approve/Reject leave
 // @route   PUT /api/employees/leave/:leaveId
 // @access  Private
@@ -358,8 +424,31 @@ export const updateLeaveStatus = asyncHandler(async (req, res) => {
   }
 
   const leave = employee.leaves.id(req.params.leaveId);
+  const previousStatus = leave.status;
   leave.status = status;
   leave.approvedBy = req.user._id;
+  
+  // If approving comp off leave, deduct from balance
+  if (status === 'approved' && leave.leaveType === 'compoff' && previousStatus !== 'approved') {
+    const compOffBalance = employee.compOffBalance || 0;
+    employee.compOffBalance = Math.max(0, compOffBalance - (leave.numberOfDays || 0));
+    
+    // Add to comp off history
+    employee.compOffHistory.push({
+      type: 'used',
+      days: leave.numberOfDays || 0,
+      date: new Date(),
+      reason: `Comp off used for leave from ${new Date(leave.startDate).toLocaleDateString()} to ${new Date(leave.endDate).toLocaleDateString()}`
+    });
+    
+    console.log(`Deducted ${leave.numberOfDays} comp off days. New balance: ${employee.compOffBalance}`);
+  }
+  
+  // If rejecting previously approved comp off, restore balance
+  if (status === 'rejected' && leave.leaveType === 'compoff' && previousStatus === 'approved') {
+    employee.compOffBalance = (employee.compOffBalance || 0) + (leave.numberOfDays || 0);
+    console.log(`Restored ${leave.numberOfDays} comp off days. New balance: ${employee.compOffBalance}`);
+  }
 
   await employee.save();
 

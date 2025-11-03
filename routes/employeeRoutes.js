@@ -14,6 +14,7 @@ import {
   generateMissingAttendance,
   applyLeave,
   updateLeaveStatus,
+  grantCompOff,
   processSalary,
   getSalaryHistory,
   getSalaryPreview,
@@ -135,6 +136,9 @@ router.put('/:id/attendance/:attendanceId', checkPermission('canEdit'), updateAt
 // Leave Management (Admin)
 router.post('/:id/leave', applyLeave);
 router.put('/leave/:leaveId', checkPermission('canEdit'), updateLeaveStatus);
+
+// Comp Off Management (Admin)
+router.post('/:id/compoff/grant', checkPermission('canEdit'), grantCompOff);
 
 // Salary (Admin)
 router.post('/:id/salary', checkPermission('canHandleAccounts'), processSalary);

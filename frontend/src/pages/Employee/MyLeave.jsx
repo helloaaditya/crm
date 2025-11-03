@@ -15,8 +15,9 @@ function MyLeave() {
   })
 
   const leaveTypes = [
-    { value: 'sick', label: 'Sick Leave', color: 'red' },
-    { value: 'unpaid', label: 'Unpaid Leave', color: 'gray' }
+    { value: 'sick', label: '🤒 Sick Leave', color: 'red' },
+    { value: 'compoff', label: '⏰ Comp Off', color: 'blue' },
+    { value: 'unpaid', label: '💸 Unpaid Leave', color: 'gray' }
   ]
 
   useEffect(() => {
