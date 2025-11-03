@@ -31,13 +31,24 @@ const useLocationTracking = () => {
   };
   
   // Send location to backend
-  const sendLocationUpdate = useCallback(async (position, isFirst = false) => {
+  const sendLocationUpdate = useCallback(async (position, isFirst = false, currentSessionId = null) => {
     const { latitude, longitude, accuracy, speed, heading } = position.coords;
+    
+    // Use provided sessionId or generate new one
+    const activeSessionId = currentSessionId || sessionId || generateSessionId();
+    
+    console.log('📡 Sending location update:', { 
+      isFirst, 
+      latitude, 
+      longitude, 
+      accuracy,
+      sessionId: activeSessionId
+    });
     
     const batteryLevel = await getBatteryLevel();
     
     const locationData = {
-      sessionId: sessionId || generateSessionId(),
+      sessionId: activeSessionId,
       latitude,
       longitude,
       accuracy,
@@ -52,42 +63,58 @@ const useLocationTracking = () => {
     
     try {
       if (isFirst) {
+        console.log('🚀 Starting new tracking session...');
         const response = await API.locationTracking.startTracking(locationData);
         console.log('✅ Tracking started:', response.data);
         toast.success('Location tracking started');
       } else {
+        console.log('📍 Updating existing session...');
         await API.locationTracking.updateLocation(locationData);
-        console.log('📍 Location updated:', { latitude, longitude, accuracy });
+        console.log('✅ Location updated:', { latitude, longitude, accuracy });
       }
     } catch (error) {
-      console.error('Failed to send location:', error);
+      console.error('❌ Failed to send location:', error);
+      console.error('Error details:', error.response?.data);
       setError(error.message);
+      toast.error(`Tracking error: ${error.response?.data?.message || error.message}`);
     }
   }, [sessionId]);
   
   // Start tracking
   const startTracking = useCallback(() => {
+    console.log('🎯 startTracking() called');
+    
     if (!('geolocation' in navigator)) {
       const errorMsg = 'Geolocation is not supported by your browser';
       setError(errorMsg);
       toast.error(errorMsg);
+      console.error('❌ Geolocation not supported');
       return;
     }
     
     // Generate new session ID
     const newSessionId = generateSessionId();
+    console.log('🆔 Generated session ID:', newSessionId);
     setSessionId(newSessionId);
     setIsTracking(true);
     setError(null);
     
+    console.log('📍 Requesting initial GPS position...');
+    
     // Get initial location
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        console.log('🎯 Initial location acquired');
-        sendLocationUpdate(position, true);
+        console.log('✅ Initial GPS position acquired:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+        sendLocationUpdate(position, true, newSessionId);
       },
       (error) => {
-        console.error('Geolocation error:', error);
+        console.error('❌ Geolocation error:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
         setError(error.message);
         toast.error(`Location error: ${error.message}`);
         setIsTracking(false);
@@ -124,13 +151,14 @@ const useLocationTracking = () => {
     
     // Set interval to send location updates every 45 seconds
     intervalIdRef.current = setInterval(() => {
+      console.log('⏰ Interval timer fired - sending location update');
       if (lastLocationRef.current) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            sendLocationUpdate(position, false);
+            sendLocationUpdate(position, false, newSessionId);
           },
           (error) => {
-            console.error('Interval location update error:', error);
+            console.error('❌ Interval location update error:', error);
           },
           {
             enableHighAccuracy: true,
@@ -138,6 +166,8 @@ const useLocationTracking = () => {
             maximumAge: 0
           }
         );
+      } else {
+        console.warn('⚠️ No lastLocationRef available');
       }
     }, 45000); // 45 seconds
     

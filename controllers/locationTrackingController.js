@@ -9,12 +9,24 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 export const startTracking = asyncHandler(async (req, res) => {
   const { sessionId, latitude, longitude, accuracy, address } = req.body;
   
+  console.log('🚀 START TRACKING REQUEST:', {
+    userId: req.user._id,
+    userName: req.user.name,
+    sessionId,
+    latitude,
+    longitude,
+    accuracy
+  });
+  
   // Find employee record
   const employee = await Employee.findOne({ userId: req.user._id });
   
   if (!employee) {
+    console.error('❌ Employee record not found for user:', req.user._id);
     return res.status(404).json({ message: 'Employee record not found' });
   }
+  
+  console.log('✅ Employee found:', employee.employeeId, employee.name);
   
   // Create initial location record
   const locationRecord = await LocationTracking.create({
@@ -31,6 +43,8 @@ export const startTracking = asyncHandler(async (req, res) => {
     trackingDate: new Date()
   });
   
+  console.log('✅ Location record created:', locationRecord._id);
+  
   res.status(201).json({
     success: true,
     message: 'Tracking started successfully',
@@ -44,10 +58,13 @@ export const startTracking = asyncHandler(async (req, res) => {
 export const updateLocation = asyncHandler(async (req, res) => {
   const { sessionId, latitude, longitude, accuracy, address, speed, heading, batteryLevel } = req.body;
   
+  console.log('📍 UPDATE LOCATION:', { sessionId, latitude, longitude });
+  
   // Find employee record
   const employee = await Employee.findOne({ userId: req.user._id });
   
   if (!employee) {
+    console.error('❌ Employee not found for location update');
     return res.status(404).json({ message: 'Employee record not found' });
   }
   
@@ -68,6 +85,8 @@ export const updateLocation = asyncHandler(async (req, res) => {
     isActive: true,
     trackingDate: new Date()
   });
+  
+  console.log('✅ Location updated:', locationRecord._id);
   
   res.status(201).json({
     success: true,
@@ -99,6 +118,12 @@ export const stopTracking = asyncHandler(async (req, res) => {
 // @route   GET /api/location-tracking/active
 // @access  Private (Admin)
 export const getActiveLocations = asyncHandler(async (req, res) => {
+  console.log('🗺️  FETCHING ACTIVE LOCATIONS');
+  
+  // First, check total active records
+  const totalActive = await LocationTracking.countDocuments({ isActive: true });
+  console.log('📊 Total active location records:', totalActive);
+  
   // Get the latest location for each active session
   const activeLocations = await LocationTracking.aggregate([
     {
@@ -147,6 +172,15 @@ export const getActiveLocations = asyncHandler(async (req, res) => {
       }
     }
   ]);
+  
+  console.log('✅ Active locations found:', activeLocations.length);
+  if (activeLocations.length > 0) {
+    console.log('📍 Sample location:', {
+      sessionId: activeLocations[0].sessionId,
+      employee: activeLocations[0].employeeDetails.name,
+      coords: activeLocations[0].location.coordinates
+    });
+  }
   
   res.json({
     success: true,
