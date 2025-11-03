@@ -190,57 +190,63 @@ const Accounts = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredUsers.map((user) => (
                     <tr key={user._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {user.name}
+                      <td className="px-3 py-3 text-sm font-medium text-gray-900">
+                        <div className="max-w-[140px] truncate" title={user.name}>
+                          {user.name}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {user.email}
+                      <td className="px-3 py-3 text-sm text-gray-600">
+                        <div className="max-w-[160px] truncate" title={user.email}>
+                          {user.email}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">
                         {user.phone || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getRoleBadgeColor(user.role)}`}>
+                      <td className="px-3 py-3 text-sm">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${getRoleBadgeColor(user.role)}`}>
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {getEmployeeName(user._id)}
+                      <td className="px-3 py-3 text-sm text-gray-600">
+                        <div className="max-w-[110px] truncate" title={getEmployeeName(user._id)}>
+                          {getEmployeeName(user._id)}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        <span className="px-2 py-1 bg-gray-100 rounded text-xs">
-                          {user.module === 'all' ? 'All Modules' : user.module}
+                      <td className="px-3 py-3 text-sm text-gray-600">
+                        <span className="px-2 py-1 bg-gray-100 rounded text-xs whitespace-nowrap">
+                          {user.module === 'all' ? 'All' : user.module || '-'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
+                      <td className="px-3 py-3 text-sm">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
                           user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex space-x-2">
+                      <td className="px-3 py-3 text-sm">
+                        <div className="flex space-x-1">
                           <button 
                             onClick={() => handleResetPassword(user)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded"
+                            className="p-1.5 text-orange-600 hover:bg-orange-50 rounded"
                             title="Reset Password"
                           >
-                            <FiLock />
+                            <FiLock size={16} />
                           </button>
                           <button 
                             onClick={() => handleEdit(user)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
                             title="Edit"
                           >
-                            <FiEdit />
+                            <FiEdit size={16} />
                           </button>
                           <button 
                             onClick={() => handleDelete(user._id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
                             title="Delete"
                           >
-                            <FiTrash2 />
+                            <FiTrash2 size={16} />
                           </button>
                         </div>
                       </td>
