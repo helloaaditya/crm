@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
  * @param {Object} company - Company details
  * @returns {Promise<Buffer>} PDF buffer
  */
-export const generatePayslipPDF = async (salaryData, employee, company) => {
+const generatePayslipPDF = async (salaryData, employee, company) => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ 
