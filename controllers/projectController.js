@@ -748,6 +748,76 @@ export const getProjectHistory = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Delete media from project history
+// @route   DELETE /api/projects/:id/history/media
+// @access  Private
+export const deleteProjectMedia = asyncHandler(async (req, res) => {
+  const { itemId, itemType, mediaUrl, mediaType } = req.body;
+  
+  if (!itemId || !itemType || !mediaUrl || !mediaType) {
+    return res.status(400).json({ 
+      message: 'Missing required fields: itemId, itemType, mediaUrl, mediaType' 
+    });
+  }
+
+  const project = await Project.findById(req.params.id);
+
+  if (!project) {
+    return res.status(404).json({ message: 'Project not found' });
+  }
+
+  let updated = false;
+
+  if (itemType === 'activity') {
+    const activity = project.activityHistory.id(itemId);
+    if (activity) {
+      // Remove media URL from the appropriate array
+      if (mediaType === 'images' && activity.images) {
+        activity.images = activity.images.filter(url => url !== mediaUrl);
+        updated = true;
+      } else if (mediaType === 'audioNotes' && activity.audioNotes) {
+        activity.audioNotes = activity.audioNotes.filter(url => url !== mediaUrl);
+        updated = true;
+      } else if (mediaType === 'videoRecordings' && activity.videoRecordings) {
+        activity.videoRecordings = activity.videoRecordings.filter(url => url !== mediaUrl);
+        updated = true;
+      } else if (mediaType === 'documents' && activity.documents) {
+        activity.documents = activity.documents.filter(url => url !== mediaUrl);
+        updated = true;
+      }
+    }
+  } else if (itemType === 'workUpdate') {
+    const workUpdate = project.workUpdates.id(itemId);
+    if (workUpdate) {
+      // Remove media URL from the appropriate array
+      if (mediaType === 'images' && workUpdate.images) {
+        workUpdate.images = workUpdate.images.filter(url => url !== mediaUrl);
+        updated = true;
+      } else if (mediaType === 'audioNotes' && workUpdate.audioNotes) {
+        workUpdate.audioNotes = workUpdate.audioNotes.filter(url => url !== mediaUrl);
+        updated = true;
+      } else if (mediaType === 'videoRecordings' && workUpdate.videoRecordings) {
+        workUpdate.videoRecordings = workUpdate.videoRecordings.filter(url => url !== mediaUrl);
+        updated = true;
+      } else if (mediaType === 'documents' && workUpdate.documents) {
+        workUpdate.documents = workUpdate.documents.filter(url => url !== mediaUrl);
+        updated = true;
+      }
+    }
+  }
+
+  if (!updated) {
+    return res.status(404).json({ message: 'Media not found or already deleted' });
+  }
+
+  await project.save();
+
+  res.json({
+    success: true,
+    message: 'Media deleted successfully'
+  });
+});
+
 // @desc    Add comment to project
 // @route   POST /api/projects/:id/comment
 // @access  Private

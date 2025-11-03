@@ -30,6 +30,7 @@ export const projectAPI = {
   getAll: (params) => api.get('/projects', { params }),
   getById: (id) => api.get(`/projects/${id}`),
   getHistory: (id) => api.get(`/projects/${id}/history`),
+  deleteMedia: (id, data) => api.delete(`/projects/${id}/history/media`, { data }),
   create: (data) => api.post('/projects', data),
   update: (id, data) => api.put(`/projects/${id}`, data),
   updateStatus: (id, status) => api.put(`/projects/${id}/status`, { status }),

@@ -17,6 +17,7 @@ import {
   addWorkUpdate,
   uploadProjectFiles,
   getProjectHistory,
+  deleteProjectMedia,
   addComment,
   updateProjectStatus,
   markProjectComplete,
@@ -32,6 +33,7 @@ router.get('/', getProjects);
 router.post('/', checkPermission('canCreate'), createProject);
 router.get('/:id', getProject);
 router.get('/:id/history', getProjectHistory);
+router.delete('/:id/history/media', deleteProjectMedia);
 router.put('/:id', checkPermission('canEdit'), updateProject);
 router.put('/:id/status', checkPermission('canEdit'), updateProjectStatus);
 router.put('/:id/mark-complete', markProjectComplete);
