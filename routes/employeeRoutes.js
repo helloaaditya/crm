@@ -28,7 +28,6 @@ import {
   getSupervisorTeam,
   getMyProfile,
   geocodeLocation,
-  generatePayslip,
   generateMyPayslip,
   // Employee Self-Service
   markMyAttendance,
