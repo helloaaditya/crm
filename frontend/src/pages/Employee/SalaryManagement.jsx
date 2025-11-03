@@ -158,6 +158,36 @@ const SalaryManagement = () => {
     }
   }
 
+  const handleDownloadPayslip = async (employeeId, salaryId, month) => {
+    try {
+      console.log('Downloading payslip:', { employeeId, salaryId, month })
+      
+      const response = await API.employees.downloadPayslip(employeeId, salaryId)
+      
+      // Create blob from response
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      
+      // Create download link
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Payslip_${month.replace('-', '_')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      }, 100)
+      
+      toast.success('Payslip downloaded successfully')
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error(error.response?.data?.message || 'Failed to download payslip')
+    }
+  }
+
   const calculateTotals = () => {
     const totalAllowances = Object.values(formData.allowances).reduce((sum, val) => sum + Number(val || 0), 0)
     const totalDeductions = Object.values(formData.deductions).reduce((sum, val) => sum + Number(val || 0), 0)
@@ -541,7 +571,7 @@ const SalaryManagement = () => {
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b">
+                          <tr className="border-b bg-gray-50">
                             <th className="text-left py-3 px-4">Month</th>
                             <th className="text-left py-3 px-4">Basic</th>
                             <th className="text-left py-3 px-4">Allowances</th>
@@ -549,6 +579,7 @@ const SalaryManagement = () => {
                             <th className="text-left py-3 px-4">Net Salary</th>
                             <th className="text-left py-3 px-4">Paid Date</th>
                             <th className="text-left py-3 px-4">Status</th>
+                            <th className="text-left py-3 px-4">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -570,6 +601,16 @@ const SalaryManagement = () => {
                                 }`}>
                                   {record.status}
                                 </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <button
+                                  onClick={() => handleDownloadPayslip(selectedEmployee._id, record._id, record.month)}
+                                  className="flex items-center px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                                  title="Download Payslip PDF"
+                                >
+                                  <FiDownload className="mr-1" size={14} />
+                                  Payslip
+                                </button>
                               </td>
                             </tr>
                           ))}

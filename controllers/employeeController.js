@@ -574,6 +574,69 @@ export const getSalaryHistory = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Generate payslip PDF
+// @route   GET /api/employees/:id/salary/:salaryId/payslip
+// @access  Private
+export const generatePayslip = asyncHandler(async (req, res) => {
+  const { id, salaryId } = req.params;
+  
+  const employee = await Employee.findById(id);
+  
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+  }
+  
+  // Find the specific salary record
+  const salaryRecord = employee.salaryHistory.find(s => s._id.toString() === salaryId);
+  
+  if (!salaryRecord) {
+    return res.status(404).json({ message: 'Salary record not found' });
+  }
+  
+  // Get company details from settings
+  const Settings = (await import('../models/Settings.js')).default;
+  const settings = await Settings.findOne();
+  
+  const companyDetails = {
+    name: settings?.companyName || 'Sanjana Enterprises',
+    address: settings?.companyAddress || '',
+    phone: settings?.companyPhone || '',
+    email: settings?.companyEmail || ''
+  };
+  
+  // Prepare salary data for payslip
+  const salaryData = {
+    month: salaryRecord.month,
+    paymentDate: salaryRecord.paidDate,
+    paymentMode: salaryRecord.paymentMode || 'Bank Transfer',
+    workingDays: salaryRecord.presentDays || 0,
+    basicSalary: salaryRecord.basicSalary || employee.basicSalary || 0,
+    hra: employee.allowances?.hra || 0,
+    conveyance: employee.allowances?.conveyance || 0,
+    medical: employee.allowances?.medical || 0,
+    otherAllowances: employee.allowances?.other || 0,
+    pf: employee.deductions?.pf || 0,
+    esi: employee.deductions?.esi || 0,
+    professionalTax: employee.deductions?.professionalTax || 0,
+    tds: employee.deductions?.tds || 0,
+    otherDeductions: salaryRecord.otherDeductions || 0,
+    advance: salaryRecord.advanceDeduction || 0
+  };
+  
+  // Generate PDF
+  const { generatePayslipPDF } = await import('../utils/payslipService.js');
+  const pdfBuffer = await generatePayslipPDF(salaryData, employee, companyDetails);
+  
+  // Set response headers
+  const filename = `Payslip_${employee.employeeId}_${salaryRecord.month.replace('-', '_')}.pdf`;
+  
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Length', pdfBuffer.length);
+  
+  res.send(pdfBuffer);
+});
+
 // @desc    Add work update
 // @route   POST /api/employees/:id/work-update
 // @access  Private

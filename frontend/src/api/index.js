@@ -136,7 +136,7 @@ export const employeeAPI = {
   processSalary: (id, data) => api.post(`/employees/${id}/salary`, data),
   getSalaryHistory: (id) => api.get(`/employees/${id}/salary-history`),
   getSalaryPreview: (id, month) => api.get(`/employees/${id}/salary-preview`, { params: { month } }),
-  generatePayslip: (id, month) => api.get(`/employees/${id}/payslip/${month}`),
+  downloadPayslip: (employeeId, salaryId) => api.get(`/employees/${employeeId}/salary/${salaryId}/payslip`, { responseType: 'blob' }),
   // Hold Requests (admin)
   holdRequests: {
     list: (params) => api.get('/employees/hold-requests', { params }),

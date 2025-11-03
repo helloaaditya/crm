@@ -17,6 +17,7 @@ import {
   processSalary,
   getSalaryHistory,
   getSalaryPreview,
+  generatePayslip,
   addWorkUpdate,
   getWorkUpdates,
   uploadWorkUpdateFiles,
@@ -140,7 +141,7 @@ router.put('/leave/:leaveId', checkPermission('canEdit'), updateLeaveStatus);
 router.post('/:id/salary', checkPermission('canHandleAccounts'), processSalary);
 router.get('/:id/salary-history', getSalaryHistory);
 router.get('/:id/salary-preview', getSalaryPreview);
-router.get('/:id/payslip/:month', generatePayslip);
+router.get('/:id/salary/:salaryId/payslip', generatePayslip);
 
 // Work Updates (Admin)
 router.post('/:id/work-update', addWorkUpdate);
