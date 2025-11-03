@@ -13,6 +13,11 @@ const Expenses = () => {
   const [showModal, setShowModal] = useState(false)
   const [viewModal, setViewModal] = useState(null)
   const [paymentModal, setPaymentModal] = useState(null)
+  const [approvalModal, setApprovalModal] = useState(null)
+  const [approvalData, setApprovalData] = useState({
+    amount: '',
+    remarks: ''
+  })
   const [paymentData, setPaymentData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
@@ -125,10 +130,29 @@ const Expenses = () => {
     }
   }
   
-  const handleApprove = async (expenseId) => {
+  const openApprovalModal = (expense) => {
+    setApprovalModal(expense)
+    setApprovalData({
+      amount: expense.amount || '',
+      remarks: ''
+    })
+  }
+
+  const handleApprove = async (e) => {
+    e.preventDefault()
+    
+    if (!approvalData.amount || approvalData.amount <= 0) {
+      toast.error('Please enter approved amount')
+      return
+    }
+    
     try {
-      await API.expenses.approve(expenseId, { remarks: 'Approved' })
-      toast.success('Expense approved')
+      await API.expenses.approve(approvalModal._id, {
+        approvedAmount: Number(approvalData.amount),
+        remarks: approvalData.remarks || 'Approved'
+      })
+      toast.success('Expense approved successfully')
+      setApprovalModal(null)
       fetchExpenses()
       fetchStats()
     } catch (error) {
@@ -380,7 +404,7 @@ const Expenses = () => {
                           {hasExpenseAccess && expense.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => handleApprove(expense._id)}
+                                onClick={() => openApprovalModal(expense)}
                                 className="p-2 text-green-600 hover:bg-green-50 rounded"
                                 title="Approve"
                               >
@@ -720,6 +744,82 @@ const Expenses = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Approval Modal */}
+      {approvalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-800">Approve Expense</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Expense ID: {approvalModal.expenseId} - {approvalModal.employee?.name}
+              </p>
+            </div>
+            
+            <form onSubmit={handleApprove} className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800">
+                  <strong>Category:</strong> {approvalModal.category} • 
+                  <strong> Date:</strong> {new Date(approvalModal.expenseDate).toLocaleDateString()} • 
+                  <strong> Docs:</strong> {approvalModal.documents?.length || 0} file(s)
+                </p>
+                <p className="text-sm text-blue-900 mt-1">
+                  <strong>Description:</strong> {approvalModal.description}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Approved Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={approvalData.amount}
+                  onChange={(e) => setApprovalData({ ...approvalData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter approved amount after reviewing receipts"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Requested amount: ₹{approvalModal.amount?.toLocaleString() || 0}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Approval Remarks
+                </label>
+                <textarea
+                  value={approvalData.remarks}
+                  onChange={(e) => setApprovalData({ ...approvalData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="2"
+                  placeholder="Any notes or conditions..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setApprovalModal(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                >
+                  Approve Expense
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
