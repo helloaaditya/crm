@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiX } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2 } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import CustomerModal from '../../components/Modals/CustomerModal'
@@ -10,7 +10,6 @@ const Customers = () => {
   const [search, setSearch] = useState('')
   const [leadStatus, setLeadStatus] = useState('')
   const [page, setPage] = useState(1)
-  const [viewModal, setViewModal] = useState(null)
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
@@ -162,21 +161,16 @@ const Customers = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         <div className="flex space-x-2">
                           <button 
-                            onClick={() => setViewModal(customer)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                            title="View Details"
-                          >
-                            <FiEye />
-                          </button>
-                          <button 
                             onClick={() => handleEdit(customer)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Edit"
                           >
                             <FiEdit />
                           </button>
                           <button 
                             onClick={() => handleDelete(customer._id)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Delete"
                           >
                             <FiTrash2 />
                           </button>
@@ -219,13 +213,6 @@ const Customers = () => {
                   </div>
                   
                   <div className="flex space-x-2">
-                    <button 
-                      onClick={() => setViewModal(customer)}
-                      className="flex-1 flex items-center justify-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm"
-                    >
-                      <FiEye className="mr-1" size={14} />
-                      View
-                    </button>
                     <button 
                       onClick={() => handleEdit(customer)}
                       className="flex-1 flex items-center justify-center px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg text-sm"
@@ -282,90 +269,6 @@ const Customers = () => {
         onSuccess={handleModalSuccess}
         customer={selectedCustomer}
       />
-      
-      {/* View Customer Details Modal */}
-      {viewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-800">Customer Details</h2>
-              <button 
-                onClick={() => setViewModal(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Customer Name</p>
-                  <p className="font-semibold text-gray-900">{viewModal.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Phone</p>
-                  <p className="font-semibold text-gray-900">{viewModal.phone || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Email</p>
-                  <p className="font-semibold text-gray-900">{viewModal.email || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Lead Status</p>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    viewModal.leadStatus === 'new' ? 'bg-blue-100 text-blue-800' :
-                    viewModal.leadStatus === 'contacted' ? 'bg-yellow-100 text-yellow-800' :
-                    viewModal.leadStatus === 'qualified' ? 'bg-purple-100 text-purple-800' :
-                    viewModal.leadStatus === 'converted' ? 'bg-green-100 text-green-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {viewModal.leadStatus}
-                  </span>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-600">Address</p>
-                  <p className="font-semibold text-gray-900">{viewModal.address || 'N/A'}</p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-600">Notes</p>
-                  <p className="text-gray-700 bg-gray-50 p-3 rounded">{viewModal.notes || 'No notes'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Created On</p>
-                  <p className="font-semibold text-gray-900">
-                    {new Date(viewModal.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Last Updated</p>
-                  <p className="font-semibold text-gray-900">
-                    {new Date(viewModal.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t flex justify-end gap-2">
-              <button
-                onClick={() => setViewModal(null)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  setViewModal(null);
-                  handleEdit(viewModal);
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                Edit Customer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEye, FiEdit, FiTrash2, FiClock, FiUpload, FiUsers, FiDownload, FiFilter, FiCalendar, FiDollarSign, FiX, FiMapPin } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiClock, FiUpload, FiUsers, FiDownload, FiFilter, FiCalendar, FiDollarSign } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import ProjectModal from '../../components/Modals/ProjectModal'
@@ -24,7 +24,6 @@ const Projects = () => {
   const [historyProjectId, setHistoryProjectId] = useState(null)
   const [showTeamModal, setShowTeamModal] = useState(false)
   const [teamProject, setTeamProject] = useState(null)
-  const [viewModal, setViewModal] = useState(null)
 
   useEffect(() => {
     fetchProjects()
@@ -339,13 +338,6 @@ const Projects = () => {
                           >
                             <FiUsers />
                           </button>
-                          <button 
-                            onClick={() => setViewModal(project)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
-                            title="View Details"
-                          >
-                            <FiEye />
-                          </button>
                           <button onClick={() => handleEdit(project)} className="p-2 text-green-600 hover:bg-green-50 rounded" title="Edit"><FiEdit /></button>
                           <button onClick={() => handleDelete(project._id)} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Delete"><FiTrash2 /></button>
                         </div>
@@ -417,17 +409,10 @@ const Projects = () => {
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <button 
-                      onClick={() => setViewModal(project)}
-                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
-                    >
-                      <FiEye className="mr-1" size={12} />
-                      View Details
-                    </button>
+                  <div className="mt-2">
                     <button 
                       onClick={() => handleDelete(project._id)}
-                      className="flex items-center justify-center px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs"
+                      className="w-full flex items-center justify-center px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs"
                     >
                       <FiTrash2 className="mr-1" size={12} />
                       Delete
@@ -491,125 +476,6 @@ const Projects = () => {
         onClose={() => { setShowTeamModal(false); setTeamProject(null); }}
         project={teamProject}
       />
-      
-      {/* View Project Details Modal */}
-      {viewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-800">Project Details</h2>
-              <button 
-                onClick={() => setViewModal(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Project ID</p>
-                  <p className="font-semibold text-gray-900">{viewModal.projectId}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    viewModal.status === 'active' ? 'bg-green-100 text-green-800' :
-                    viewModal.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                    viewModal.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {viewModal.status}
-                  </span>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-600">Description</p>
-                  <p className="font-semibold text-gray-900">{viewModal.description}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Category</p>
-                  <p className="font-semibold text-gray-900 capitalize">{viewModal.category || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Customer</p>
-                  <p className="font-semibold text-gray-900">{viewModal.customer?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Start Date</p>
-                  <p className="font-semibold text-gray-900">
-                    {viewModal.startDate ? new Date(viewModal.startDate).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">End Date</p>
-                  <p className="font-semibold text-gray-900">
-                    {viewModal.endDate ? new Date(viewModal.endDate).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Estimated Cost</p>
-                  <p className="font-semibold text-gray-900">₹{viewModal.estimatedCost?.toLocaleString() || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Actual Cost</p>
-                  <p className="font-semibold text-gray-900">₹{viewModal.actualCost?.toLocaleString() || '0'}</p>
-                </div>
-                {viewModal.location && (
-                  <div className="sm:col-span-2">
-                    <p className="text-sm text-gray-600 mb-2">Location</p>
-                    <div className="flex items-start bg-gray-50 p-3 rounded">
-                      <FiMapPin className="text-blue-600 mr-2 mt-1" size={16} />
-                      <div>
-                        <p className="font-semibold text-gray-900">{viewModal.location.address || 'N/A'}</p>
-                        {viewModal.location.city && (
-                          <p className="text-sm text-gray-600">{viewModal.location.city}, {viewModal.location.state} - {viewModal.location.pincode}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-600">Team</p>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-700">
-                      <strong>Supervisors:</strong> {viewModal.supervisors?.length || 0} | 
-                      <strong> Workers:</strong> {viewModal.workers?.length || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t flex justify-end gap-2">
-              <button
-                onClick={() => setViewModal(null)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  handleViewHistory(viewModal);
-                  setViewModal(null);
-                }}
-                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
-              >
-                View History
-              </button>
-              <button
-                onClick={() => {
-                  setViewModal(null);
-                  handleEdit(viewModal);
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                Edit Project
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

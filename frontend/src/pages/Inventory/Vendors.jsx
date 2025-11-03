@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiX, FiPackage, FiMapPin, FiPhone, FiMail } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2 } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import VendorModal from '../../components/Modals/VendorModal'
@@ -13,7 +13,6 @@ const Vendors = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
   const [selectedVendor, setSelectedVendor] = useState(null)
-  const [viewModal, setViewModal] = useState(null)
 
   useEffect(() => {
     fetchVendors()
@@ -170,13 +169,6 @@ const Vendors = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex space-x-2">
                           <button 
-                            onClick={() => setViewModal(vendor)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
-                            title="View Details"
-                          >
-                            <FiEye />
-                          </button>
-                          <button 
                             onClick={() => handleEdit(vendor)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title="Edit"
@@ -230,14 +222,7 @@ const Vendors = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2">
-                    <button 
-                      onClick={() => setViewModal(vendor)}
-                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
-                    >
-                      <FiEye className="mr-1" size={12} />
-                      View
-                    </button>
+                  <div className="grid grid-cols-2 gap-2">
                     <button 
                       onClick={() => handleEdit(vendor)}
                       className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
@@ -292,102 +277,6 @@ const Vendors = () => {
         onSuccess={handleModalSuccess}
         vendor={selectedVendor}
       />
-      
-      {/* View Vendor Details Modal */}
-      {viewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-800">Vendor Details</h2>
-              <button 
-                onClick={() => setViewModal(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={24} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Vendor Name</p>
-                  <p className="font-semibold text-gray-900">{viewModal.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Category</p>
-                  <p className="font-semibold text-gray-900 capitalize">{viewModal.category || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <FiPhone className="mr-1" size={14} />
-                    Phone
-                  </p>
-                  <p className="font-semibold text-gray-900">{viewModal.phone || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <FiMail className="mr-1" size={14} />
-                    Email
-                  </p>
-                  <p className="font-semibold text-gray-900">{viewModal.email || 'N/A'}</p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <FiMapPin className="mr-1" size={14} />
-                    Address
-                  </p>
-                  <p className="font-semibold text-gray-900">{viewModal.address || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">GST Number</p>
-                  <p className="font-mono font-semibold text-gray-900">{viewModal.gstNumber || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <FiPackage className="mr-1" size={14} />
-                    Products Supplied
-                  </p>
-                  <p className="font-semibold text-gray-900">{viewModal.productsSupplied || 'N/A'}</p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-600">Payment Terms</p>
-                  <p className="text-gray-700 bg-gray-50 p-3 rounded">{viewModal.paymentTerms || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Created On</p>
-                  <p className="font-semibold text-gray-900">
-                    {new Date(viewModal.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Last Updated</p>
-                  <p className="font-semibold text-gray-900">
-                    {new Date(viewModal.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t flex justify-end gap-2">
-              <button
-                onClick={() => setViewModal(null)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  setViewModal(null);
-                  handleEdit(viewModal);
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                Edit Vendor
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
