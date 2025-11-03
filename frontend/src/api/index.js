@@ -132,6 +132,9 @@ export const employeeAPI = {
   applyLeave: (id, data) => api.post(`/employees/${id}/leave`, data),
   updateLeaveStatus: (leaveId, data) => api.put(`/employees/leave/${leaveId}`, data),
   
+  // Comp Off
+  grantCompOff: (id, data) => api.post(`/employees/${id}/compoff/grant`, data),
+  
   // Salary
   processSalary: (id, data) => api.post(`/employees/${id}/salary`, data),
   getSalaryHistory: (id) => api.get(`/employees/${id}/salary-history`),
