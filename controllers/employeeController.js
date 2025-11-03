@@ -1699,6 +1699,19 @@ export const approveHoldRequest = asyncHandler(async (req, res) => {
   if (notes) request.notes = notes;
   await employee.save();
 
+  // Notify employee
+  if (employee.userId) {
+    await createNotification({
+      recipient: employee.userId,
+      type: 'withdrawal_approved',
+      title: 'Withdrawal Request Approved',
+      message: `Your withdrawal request of ₹${amount.toLocaleString()} has been approved and will be processed soon`,
+      actionUrl: '/my-salary',
+      priority: 'high',
+      triggeredBy: req.user._id
+    });
+  }
+
   // For now, record meta in response (Payment creation can be wired later if needed)
   res.json({ success: true, message: 'Withdrawal approved', data: { employeeId: employee._id, amount, paymentMethod, referenceNumber, holdBalance: employee.holdBalance } });
 });
@@ -1717,6 +1730,20 @@ export const rejectHoldRequest = asyncHandler(async (req, res) => {
   request.processedAt = new Date();
   if (notes) request.notes = notes;
   await employee.save();
+
+  // Notify employee
+  if (employee.userId) {
+    await createNotification({
+      recipient: employee.userId,
+      type: 'withdrawal_rejected',
+      title: 'Withdrawal Request Rejected',
+      message: `Your withdrawal request of ₹${request.amount.toLocaleString()} was rejected${notes ? ': ' + notes : ''}`,
+      actionUrl: '/my-salary',
+      priority: 'high',
+      triggeredBy: req.user._id
+    });
+  }
+
   res.json({ success: true, message: 'Withdrawal rejected' });
 });
 

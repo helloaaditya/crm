@@ -619,6 +619,46 @@ export const addWorkUpdate = asyncHandler(async (req, res) => {
 
   await project.save();
 
+  // Notify project admin/creator about work update
+  const { createNotification } = await import('./notificationController.js');
+  if (project.createdBy && project.createdBy.toString() !== req.user._id.toString()) {
+    await createNotification({
+      recipient: project.createdBy,
+      type: 'work_update_added',
+      title: 'New Work Update',
+      message: `${req.user.name} added a work update: "${title}" on project ${project.description || project.projectId}`,
+      actionUrl: `/projects/${project._id}`,
+      priority: 'normal',
+      triggeredBy: req.user._id
+    });
+  }
+
+  // Also notify other assigned employees (except the updater)
+  if (project.assignedEmployees && project.assignedEmployees.length > 0) {
+    const Employee = (await import('../models/Employee.js')).default;
+    const { sendToMultipleUsers } = await import('./notificationController.js');
+    
+    // Get userIds of assigned employees (except the one who posted the update)
+    const employees = await Employee.find({
+      _id: { $in: project.assignedEmployees }
+    }).select('userId');
+    
+    const userIds = employees
+      .map(emp => emp.userId)
+      .filter(userId => userId && userId.toString() !== req.user._id.toString());
+    
+    if (userIds.length > 0) {
+      await sendToMultipleUsers(userIds, {
+        type: 'work_update_added',
+        title: 'Work Update on Your Project',
+        message: `${req.user.name} posted: "${title}" on ${project.description || project.projectId}`,
+        actionUrl: `/projects/${project._id}`,
+        priority: 'normal',
+        triggeredBy: req.user._id
+      });
+    }
+  }
+
   res.json({
     success: true,
     data: project,
@@ -886,6 +926,30 @@ export const updateProjectStatus = asyncHandler(async (req, res) => {
 
   await project.save();
 
+  // Notify assigned employees about status change
+  if (project.assignedEmployees && project.assignedEmployees.length > 0) {
+    const Employee = (await import('../models/Employee.js')).default;
+    const { sendToMultipleUsers } = await import('./notificationController.js');
+    
+    // Get userIds of assigned employees
+    const employees = await Employee.find({
+      _id: { $in: project.assignedEmployees }
+    }).select('userId');
+    
+    const userIds = employees.map(emp => emp.userId).filter(Boolean);
+    
+    if (userIds.length > 0) {
+      await sendToMultipleUsers(userIds, {
+        type: 'project_status_changed',
+        title: 'Project Status Updated',
+        message: `Project "${project.description || project.projectId}" status changed from ${oldStatus} to ${status}`,
+        actionUrl: `/projects/${project._id}`,
+        priority: status === 'completed' ? 'high' : 'normal',
+        triggeredBy: req.user._id
+      });
+    }
+  }
+
   res.json({
     success: true,
     data: project,
@@ -904,13 +968,15 @@ export const markProjectComplete = asyncHandler(async (req, res) => {
 
   // Check if user is assigned to this project
   // We need to find the employee record for this user first
+  const Employee = (await import('../models/Employee.js')).default;
   const employee = await Employee.findOne({ userId: req.user._id });
   if (!employee) {
     return res.status(403).json({ message: 'Employee record not found' });
   }
 
-  const isAssigned = project.supervisors.some(sup => sup.employee.toString() === employee._id.toString()) ||
-                    project.workers.some(worker => worker.employee.toString() === employee._id.toString());
+  // Check if employee is in assignedEmployees array
+  const isAssigned = project.assignedEmployees && 
+                     project.assignedEmployees.some(empId => empId.toString() === employee._id.toString());
   
   if (!isAssigned) {
     return res.status(403).json({ message: 'You are not assigned to this project' });
