@@ -256,7 +256,14 @@ export const approveExpense = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Expense has already been processed' });
   }
   
-  const { remarks } = req.body;
+  const { approvedAmount, remarks } = req.body;
+  
+  // Validate and set approved amount
+  if (approvedAmount && approvedAmount > 0) {
+    expense.amount = approvedAmount; // Update expense amount with approved amount
+  } else if (expense.amount === 0) {
+    return res.status(400).json({ message: 'Please enter approved amount' });
+  }
   
   expense.status = 'approved';
   expense.approvedBy = req.user._id;
