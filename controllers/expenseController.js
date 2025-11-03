@@ -119,7 +119,7 @@ export const createExpense = asyncHandler(async (req, res) => {
     submittedBy: req.user._id,
     category,
     description,
-    amount: Number(amount),
+    amount: Number(amount) || 0, // Default to 0 if not provided, admin will set during approval
     expenseDate: expenseDate || new Date(),
     project: project || null,
     documents: documentUrls,
@@ -128,7 +128,7 @@ export const createExpense = asyncHandler(async (req, res) => {
       action: 'submitted',
       performedBy: req.user._id,
       date: new Date(),
-      notes: 'Expense submitted for approval'
+      notes: 'Expense submitted for approval - Amount to be verified by admin'
     }]
   };
   

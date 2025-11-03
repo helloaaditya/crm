@@ -624,7 +624,7 @@ export const generatePayslip = asyncHandler(async (req, res) => {
   };
   
   // Generate PDF
-  const { generatePayslipPDF } = await import('../utils/payslipService.js');
+  const generatePayslipPDF = (await import('../utils/payslipService.js')).default;
   const pdfBuffer = await generatePayslipPDF(salaryData, employee, companyDetails);
   
   // Set response headers
@@ -1084,6 +1084,12 @@ export const getMyHold = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee record not found' });
   }
 
+  // Calculate employment tenure in months
+  const joiningDate = new Date(employee.joiningDate);
+  const today = new Date();
+  const tenureMonths = Math.floor((today - joiningDate) / (1000 * 60 * 60 * 24 * 30.44));
+  const canWithdraw = tenureMonths >= 6;
+
   const holdPercent = employee.holdPercent || 5;
   // Calculate accrual from paid salary history (for display)
   let totalAccrued = 0;
@@ -1100,7 +1106,15 @@ export const getMyHold = asyncHandler(async (req, res) => {
 
   // Use stored holdBalance as current available balance tracker
   const holdBalance = Math.max(0, (employee.holdBalance || 0));
-  const withdrawable = Math.max(0, holdBalance - pending);
+  
+  // Calculate withdrawable amount based on tenure
+  let withdrawable = 0;
+  if (canWithdraw) {
+    // After 6 months: 3 months worth is releasable
+    const avgHoldPerMonth = totalAccrued / Math.max(1, employee.salaryHistory.length);
+    const releasableAmount = avgHoldPerMonth * 3;
+    withdrawable = Math.max(0, Math.min(releasableAmount, holdBalance) - pending);
+  }
 
   res.json({
     success: true,
@@ -1110,7 +1124,10 @@ export const getMyHold = asyncHandler(async (req, res) => {
       holdBalance: Math.round(holdBalance * 100) / 100,
       withdrawable: Math.round(withdrawable * 100) / 100,
       pendingRequestsAmount: Math.round(pending * 100) / 100,
-      nextEligibleMonth: null
+      tenureMonths,
+      canWithdraw,
+      monthsUntilEligible: canWithdraw ? 0 : 6 - tenureMonths,
+      joiningDate: employee.joiningDate
     }
   });
 });
@@ -1125,21 +1142,63 @@ export const requestMyHoldWithdrawal = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee record not found' });
   }
 
-  // Withdraw up to current hold balance minus pending requests
+  // Calculate employment tenure in months
+  const joiningDate = new Date(employee.joiningDate);
+  const today = new Date();
+  const tenureMonths = Math.floor((today - joiningDate) / (1000 * 60 * 60 * 24 * 30.44)); // Average month
+  
+  console.log(`Employee tenure: ${tenureMonths} months`);
+
+  // Withdrawal policy: After 6 months, release 3 months worth, hold 3 months
+  if (tenureMonths < 6) {
+    return res.status(400).json({ 
+      message: `Cannot withdraw hold amount before 6 months of employment. Current tenure: ${tenureMonths} months` 
+    });
+  }
+
+  // Calculate total hold accumulated (from salary history)
+  const totalHoldAccumulated = employee.salaryHistory.reduce((sum, s) => sum + (s.holdAmount || 0), 0);
+  
+  // After 6 months: 3 months worth is releasable, 3 months worth stays held
+  // Assuming roughly equal hold per month
+  const avgHoldPerMonth = totalHoldAccumulated / employee.salaryHistory.length || 0;
+  const releasableAmount = avgHoldPerMonth * 3; // 3 months worth
+  const mustStayHeld = avgHoldPerMonth * 3; // 3 months worth must stay held
+  
+  // Subtract pending requests
   const pending = (employee.holdRequests || []).filter(r => r.status === 'pending').reduce((s, r) => s + (r.amount || 0), 0);
-  const withdrawable = Math.max(0, (employee.holdBalance || 0) - pending);
+  const withdrawable = Math.max(0, releasableAmount - pending);
+
+  console.log(`Total hold: ₹${totalHoldAccumulated}, Releasable: ₹${releasableAmount}, Must stay held: ₹${mustStayHeld}, Withdrawable: ₹${withdrawable}`);
 
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Invalid amount' });
   }
+  
   if (amount > withdrawable) {
-    return res.status(400).json({ message: `Requested amount exceeds withdrawable balance (₹${withdrawable})` });
+    return res.status(400).json({ 
+      message: `Requested amount exceeds withdrawable balance. You can withdraw up to ₹${withdrawable.toFixed(2)} (3 months worth). Remaining ₹${mustStayHeld.toFixed(2)} must stay held.` 
+    });
   }
 
-  employee.holdRequests.push({ amount, status: 'pending', requestedAt: new Date(), notes: notes || '' });
+  employee.holdRequests.push({ 
+    amount, 
+    status: 'pending', 
+    requestedAt: new Date(), 
+    notes: notes || '' 
+  });
   await employee.save();
 
-  res.status(201).json({ success: true, message: 'Withdrawal request submitted for approval' });
+  res.status(201).json({ 
+    success: true, 
+    message: `Withdrawal request submitted for ₹${amount}. After 6 months, you can withdraw 3 months worth (₹${releasableAmount.toFixed(2)}).`,
+    data: {
+      requestedAmount: amount,
+      releasableAmount,
+      mustStayHeld,
+      withdrawable
+    }
+  });
 });
 
 // @desc    Get my employee profile
