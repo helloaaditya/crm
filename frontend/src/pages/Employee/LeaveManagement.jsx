@@ -96,12 +96,8 @@ const LeaveManagement = () => {
   }
 
   const leaveTypes = [
-    { value: 'casual', label: 'Casual Leave', color: 'blue' },
     { value: 'sick', label: 'Sick Leave', color: 'red' },
-    { value: 'earned', label: 'Earned Leave', color: 'green' },
-    { value: 'unpaid', label: 'Unpaid Leave', color: 'gray' },
-    { value: 'maternity', label: 'Maternity Leave', color: 'pink' },
-    { value: 'paternity', label: 'Paternity Leave', color: 'purple' }
+    { value: 'unpaid', label: 'Unpaid Leave', color: 'gray' }
   ]
 
   const getLeaveTypeColor = (type) => {

@@ -12,6 +12,13 @@ const Expenses = () => {
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [viewModal, setViewModal] = useState(null)
+  const [paymentModal, setPaymentModal] = useState(null)
+  const [paymentData, setPaymentData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterCategory, setFilterCategory] = useState('all')
@@ -143,17 +150,33 @@ const Expenses = () => {
     }
   }
   
-  const handlePay = async (expenseId, amount) => {
-    const paymentMode = prompt('Enter payment mode (cash/bank_transfer/upi/cheque):') || 'bank_transfer'
-    const transactionRef = prompt('Enter transaction reference (optional):') || ''
+  const openPaymentModal = (expense) => {
+    setPaymentModal(expense)
+    setPaymentData({
+      amount: expense.amount || '',
+      paymentMode: 'bank_transfer',
+      transactionReference: '',
+      remarks: ''
+    })
+  }
+
+  const handlePay = async (e) => {
+    e.preventDefault()
+    
+    if (!paymentData.amount || paymentData.amount <= 0) {
+      toast.error('Please enter valid payment amount')
+      return
+    }
     
     try {
-      await API.expenses.pay(expenseId, {
-        paymentMode,
-        transactionReference: transactionRef,
-        paidAmount: amount
+      await API.expenses.pay(paymentModal._id, {
+        paidAmount: Number(paymentData.amount),
+        paymentMode: paymentData.paymentMode,
+        transactionReference: paymentData.transactionReference,
+        remarks: paymentData.remarks
       })
-      toast.success('Payment processed')
+      toast.success('Payment processed successfully')
+      setPaymentModal(null)
       fetchExpenses()
       fetchStats()
     } catch (error) {
@@ -375,7 +398,7 @@ const Expenses = () => {
                           
                           {hasExpenseAccess && expense.status === 'approved' && expense.paymentStatus === 'unpaid' && (
                             <button
-                              onClick={() => handlePay(expense._id, expense.amount)}
+                              onClick={() => openPaymentModal(expense)}
                               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                             >
                               Pay
@@ -697,6 +720,101 @@ const Expenses = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Payment Modal */}
+      {paymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-800">Process Payment</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Expense ID: {paymentModal.expenseId} - {paymentModal.employee?.name}
+              </p>
+            </div>
+            
+            <form onSubmit={handlePay} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={paymentData.amount}
+                  onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter amount to pay"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Requested amount: ₹{paymentModal.amount?.toLocaleString() || 0}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={paymentData.paymentMode}
+                  onChange={(e) => setPaymentData({ ...paymentData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={paymentData.transactionReference}
+                  onChange={(e) => setPaymentData({ ...paymentData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Remarks
+                </label>
+                <textarea
+                  value={paymentData.remarks}
+                  onChange={(e) => setPaymentData({ ...paymentData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="2"
+                  placeholder="Any notes about the payment..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setPaymentModal(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Process Payment
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -8,19 +8,15 @@ function MyLeave() {
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
-    leaveType: 'casual',
+    leaveType: 'sick',
     startDate: '',
     endDate: '',
     reason: ''
   })
 
   const leaveTypes = [
-    { value: 'casual', label: 'Casual Leave', color: 'blue' },
     { value: 'sick', label: 'Sick Leave', color: 'red' },
-    { value: 'earned', label: 'Earned Leave', color: 'green' },
-    { value: 'unpaid', label: 'Unpaid Leave', color: 'gray' },
-    { value: 'maternity', label: 'Maternity Leave', color: 'pink' },
-    { value: 'paternity', label: 'Paternity Leave', color: 'purple' }
+    { value: 'unpaid', label: 'Unpaid Leave', color: 'gray' }
   ]
 
   useEffect(() => {
@@ -55,7 +51,7 @@ function MyLeave() {
       toast.success('Leave request submitted successfully')
       setShowModal(false)
       setFormData({
-        leaveType: 'casual',
+        leaveType: 'sick',
         startDate: '',
         endDate: '',
         reason: ''
