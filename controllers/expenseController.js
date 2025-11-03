@@ -88,11 +88,11 @@ export const createExpense = asyncHandler(async (req, res) => {
     });
   }
   
-  // Validate required fields
-  if (!category || !description || !amount) {
+  // Validate required fields (amount is NOT required - admin will set during approval)
+  if (!category || !description) {
     return res.status(400).json({ 
-      message: 'Category, description, and amount are required fields',
-      received: { category, description, amount }
+      message: 'Category and description are required fields',
+      received: { category, description }
     });
   }
   
