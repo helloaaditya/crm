@@ -634,13 +634,18 @@ export const addWorkUpdate = asyncHandler(async (req, res) => {
   }
 
   // Also notify other assigned employees (except the updater)
-  if (project.assignedEmployees && project.assignedEmployees.length > 0) {
+  const assignedEmployeeIds = [
+    ...(project.supervisors || []).map(s => s.employee),
+    ...(project.workers || []).map(w => w.employee)
+  ].filter(Boolean);
+  
+  if (assignedEmployeeIds.length > 0) {
     const Employee = (await import('../models/Employee.js')).default;
     const { sendToMultipleUsers } = await import('./notificationController.js');
     
     // Get userIds of assigned employees (except the one who posted the update)
     const employees = await Employee.find({
-      _id: { $in: project.assignedEmployees }
+      _id: { $in: assignedEmployeeIds }
     }).select('userId');
     
     const userIds = employees
@@ -927,13 +932,18 @@ export const updateProjectStatus = asyncHandler(async (req, res) => {
   await project.save();
 
   // Notify assigned employees about status change
-  if (project.assignedEmployees && project.assignedEmployees.length > 0) {
+  const assignedEmployeeIds = [
+    ...(project.supervisors || []).map(s => s.employee),
+    ...(project.workers || []).map(w => w.employee)
+  ].filter(Boolean);
+  
+  if (assignedEmployeeIds.length > 0) {
     const Employee = (await import('../models/Employee.js')).default;
     const { sendToMultipleUsers } = await import('./notificationController.js');
     
     // Get userIds of assigned employees
     const employees = await Employee.find({
-      _id: { $in: project.assignedEmployees }
+      _id: { $in: assignedEmployeeIds }
     }).select('userId');
     
     const userIds = employees.map(emp => emp.userId).filter(Boolean);
