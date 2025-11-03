@@ -177,7 +177,7 @@ export const employeeAPI = {
     update: (id, data) => api.put(`/employees/my-reminder/${id}`, data),
     reset: () => api.delete('/employees/my-reminders/reset')
   },
-  myPayslip: (month) => api.get(`/employees/my-payslip/${month}`),
+  myPayslip: (month) => api.get(`/employees/my-payslip/${month}`, { responseType: 'blob' }),
   geocode: (params) => api.get('/employees/geocode', { params })
 };
 

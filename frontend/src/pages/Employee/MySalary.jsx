@@ -30,22 +30,28 @@ function MySalary() {
 
   const downloadPayslip = async (month) => {
     try {
-      // Generate payslip using self-service endpoint
+      // Get PDF buffer from backend
       const response = await API.employees.myPayslip(month);
       
-      // Download the PDF
-      const pdfUrl = response.data.data.pdfUrl;
+      // Create blob from response
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create download link
       const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `payslip-${month}.pdf`;
+      link.href = url;
+      link.download = `Payslip_${month.replace('-', '_')}.pdf`;
       document.body.appendChild(link);
       link.click();
+      
+      // Cleanup
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
       toast.success('Payslip downloaded successfully');
     } catch (error) {
       console.error('Error downloading payslip:', error);
-      toast.error('Failed to download payslip');
+      toast.error(error.response?.data?.message || 'Failed to download payslip');
     }
   };
 
