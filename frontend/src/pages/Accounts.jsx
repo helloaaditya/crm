@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiEdit, FiTrash2, FiKey, FiUser, FiLock } from 'react-icons/fi'
+import { FiEdit, FiTrash2, FiKey, FiUser, FiLock, FiSearch } from 'react-icons/fi'
 import API from '../api'
 import { toast } from 'react-toastify'
 import UserAccountModal from '../components/Modals/UserAccountModal'
@@ -10,6 +10,7 @@ const Accounts = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     fetchUsers()
@@ -83,6 +84,24 @@ const Accounts = () => {
     return colors[role] || 'bg-gray-100 text-gray-800'
   }
 
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => {
+    if (!searchTerm) return true
+    const searchLower = searchTerm.toLowerCase()
+    
+    // Find employee info for this user
+    const employee = employees.find(emp => emp.userId?._id === user._id || emp.userId === user._id)
+    const employeeId = employee?.employeeId || ''
+    
+    return (
+      user.name?.toLowerCase().includes(searchLower) ||
+      user.email?.toLowerCase().includes(searchLower) ||
+      user.phone?.includes(searchTerm) ||
+      user.role?.toLowerCase().includes(searchLower) ||
+      employeeId.toLowerCase().includes(searchLower)
+    )
+  })
+
   const getEmployeeName = (userId) => {
     const employee = employees.find(emp => emp.userId?._id === userId || emp.userId === userId)
     return employee ? `${employee.name} (${employee.employeeId})` : '-'
@@ -105,6 +124,33 @@ const Accounts = () => {
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search by name, email, phone, role, or employee ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-sm text-gray-600 mt-2">
+            Found {filteredUsers.length} account{filteredUsers.length !== 1 ? 's' : ''} matching "{searchTerm}"
+          </p>
+        )}
+      </div>
+
       {/* Info Card */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
         <div className="flex items-start">
@@ -124,25 +170,25 @@ const Accounts = () => {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
-        ) : users.length > 0 ? (
+        ) : filteredUsers.length > 0 ? (
           <>
             {/* Desktop Table */}
-            <div className="hidden lg:block">
+            <div className="hidden lg:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email/Username</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Module Access</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Name</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Email</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Phone</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Role</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Employee</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Module</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Status</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-tight">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
+                  {filteredUsers.map((user) => (
                     <tr key={user._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {user.name}
@@ -206,7 +252,7 @@ const Accounts = () => {
 
             {/* Mobile Cards */}
             <div className="lg:hidden">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <div key={user._id} className="p-4 border-b border-gray-200">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -270,7 +316,18 @@ const Accounts = () => {
           </>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-600">No user accounts found</p>
+            <FiUser className="mx-auto text-gray-400 mb-3" size={48} />
+            <p className="text-gray-600">
+              {searchTerm ? `No accounts found matching "${searchTerm}"` : 'No user accounts found'}
+            </p>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="mt-3 text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Clear search
+              </button>
+            )}
           </div>
         )}
       </div>
