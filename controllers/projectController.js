@@ -974,11 +974,13 @@ export const markProjectComplete = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Employee record not found' });
   }
 
-  // Check if employee is in assignedEmployees array
-  const isAssigned = project.assignedEmployees && 
-                     project.assignedEmployees.some(empId => empId.toString() === employee._id.toString());
+  // Check if employee is in supervisors or workers arrays
+  const isSupervisor = project.supervisors && 
+                       project.supervisors.some(sup => sup.employee.toString() === employee._id.toString());
+  const isWorker = project.workers && 
+                   project.workers.some(worker => worker.employee.toString() === employee._id.toString());
   
-  if (!isAssigned) {
+  if (!isSupervisor && !isWorker) {
     return res.status(403).json({ message: 'You are not assigned to this project' });
   }
 
