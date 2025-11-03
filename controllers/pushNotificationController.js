@@ -1,4 +1,4 @@
-import asyncHandler from '../middleware/asyncHandler.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 import PushSubscription from '../models/PushSubscription.js';
 
 // @desc    Get VAPID public key
