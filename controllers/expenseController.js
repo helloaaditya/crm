@@ -153,7 +153,7 @@ export const createExpense = asyncHandler(async (req, res) => {
         title: 'New Expense Submitted',
         message: `${employee.name} submitted expense of ₹${amount} for ${category}`,
         actionUrl: `/expenses`,
-        priority: 'medium'
+        priority: 'normal'
       }
     );
   }

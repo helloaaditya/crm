@@ -18,10 +18,12 @@ const notificationSchema = new mongoose.Schema({
       'project_updated',
       'project_completed',
       'project_deadline',
+      'project_status_changed',
       
       // Work update notifications
       'work_update_submitted',
       'work_update_approved',
+      'work_update_added',
       
       // Employee notifications
       'leave_requested',
@@ -29,6 +31,16 @@ const notificationSchema = new mongoose.Schema({
       'leave_rejected',
       'salary_processed',
       'attendance_marked',
+      
+      // Expense notifications
+      'expense_submitted',
+      'expense_approved',
+      'expense_rejected',
+      'expense_paid',
+      
+      // Withdrawal notifications
+      'withdrawal_approved',
+      'withdrawal_rejected',
       
       // Invoice & Payment notifications
       'invoice_generated',
@@ -53,6 +65,7 @@ const notificationSchema = new mongoose.Schema({
       // General
       'mention',
       'comment_added',
+      'info',
       'other'
     ],
     required: true,
