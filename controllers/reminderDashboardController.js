@@ -4,6 +4,8 @@ import Project from '../models/Project.js';
 import Invoice from '../models/Invoice.js';
 import Material from '../models/Material.js';
 import Employee from '../models/Employee.js';
+import Payment from '../models/Payment.js';
+import VendorPayment from '../models/VendorPayment.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 // @desc    Get all reminders
@@ -449,4 +451,220 @@ export const getNotificationCounts = asyncHandler(async (req, res) => {
     console.error('Notification counts error:', error);
     res.status(500).json({ message: 'Failed to fetch notification counts' });
   }
+});
+
+// @desc    Get daily revenue trends (received and sent money)
+// @route   GET /api/dashboard/daily-revenue-trends
+// @access  Private
+export const getDailyRevenueTrends = asyncHandler(async (req, res) => {
+  const { startDate, endDate, days = 30 } = req.query;
+
+  let start, end;
+  
+  if (startDate && endDate) {
+    start = new Date(startDate);
+    end = new Date(endDate);
+  } else {
+    end = new Date();
+    start = new Date();
+    start.setDate(start.getDate() - parseInt(days));
+  }
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  // Get payments received (incoming money)
+  const payments = await Payment.find({
+    paymentDate: { $gte: start, $lte: end }
+  });
+
+  // Get vendor payments (outgoing money)
+  const vendorPayments = await VendorPayment.find({
+    paymentDate: { $gte: start, $lte: end },
+    status: 'completed'
+  });
+
+  // Get employee salary payments (outgoing money)
+  const employees = await Employee.find({ isActive: true });
+  const salaryPayments = [];
+  employees.forEach(emp => {
+    emp.salaryHistory.forEach(salary => {
+      if (salary.paidDate && salary.paidDate >= start && salary.paidDate <= end && salary.status === 'paid') {
+        salaryPayments.push({
+          date: salary.paidDate,
+          amount: salary.netSalary,
+          type: 'salary',
+          employee: emp.employeeId
+        });
+      }
+    });
+  });
+
+  // Aggregate by date
+  const dailyData = {};
+  
+  // Initialize all dates in range
+  const currentDate = new Date(start);
+  while (currentDate <= end) {
+    const dateKey = currentDate.toISOString().split('T')[0];
+    dailyData[dateKey] = {
+      date: dateKey,
+      received: 0,
+      sent: 0,
+      net: 0,
+      receivedCount: 0,
+      sentCount: 0
+    };
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // Add received money
+  payments.forEach(payment => {
+    const dateKey = payment.paymentDate.toISOString().split('T')[0];
+    if (dailyData[dateKey]) {
+      dailyData[dateKey].received += payment.amount;
+      dailyData[dateKey].receivedCount += 1;
+    }
+  });
+
+  // Add sent money (vendor payments)
+  vendorPayments.forEach(payment => {
+    const dateKey = payment.paymentDate.toISOString().split('T')[0];
+    if (dailyData[dateKey]) {
+      dailyData[dateKey].sent += payment.amount;
+      dailyData[dateKey].sentCount += 1;
+    }
+  });
+
+  // Add sent money (salary payments)
+  salaryPayments.forEach(payment => {
+    const dateKey = payment.date.toISOString().split('T')[0];
+    if (dailyData[dateKey]) {
+      dailyData[dateKey].sent += payment.amount;
+      dailyData[dateKey].sentCount += 1;
+    }
+  });
+
+  // Calculate net for each day
+  Object.keys(dailyData).forEach(date => {
+    dailyData[date].net = dailyData[date].received - dailyData[date].sent;
+  });
+
+  // Convert to array and sort by date
+  const trendsArray = Object.values(dailyData).sort((a, b) => 
+    new Date(a.date) - new Date(b.date)
+  );
+
+  // Calculate totals
+  const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalSent = vendorPayments.reduce((sum, p) => sum + p.amount, 0) + 
+                    salaryPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  res.json({
+    success: true,
+    data: {
+      trends: trendsArray,
+      summary: {
+        totalReceived,
+        totalSent,
+        netRevenue: totalReceived - totalSent,
+        totalReceivedCount: payments.length,
+        totalSentCount: vendorPayments.length + salaryPayments.length
+      },
+      period: {
+        startDate: start,
+        endDate: end,
+        days: trendsArray.length
+      }
+    }
+  });
+});
+
+// @desc    Get payment reminders by date
+// @route   GET /api/dashboard/payment-reminders
+// @access  Private
+export const getPaymentReminders = asyncHandler(async (req, res) => {
+  const { date, startDate, endDate } = req.query;
+
+  let query = {};
+
+  if (date) {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    
+    query = {
+      dueDate: { $gte: targetDate, $lt: nextDay },
+      paymentStatus: { $in: ['unpaid', 'partial'] },
+      status: { $ne: 'cancelled' }
+    };
+  } else if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    
+    query = {
+      dueDate: { $gte: start, $lte: end },
+      paymentStatus: { $in: ['unpaid', 'partial'] },
+      status: { $ne: 'cancelled' }
+    };
+  } else {
+    // Default: Get all pending payments
+    query = {
+      paymentStatus: { $in: ['unpaid', 'partial'] },
+      status: { $ne: 'cancelled' }
+    };
+  }
+
+  const invoices = await Invoice.find(query)
+    .populate('customer', 'name contactNumber email')
+    .populate('project', 'projectId description')
+    .sort({ dueDate: 1 });
+
+  // Group by date if range is provided
+  const remindersByDate = {};
+  
+  invoices.forEach(invoice => {
+    if (invoice.dueDate) {
+      const dateKey = invoice.dueDate.toISOString().split('T')[0];
+      if (!remindersByDate[dateKey]) {
+        remindersByDate[dateKey] = {
+          date: dateKey,
+          invoices: [],
+          totalPending: 0,
+          count: 0
+        };
+      }
+      remindersByDate[dateKey].invoices.push({
+        invoiceNumber: invoice.invoiceNumber,
+        customer: invoice.customer,
+        totalAmount: invoice.totalAmount,
+        paidAmount: invoice.paidAmount,
+        balanceAmount: invoice.balanceAmount,
+        dueDate: invoice.dueDate,
+        isOverdue: invoice.dueDate < new Date()
+      });
+      remindersByDate[dateKey].totalPending += invoice.balanceAmount;
+      remindersByDate[dateKey].count += 1;
+    }
+  });
+
+  const remindersArray = Object.values(remindersByDate).sort((a, b) => 
+    new Date(a.date) - new Date(b.date)
+  );
+
+  res.json({
+    success: true,
+    count: invoices.length,
+    data: {
+      reminders: remindersArray,
+      allInvoices: invoices,
+      summary: {
+        totalPending: invoices.reduce((sum, inv) => sum + inv.balanceAmount, 0),
+        overdueCount: invoices.filter(inv => inv.dueDate < new Date()).length
+      }
+    }
+  });
 });

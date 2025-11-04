@@ -29,6 +29,23 @@ const projectSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  
+  // Project Specifications
+  itemsToBeUsed: String,
+  brand: String,
+  thickness: String,
+  units: String,
+  
+  // Client GST & Billing
+  clientGstNumber: String,
+  billingAddress: {
+    street: String,
+    city: String,
+    state: String,
+    pincode: String,
+    country: { type: String, default: 'India' }
+  },
+  
   siteAddress: {
     street: String,
     city: String,

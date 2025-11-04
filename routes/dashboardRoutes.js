@@ -7,7 +7,9 @@ import {
   getEmployeeStats,
   getRevenueStats,
   getRecentActivities,
-  getNotificationCounts
+  getNotificationCounts,
+  getDailyRevenueTrends,
+  getPaymentReminders
 } from '../controllers/reminderDashboardController.js';
 
 const router = express.Router();
@@ -34,5 +36,11 @@ router.get('/recent-activities', getRecentActivities);
 
 // Notification Counts
 router.get('/notifications', getNotificationCounts);
+
+// Daily Revenue Trends
+router.get('/daily-revenue-trends', authorize('main_admin', 'sub_admin'), getDailyRevenueTrends);
+
+// Payment Reminders by Date
+router.get('/payment-reminders', getPaymentReminders);
 
 export default router;

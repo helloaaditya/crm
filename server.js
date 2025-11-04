@@ -28,6 +28,9 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import pushNotificationRoutes from './routes/pushNotificationRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import locationTrackingRoutes from './routes/locationTrackingRoutes.js';
+import vendorPaymentRoutes from './routes/vendorPaymentRoutes.js';
+import workOrderRoutes from './routes/workOrderRoutes.js';
+import companyDocumentRoutes from './routes/companyDocumentRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -140,6 +143,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/push', pushNotificationRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/location-tracking', locationTrackingRoutes);
+app.use('/api/vendor-payments', vendorPaymentRoutes);
+app.use('/api/work-orders', workOrderRoutes);
+app.use('/api/company-documents', companyDocumentRoutes);
 
 // Health check endpoints
 app.get('/health', async (req, res) => {

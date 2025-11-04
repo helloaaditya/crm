@@ -18,8 +18,15 @@ const invoiceSchema = new mongoose.Schema({
   // Invoice Type
   invoiceType: {
     type: String,
-    enum: ['quotation', 'proforma', 'tax_invoice', 'final'],
+    enum: ['quotation', 'proforma', 'tax_invoice', 'final', 'dc'],
     required: true
+  },
+  
+  // Bill Type (Service Bill or Sales Bill)
+  billType: {
+    type: String,
+    enum: ['service_bill', 'sales_bill'],
+    default: 'service_bill'
   },
   
   // GST Details

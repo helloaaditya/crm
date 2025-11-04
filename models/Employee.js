@@ -248,9 +248,28 @@ const employeeSchema = new mongoose.Schema({
   
   // Documents
   documents: [{
-    type: String, // 'aadhar', 'pan', 'license', etc.
+    name: String, // Document name/title
+    type: {
+      type: String, // 'aadhar', 'pan', 'license', 'certificate', 'experience_letter', 'offer_letter', 'relieving_letter', 'other'
+      enum: ['aadhar', 'pan', 'driving_license', 'certificate', 'experience_letter', 'offer_letter', 'relieving_letter', 'educational_document', 'medical_certificate', 'police_verification', 'other'],
+      required: true
+    },
     url: String,
-    uploadDate: { type: Date, default: Date.now }
+    fileSize: Number,
+    mimeType: String,
+    uploadDate: { type: Date, default: Date.now },
+    expiryDate: Date, // For documents like license, medical certificates
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    notes: String,
+    isVerified: { type: Boolean, default: false },
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    verifiedDate: Date
   }],
   
   // Insurance & Compliance
