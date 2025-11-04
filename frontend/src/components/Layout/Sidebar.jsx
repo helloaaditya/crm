@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation 
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard 
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -21,14 +21,17 @@ const Sidebar = () => {
     { name: 'Projects', icon: FiBriefcase, path: '/projects', module: 'crm' },
     { name: 'Invoices', icon: FiFileText, path: '/invoices', module: 'crm', notificationCount: counts.invoices },
     { name: 'Payments', icon: FiDollarSign, path: '/payments', module: 'all' ,adminOnly: true },
+    { name: 'Work Orders', icon: FiClipboard, path: '/work-orders', module: 'crm' },
     
     // Inventory Section
     { name: 'Materials', icon: FiPackage, path: '/inventory/materials', module: 'inventory', notificationCount: counts.lowStock },
     { name: 'Machinery', icon: FiTool, path: '/inventory/machinery', module: 'inventory' },
     { name: 'Vendors', icon: FiTruck, path: '/inventory/vendors', module: 'inventory' },
+    { name: 'Vendor Payments', icon: FiShoppingCart, path: '/inventory/vendor-payments', module: 'inventory' },
     
     // Employee Section
     { name: 'Employees', icon: FiUserCheck, path: '/employees', module: 'employee' },
+    { name: 'Employee Management', icon: FiUsers, path: '/employees/management', module: 'employee' },
     { name: 'Attendance', icon: FiCalendar, path: '/employees/attendance', module: 'employee', notificationCount: counts.attendance },
     { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee' },
     { name: 'Leave Management', icon: FiCalendar, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
@@ -53,6 +56,9 @@ const Sidebar = () => {
     
     // Bulk Import - admin/main_admin only
     { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
+    
+    // Company Documents - accessible to all modules
+    { name: 'Documents', icon: FiFolder, path: '/company-documents', module: 'all' },
     
     // Common
     { name: 'Settings', icon: FiSettings, path: '/settings', module: 'all'},
@@ -97,8 +103,48 @@ const Sidebar = () => {
     if (userModules.includes('all')) {
       return true
     }
-    // Otherwise, check if item's module is in user's allowed modules
-    return item.module === 'all' || userModules.includes(item.module)
+    
+    // Check for granular page-level access (e.g., 'crm:customers', 'inventory:materials')
+    // Also check base module access (e.g., 'crm', 'inventory')
+    const itemModule = item.module
+    
+    // Map paths to their page identifiers
+    const pathToPageId = {
+      '/customers': 'crm:customers',
+      '/projects': 'crm:projects',
+      '/invoices': 'crm:invoices',
+      '/payments': 'crm:payments',
+      '/work-orders': 'crm:work-orders',
+      '/inventory/materials': 'inventory:materials',
+      '/inventory/machinery': 'inventory:machinery',
+      '/inventory/vendors': 'inventory:vendors',
+      '/inventory/vendor-payments': 'inventory:vendor-payments',
+      '/employees': 'employee:list',
+      '/employees/management': 'employee:management',
+      '/employees/attendance': 'employee:attendance',
+      '/employees/salary': 'employee:salary',
+      '/employees/leave': 'employee:leave',
+      '/expenses': 'expense:list',
+      '/company-documents': 'shared:documents',
+      '/accounts': 'admin:accounts',
+      '/settings': 'admin:settings',
+      '/bulk-import': 'admin:bulk-import',
+      '/live-tracking': 'admin:live-tracking'
+    }
+    
+    const pageId = pathToPageId[item.path]
+    
+    // Check if user has access to this specific page or the base module
+    const hasAccess = userModules.some(userModule => {
+      if (userModule === itemModule) return true // Base module match
+      if (pageId && userModule === pageId) return true // Specific page match
+      // If user has base module (e.g., 'crm'), grant access to all its pages (e.g., 'crm:customers')
+      if (pageId && pageId.startsWith(userModule + ':')) return true
+      return false
+    })
+    
+    // Otherwise, check if item's module is in user's allowed modules or specific page access
+    return item.module === 'all' || hasAccess
   })
 
   return (

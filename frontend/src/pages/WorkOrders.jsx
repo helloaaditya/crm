@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import API from '../api';
+import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 
 const WorkOrders = () => {
@@ -29,7 +29,7 @@ const WorkOrders = () => {
       const params = {};
       if (selectedStatus) params.status = selectedStatus;
 
-      const response = await API.get('/work-orders', { params });
+      const response = await api.get('/work-orders', { params });
       setWorkOrders(response.data.data);
     } catch (error) {
       console.error('Error fetching work orders:', error);
@@ -50,7 +50,7 @@ const WorkOrders = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/work-orders', formData);
+      await api.post('/work-orders', formData);
       toast.success('Work order created successfully!');
       setShowModal(false);
       setFormData({

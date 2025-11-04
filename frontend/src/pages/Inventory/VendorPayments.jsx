@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import API from '../../api';
+import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
 
 const VendorPayments = () => {
@@ -34,7 +34,7 @@ const VendorPayments = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await API.get('/inventory/vendors');
+      const response = await api.get('/inventory/vendors');
       setVendors(response.data.data);
     } catch (error) {
       console.error('Error fetching vendors:', error);
@@ -49,7 +49,7 @@ const VendorPayments = () => {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
-      const response = await API.get('/vendor-payments', { params });
+      const response = await api.get('/vendor-payments', { params });
       setPayments(response.data.data);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -70,7 +70,7 @@ const VendorPayments = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/vendor-payments', formData);
+      await api.post('/vendor-payments', formData);
       toast.success('Payment recorded successfully!');
       setShowModal(false);
       setFormData({

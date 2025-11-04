@@ -50,22 +50,76 @@ export const authorize = (...roles) => {
 // Module-based authorization
 export const moduleAccess = (...modules) => {
   return (req, res, next) => {
+    console.log('🔐 Module Access Check:', {
+      user: req.user.name,
+      userRole: req.user.role,
+      userModule: req.user.module,
+      requiredModules: modules,
+      path: req.path
+    });
+
     // If user has 'all' access, they can access everything
     if (req.user.module === 'all') {
+      console.log('✅ Access granted - User has "all" module');
       return next();
     }
     
     // Split user modules by comma for multiple module support
-    const userModules = req.user.module ? req.user.module.split(',') : [];
+    // Trim whitespace from each module
+    const userModules = req.user.module 
+      ? req.user.module.split(',').map(m => m.trim()).filter(m => m) 
+      : [];
+    
+    console.log('📋 User modules array:', userModules);
+    
+    // If user has 'all' in their modules array
+    if (userModules.includes('all')) {
+      console.log('✅ Access granted - User modules include "all"');
+      return next();
+    }
     
     // Check if user has access to any of the required modules
-    const hasAccess = modules.some(module => userModules.includes(module));
+    // Support both old format ('crm') and new format ('crm:customers')
+    const hasAccess = modules.some(requiredModule => {
+      return userModules.some(userModule => {
+        // Exact match (e.g., 'crm' === 'crm')
+        if (userModule === requiredModule) {
+          console.log(`✅ Match found: ${userModule} === ${requiredModule}`);
+          return true;
+        }
+        
+        // User has base module, required is same base
+        // (e.g., user has 'crm', required is 'crm')
+        const userBase = userModule.split(':')[0];
+        if (userBase === requiredModule) {
+          console.log(`✅ Base match: ${userBase} === ${requiredModule}`);
+          return true;
+        }
+        
+        // User has page-specific access that belongs to required module
+        // (e.g., user has 'crm:customers', required is 'crm')
+        if (userModule.startsWith(requiredModule + ':')) {
+          console.log(`✅ Prefix match: ${userModule} starts with ${requiredModule}:`);
+          return true;
+        }
+        
+        return false;
+      });
+    });
     
     if (hasAccess) {
+      console.log('✅ Access granted');
       next();
     } else {
+      console.log('❌ Access denied');
       return res.status(403).json({
-        message: `You don't have access to this module`
+        message: `You don't have access to this module. Required: ${modules.join(' or ')}`,
+        requiredModules: modules,
+        userModules: userModules,
+        debug: {
+          userRole: req.user.role,
+          userName: req.user.name
+        }
       });
     }
   };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import API from '../../api';
+import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
 
 const EmployeeManagement = () => {
@@ -22,7 +22,7 @@ const EmployeeManagement = () => {
       if (filterStatus === 'active') params.isActive = true;
       if (filterStatus === 'inactive') params.isActive = false;
 
-      const response = await API.get('/employees', { params });
+      const response = await api.get('/employees', { params });
       setEmployees(response.data.data);
     } catch (error) {
       console.error('Error fetching employees:', error);

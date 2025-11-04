@@ -11,13 +11,17 @@ import Invoices from './pages/CRM/Invoices'
 import Materials from './pages/Inventory/Materials'
 import Machinery from './pages/Inventory/Machinery'
 import Vendors from './pages/Inventory/Vendors'
+import VendorPayments from './pages/Inventory/VendorPayments'
 import Employees from './pages/Employee/Employees'
+import EmployeeManagement from './pages/Employee/EmployeeManagement'
 import Attendance from './pages/Employee/Attendance'
 import Salary from './pages/Employee/SalaryManagement'
 import Accounts from './pages/Accounts'
 import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
 import Expenses from './pages/Expenses'
+import WorkOrders from './pages/WorkOrders'
+import CompanyDocuments from './pages/CompanyDocuments'
 import BulkImport from './pages/BulkImport'
 import LiveTracking from './pages/LiveTracking'
 
@@ -74,14 +78,17 @@ function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="payments" element={<Payments />} />
+          <Route path="work-orders" element={<WorkOrders />} />
           
           {/* Inventory Routes */}
           <Route path="inventory/materials" element={<Materials />} />
           <Route path="inventory/machinery" element={<Machinery />} />
           <Route path="inventory/vendors" element={<Vendors />} />
+          <Route path="inventory/vendor-payments" element={<VendorPayments />} />
           
           {/* Employee Routes */}
           <Route path="employees" element={<Employees />} />
+          <Route path="employees/management" element={<EmployeeManagement />} />
           <Route path="employees/attendance" element={<Attendance />} />
           <Route path="employees/salary" element={<Salary />} />
           <Route path="employees/leave" element={<LeaveManagement />} />
@@ -107,6 +114,7 @@ function App() {
           
           {/* Other Routes */}
           <Route path="reminders" element={<Reminders />} />
+          <Route path="company-documents" element={<CompanyDocuments />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 

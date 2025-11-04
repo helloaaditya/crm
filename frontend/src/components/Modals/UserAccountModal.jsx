@@ -155,12 +155,56 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
   const handleModuleToggle = (moduleValue) => {
     setFormData(prev => {
       const newModules = [...prev.modules].filter(m => m !== 'all' && m !== 'none')
+      
+      // Define related pages for each base module
+      const relatedPages = {
+        'crm': ['crm:customers', 'crm:projects', 'crm:invoices', 'crm:payments', 'crm:work-orders'],
+        'inventory': ['inventory:materials', 'inventory:machinery', 'inventory:vendors', 'inventory:vendor-payments'],
+        'employee': ['employee:list', 'employee:management', 'employee:attendance', 'employee:salary', 'employee:leave'],
+        'expense': ['expense:list', 'expense:approvals']
+      }
+      
       if (newModules.includes(moduleValue)) {
-        const filtered = newModules.filter(m => m !== moduleValue)
-        // If nothing left after removing, default to none (self-service only)
+        // Unchecking - remove this module and all its related pages
+        let filtered = newModules.filter(m => m !== moduleValue)
+        
+        // If unchecking a base module, also remove all its sub-pages
+        if (relatedPages[moduleValue]) {
+          filtered = filtered.filter(m => !relatedPages[moduleValue].includes(m))
+        }
+        
+        // If unchecking a sub-page, check if we should uncheck the base module too
+        const baseModule = moduleValue.split(':')[0]
+        if (moduleValue.includes(':') && relatedPages[baseModule]) {
+          const remainingSubPages = relatedPages[baseModule].filter(p => filtered.includes(p))
+          if (remainingSubPages.length === 0) {
+            filtered = filtered.filter(m => m !== baseModule)
+          }
+        }
+        
         return { ...prev, modules: filtered.length === 0 ? [] : filtered }
       } else {
-        return { ...prev, modules: [...newModules, moduleValue] }
+        // Checking - add this module
+        let updated = [...newModules, moduleValue]
+        
+        // If checking a base module, also add all its sub-pages
+        if (relatedPages[moduleValue]) {
+          updated = [...updated, ...relatedPages[moduleValue]]
+        }
+        
+        // If checking a sub-page and all sub-pages are now selected, auto-select the base module
+        const baseModule = moduleValue.split(':')[0]
+        if (moduleValue.includes(':') && relatedPages[baseModule]) {
+          const allSubPagesSelected = relatedPages[baseModule].every(p => 
+            updated.includes(p) || p === moduleValue
+          )
+          if (allSubPagesSelected && !updated.includes(baseModule)) {
+            updated.push(baseModule)
+          }
+        }
+        
+        // Remove duplicates
+        return { ...prev, modules: [...new Set(updated)] }
       }
     })
   }
@@ -336,33 +380,189 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                 </label>
               </div>
               
-              {/* Show specific module checkboxes only when "Specific Modules" is selected */}
+              {/* Show specific page checkboxes only when "Specific Modules" is selected */}
               {!formData.modules.includes('all') && !formData.modules.includes('none') && (
-                <div className="p-4 border-2 border-blue-300 rounded-lg bg-blue-50">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Select specific modules:</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { value: 'crm', label: 'CRM Module' },
-                      { value: 'inventory', label: 'Inventory Module' },
-                      { value: 'employee', label: 'Employee Module' },
-                      { value: 'expense', label: 'Expense Module' }
-                    ].map((module) => (
-                      <label 
-                        key={module.value}
-                        className="flex items-center cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.modules.includes(module.value)}
-                          onChange={() => handleModuleToggle(module.value)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span className="ml-2 text-sm text-gray-700 font-medium">{module.label}</span>
-                      </label>
-                    ))}
+                <div className="p-4 border-2 border-blue-300 rounded-lg bg-blue-50 max-h-96 overflow-y-auto">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Select specific pages to grant access:</p>
+                  
+                  {/* CRM Pages */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">📊 CRM Module</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'crm', label: '✓ All CRM Pages', description: 'Full CRM access' },
+                        { value: 'crm:customers', label: 'Customers', description: 'Manage customers' },
+                        { value: 'crm:projects', label: 'Projects', description: 'Project management' },
+                        { value: 'crm:invoices', label: 'Invoices', description: 'Invoice management' },
+                        { value: 'crm:payments', label: 'Payments', description: 'Payment tracking' },
+                        { value: 'crm:work-orders', label: 'Work Orders', description: 'Work order management' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
                   </div>
+
+                  {/* Inventory Pages */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">📦 Inventory Module</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'inventory', label: '✓ All Inventory Pages', description: 'Full inventory access' },
+                        { value: 'inventory:materials', label: 'Materials', description: 'Material inventory' },
+                        { value: 'inventory:machinery', label: 'Machinery', description: 'Equipment management' },
+                        { value: 'inventory:vendors', label: 'Vendors', description: 'Vendor management' },
+                        { value: 'inventory:vendor-payments', label: 'Vendor Payments', description: 'Vendor payment tracking' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Employee Pages */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">👥 Employee Module</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'employee', label: '✓ All Employee Pages', description: 'Full employee access' },
+                        { value: 'employee:list', label: 'All Employees', description: 'Employee list' },
+                        { value: 'employee:management', label: 'Employee Management', description: 'Hierarchy & availability' },
+                        { value: 'employee:attendance', label: 'Attendance', description: 'Attendance tracking' },
+                        { value: 'employee:salary', label: 'Salary', description: 'Salary management' },
+                        { value: 'employee:leave', label: 'Leave Management', description: 'Leave approvals' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Expense Pages */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">💳 Expense Module</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'expense', label: '✓ All Expense Pages', description: 'Full expense access' },
+                        { value: 'expense:list', label: 'All Expenses', description: 'Expense list' },
+                        { value: 'expense:approvals', label: 'Expense Approvals', description: 'Approve/reject expenses' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Shared Pages */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">📁 Shared Pages</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'shared:documents', label: 'Company Documents', description: 'Document repository' },
+                        { value: 'shared:reminders', label: 'Reminders', description: 'Reminder management' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Admin Pages */}
+                  <div className="mb-2">
+                    <h4 className="text-xs font-bold text-red-900 mb-2 uppercase">⚙️ Admin Pages</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'admin:accounts', label: 'Accounts', description: 'User account management' },
+                        { value: 'admin:settings', label: 'Settings', description: 'System settings' },
+                        { value: 'admin:bulk-import', label: 'Bulk Import', description: 'Data import' },
+                        { value: 'admin:live-tracking', label: 'Live Tracking', description: 'Employee location tracking' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   {formData.modules.length === 0 && (
-                    <p className="text-xs text-orange-600 mt-2">⚠️ Please select at least one module</p>
+                    <p className="text-xs text-orange-600 mt-3 p-2 bg-orange-50 border border-orange-200 rounded">⚠️ Please select at least one page</p>
                   )}
                 </div>
               )}

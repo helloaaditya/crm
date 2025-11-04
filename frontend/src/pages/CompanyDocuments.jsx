@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import API from '../api';
+import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 
 const CompanyDocuments = () => {
@@ -33,7 +33,7 @@ const CompanyDocuments = () => {
       const params = {};
       if (selectedCategory) params.category = selectedCategory;
 
-      const response = await API.get('/company-documents', { params });
+      const response = await api.get('/company-documents', { params });
       setDocuments(response.data.data);
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -50,7 +50,7 @@ const CompanyDocuments = () => {
     }
 
     try {
-      const response = await API.get(`/company-documents/search?q=${searchQuery}`);
+      const response = await api.get(`/company-documents/search?q=${searchQuery}`);
       setDocuments(response.data.data);
     } catch (error) {
       console.error('Error searching documents:', error);
@@ -74,7 +74,7 @@ const CompanyDocuments = () => {
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
       };
 
-      await API.post('/company-documents', submitData);
+      await api.post('/company-documents', submitData);
       toast.success('Document uploaded successfully!');
       setShowModal(false);
       setFormData({
