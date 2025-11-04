@@ -1,5 +1,6 @@
 import AWS from 'aws-sdk';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { uploadToS3 } from '../utils/s3Service.js';
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -87,4 +88,35 @@ export const proxyS3Media = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Upload vendor PO bill
+// @route   POST /api/media/upload/vendor-po
+// @access  Private
+export const uploadVendorDocument = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
 
+  try {
+    console.log('📤 Uploading vendor PO bill:', req.file.originalname);
+
+    // Upload to S3
+    const folder = 'vendor-po-bills';
+    const url = await uploadToS3(req.file, folder);
+
+    console.log('✅ Vendor PO bill uploaded:', url);
+
+    res.json({
+      success: true,
+      url,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype
+    });
+  } catch (error) {
+    console.error('❌ Error uploading vendor PO bill:', error);
+    res.status(500).json({ 
+      message: 'Failed to upload file',
+      error: error.message 
+    });
+  }
+});

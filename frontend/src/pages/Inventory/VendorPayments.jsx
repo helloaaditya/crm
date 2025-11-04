@@ -29,6 +29,8 @@ const VendorPayments = () => {
   const [poBillFile, setPoBillFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [selectedVendorDetails, setSelectedVendorDetails] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
 
   useEffect(() => {
     fetchVendors();
@@ -112,12 +114,12 @@ const VendorPayments = () => {
       setUploading(true);
       const uploadFormData = new FormData();
       uploadFormData.append('file', poBillFile);
-      uploadFormData.append('type', 'vendor_po');
 
-      const response = await api.post('/media/upload', uploadFormData, {
+      const response = await api.post('/media/upload/vendor-po', uploadFormData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
+      console.log('✅ PO Bill uploaded to S3:', response.data.url);
       return response.data.url;
     } catch (error) {
       console.error('Error uploading PO bill:', error);
@@ -177,6 +179,28 @@ const VendorPayments = () => {
     setShowModal(false);
     setSelectedVendorDetails(null);
     setPoBillFile(null);
+  };
+
+  const handleViewPayment = (payment) => {
+    setSelectedPayment(payment);
+    setShowDetailsModal(true);
+  };
+
+  const handleDeletePayment = async (paymentId) => {
+    if (!window.confirm('Are you sure you want to cancel this payment? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await api.put(`/vendor-payments/${paymentId}/cancel`, {
+        notes: 'Cancelled by user'
+      });
+      toast.success('Payment cancelled successfully');
+      fetchPayments();
+    } catch (error) {
+      console.error('Error cancelling payment:', error);
+      toast.error(error.response?.data?.message || 'Failed to cancel payment');
+    }
   };
 
   const getStatusColor = (status) => {
@@ -257,16 +281,17 @@ const VendorPayments = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO Bill No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan="7" className="px-6 py-4 text-center">Loading...</td>
+                <td colSpan="8" className="px-6 py-4 text-center">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
                   No payments found
                 </td>
               </tr>
@@ -316,6 +341,26 @@ const VendorPayments = () => {
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status)}`}>
                       {payment.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleViewPayment(payment)}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        title="View Details"
+                      >
+                        👁️ View
+                      </button>
+                      {payment.status !== 'cancelled' && (
+                        <button
+                          onClick={() => handleDeletePayment(payment._id)}
+                          className="text-red-600 hover:text-red-800 font-medium"
+                          title="Cancel Payment"
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -634,6 +679,174 @@ const VendorPayments = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Details Modal */}
+      {showDetailsModal && selectedPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 my-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Payment Details</h2>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Payment Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Payment ID</label>
+                  <p className="text-lg font-semibold text-gray-900">{selectedPayment.paymentId}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
+                  <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(selectedPayment.status)}`}>
+                    {selectedPayment.status.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Vendor Details */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Vendor Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Vendor Name</label>
+                    <p className="text-gray-900">{selectedPayment.vendor?.name}</p>
+                    <p className="text-sm text-gray-500">{selectedPayment.vendor?.vendorId}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Contact</label>
+                    <p className="text-gray-900">{selectedPayment.vendor?.contactPerson}</p>
+                    <p className="text-sm text-gray-500">{selectedPayment.vendor?.contactNumber}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Details */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Amount</label>
+                    <p className="text-2xl font-bold text-gray-900">₹{selectedPayment.amount?.toLocaleString()}</p>
+                    {selectedPayment.isGST && (
+                      <p className="text-sm text-gray-500">GST: ₹{selectedPayment.gstAmount?.toLocaleString()}</p>
+                    )}
+                    {selectedPayment.tdsAmount > 0 && (
+                      <p className="text-sm text-gray-500">TDS: ₹{selectedPayment.tdsAmount?.toLocaleString()}</p>
+                    )}
+                    {selectedPayment.netAmount && (
+                      <p className="text-sm font-medium text-green-600">Net: ₹{selectedPayment.netAmount?.toLocaleString()}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Payment Date</label>
+                    <p className="text-gray-900">{format(new Date(selectedPayment.paymentDate), 'dd MMM yyyy, hh:mm a')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Payment Mode</label>
+                    <p className="text-gray-900">{selectedPayment.paymentMode?.replace('_', ' ').toUpperCase()}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Reference Number</label>
+                    <p className="text-gray-900 font-mono">{selectedPayment.referenceNumber || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Purpose</label>
+                    <p className="text-gray-900">{selectedPayment.purpose?.replace('_', ' ').toUpperCase()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* PO Bill Details */}
+              {(selectedPayment.poBillNumber || selectedPayment.poBillUrl) && (
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">PO Bill Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedPayment.poBillNumber && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">PO Bill Number</label>
+                        <p className="text-gray-900">{selectedPayment.poBillNumber}</p>
+                      </div>
+                    )}
+                    {selectedPayment.poBillDate && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">PO Bill Date</label>
+                        <p className="text-gray-900">{format(new Date(selectedPayment.poBillDate), 'dd MMM yyyy')}</p>
+                      </div>
+                    )}
+                    {selectedPayment.poBillUrl && (
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-500 mb-2">PO Bill Document</label>
+                        <a
+                          href={selectedPayment.poBillUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                        >
+                          📄 View/Download PO Bill
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Description & Notes */}
+              {(selectedPayment.description || selectedPayment.notes) && (
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Additional Information</h3>
+                  {selectedPayment.description && (
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-500 mb-1">Description</label>
+                      <p className="text-gray-900">{selectedPayment.description}</p>
+                    </div>
+                  )}
+                  {selectedPayment.notes && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">Notes</label>
+                      <p className="text-gray-900">{selectedPayment.notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Created By */}
+              {selectedPayment.createdBy && (
+                <div className="border-t pt-4">
+                  <div className="text-sm text-gray-500">
+                    Created by <strong>{selectedPayment.createdBy.name}</strong> on{' '}
+                    {format(new Date(selectedPayment.createdAt), 'dd MMM yyyy, hh:mm a')}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-6 border-t mt-6">
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Close
+              </button>
+              {selectedPayment.poBillUrl && (
+                <a
+                  href={selectedPayment.poBillUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  📥 Download PO Bill
+                </a>
+              )}
+            </div>
           </div>
         </div>
       )}
