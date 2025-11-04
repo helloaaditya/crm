@@ -283,18 +283,33 @@ export const getVendors = asyncHandler(async (req, res) => {
 // @route   GET /api/inventory/vendors/:id
 // @access  Private
 export const getVendor = asyncHandler(async (req, res) => {
-  const vendor = await Vendor.findById(req.params.id)
-    .populate('materialsSupplied')
-    .populate('createdBy', 'name');
+  try {
+    const vendor = await Vendor.findById(req.params.id);
 
-  if (!vendor) {
-    return res.status(404).json({ message: 'Vendor not found' });
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    // Try to populate if possible, but don't fail if it errors
+    try {
+      await vendor.populate('materialsSupplied');
+      await vendor.populate('createdBy', 'name');
+    } catch (populateError) {
+      console.log('⚠️ Could not populate vendor references:', populateError.message);
+      // Continue without populating - vendor data is still valid
+    }
+
+    res.json({
+      success: true,
+      data: vendor
+    });
+  } catch (error) {
+    console.error('❌ Error fetching vendor:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch vendor details',
+      error: error.message 
+    });
   }
-
-  res.json({
-    success: true,
-    data: vendor
-  });
 });
 
 // @desc    Create vendor
