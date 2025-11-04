@@ -16,6 +16,7 @@ const MaterialModal = ({ isOpen, onClose, onSuccess, material = null }) => {
     quantity: 0,
     unit: 'pcs',
     minStockLevel: 10,
+    storageLocation: 'godown',
     batchCode: '',
     expiryDate: '',
     hsinNumber: '',
@@ -37,6 +38,7 @@ const MaterialModal = ({ isOpen, onClose, onSuccess, material = null }) => {
         quantity: material.quantity || 0,
         unit: material.unit || 'pcs',
         minStockLevel: material.minStockLevel || 10,
+        storageLocation: material.storageLocation || 'godown',
         batchCode: material.batchCode || '',
         expiryDate: material.expiryDate?.split('T')[0] || '',
         hsinNumber: material.hsinNumber || '',
@@ -55,6 +57,7 @@ const MaterialModal = ({ isOpen, onClose, onSuccess, material = null }) => {
         quantity: 0,
         unit: 'pcs',
         minStockLevel: 10,
+        storageLocation: 'godown',
         batchCode: '',
         expiryDate: '',
         hsinNumber: '',
@@ -312,6 +315,25 @@ const MaterialModal = ({ isOpen, onClose, onSuccess, material = null }) => {
                 min="0"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Storage Location <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="storageLocation"
+                value={formData.storageLocation}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="godown">Godown</option>
+                <option value="office">Office</option>
+                <option value="project_site">Project Site</option>
+                <option value="warehouse">Warehouse</option>
+                <option value="other">Other</option>
+              </select>
             </div>
           </div>
 

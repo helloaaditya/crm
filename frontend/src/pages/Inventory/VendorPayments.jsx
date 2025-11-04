@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
+import { FiEye, FiTrash2 } from 'react-icons/fi';
 
 const VendorPayments = () => {
   const [payments, setPayments] = useState([]);
@@ -343,13 +344,13 @@ const VendorPayments = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-4">
                       <button
                         onClick={() => handleViewPayment(payment)}
                         className="text-blue-600 hover:text-blue-800 font-medium"
                         title="View Details"
                       >
-                        👁️ View
+                        <FiEye className="text-blue-600 hover:text-blue-800 font-medium" />
                       </button>
                       {payment.status !== 'cancelled' && (
                         <button
@@ -357,7 +358,7 @@ const VendorPayments = () => {
                           className="text-red-600 hover:text-red-800 font-medium"
                           title="Cancel Payment"
                         >
-                          🗑️ Delete
+                        <FiTrash2 className="text-red-600 hover:text-red-800 font-medium" />
                         </button>
                       )}
                     </div>

@@ -45,6 +45,13 @@ const materialSchema = new mongoose.Schema({
     default: 10
   },
   
+  // Storage Location
+  storageLocation: {
+    type: String,
+    enum: ['office', 'godown', 'project_site', 'warehouse', 'other'],
+    default: 'godown'
+  },
+  
   // Product Details
   batchCode: String,
   expiryDate: Date,
@@ -70,6 +77,10 @@ const materialSchema = new mongoose.Schema({
     balanceAfter: Number, // Stock balance after this transaction
     date: { type: Date, default: Date.now },
     reference: String, // Invoice Number or PO Number
+    location: {
+      type: String,
+      enum: ['office', 'godown', 'project_site', 'warehouse', 'other']
+    },
     project: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Project'
