@@ -1,6 +1,6 @@
 import AWS from 'aws-sdk';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { uploadToS3 } from '../utils/s3Service.js';
+import { uploadBufferToS3 } from '../utils/s3Service.js';
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -98,16 +98,20 @@ export const uploadVendorDocument = asyncHandler(async (req, res) => {
 
   try {
     console.log('📤 Uploading vendor PO bill:', req.file.originalname);
+    console.log('📦 File buffer size:', req.file.buffer?.length, 'bytes');
 
-    // Upload to S3
+    // Upload buffer to S3 (using uploadMemory, file is in buffer not on disk)
     const folder = 'vendor-po-bills';
-    const url = await uploadToS3(req.file, folder);
+    const key = `${folder}/${Date.now()}-${req.file.originalname}`;
+    
+    const result = await uploadBufferToS3(req.file.buffer, key, req.file.mimetype);
 
-    console.log('✅ Vendor PO bill uploaded:', url);
+    console.log('✅ Vendor PO bill uploaded to S3:', result.url);
 
     res.json({
       success: true,
-      url,
+      url: result.url,
+      key: result.key,
       fileName: req.file.originalname,
       fileSize: req.file.size,
       mimeType: req.file.mimetype
