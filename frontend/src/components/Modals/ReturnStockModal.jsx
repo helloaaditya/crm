@@ -7,6 +7,7 @@ import SearchableSelect from '../SearchableSelect'
 const ReturnStockModal = ({ isOpen, onClose, onSuccess, material }) => {
   const [formData, setFormData] = useState({
     quantity: '',
+    location: 'godown',
     invoiceId: '',
     notes: ''
   })
@@ -17,6 +18,7 @@ const ReturnStockModal = ({ isOpen, onClose, onSuccess, material }) => {
     if (isOpen && material) {
       setFormData({
         quantity: '',
+        location: material?.storageLocation || 'godown',
         invoiceId: '',
         notes: ''
       })
@@ -66,6 +68,7 @@ const ReturnStockModal = ({ isOpen, onClose, onSuccess, material }) => {
     try {
       await API.inventory.returnMaterial(material._id, {
         quantity: parseFloat(formData.quantity),
+        location: formData.location,
         invoiceId: formData.invoiceId,
         reference: 'Material Return',
         notes: formData.notes
@@ -126,6 +129,25 @@ const ReturnStockModal = ({ isOpen, onClose, onSuccess, material }) => {
               <div className="text-sm text-gray-500 mt-1">
                 Available stock: {material.quantity} {material.unit}
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Returned To Location <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="godown">Godown</option>
+                <option value="office">Office</option>
+                <option value="project_site">Project Site</option>
+                <option value="warehouse">Warehouse</option>
+                <option value="other">Other</option>
+              </select>
             </div>
 
             <div>

@@ -160,17 +160,23 @@ export const materialInward = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Material not found' });
   }
 
-  const { quantity, reference, notes, projectId, invoiceId, customerId } = req.body;
+  const { quantity, location, reference, notes, projectId, invoiceId, customerId } = req.body;
 
   // Update quantity
   const oldQuantity = material.quantity;
   material.quantity += Number(quantity);
+
+  // Update storage location if provided
+  if (location) {
+    material.storageLocation = location;
+  }
 
   // Add to stock history
   material.stockHistory.push({
     type: 'inward',
     quantity: Number(quantity),
     balanceAfter: material.quantity,
+    location: location || material.storageLocation,
     reference,
     project: projectId || null,
     invoice: invoiceId || null,
@@ -198,7 +204,7 @@ export const materialOutward = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Material not found' });
   }
 
-  const { quantity, reference, notes, projectId, invoiceId, customerId } = req.body;
+  const { quantity, location, reference, notes, projectId, invoiceId, customerId } = req.body;
 
   if (material.quantity < Number(quantity)) {
     return res.status(400).json({ message: 'Insufficient stock' });
@@ -212,6 +218,7 @@ export const materialOutward = asyncHandler(async (req, res) => {
     type: 'outward',
     quantity: Number(quantity),
     balanceAfter: material.quantity,
+    location: location || material.storageLocation,
     reference,
     project: projectId || null,
     invoice: invoiceId || null,
@@ -461,7 +468,7 @@ export const getStockSummary = asyncHandler(async (req, res) => {
 // @route   POST /api/inventory/materials/:id/return
 // @access  Private
 export const returnMaterial = asyncHandler(async (req, res) => {
-  const { quantity, projectId, invoiceId, notes } = req.body;
+  const { quantity, location, projectId, invoiceId, notes } = req.body;
 
   const material = await Material.findById(req.params.id);
   if (!material) {
@@ -471,11 +478,17 @@ export const returnMaterial = asyncHandler(async (req, res) => {
   // Add back to stock
   material.quantity += parseFloat(quantity);
 
+  // Update storage location if provided
+  if (location) {
+    material.storageLocation = location;
+  }
+
   // Add stock history
   material.stockHistory.push({
     type: 'return',
     quantity: parseFloat(quantity),
     balanceAfter: material.quantity,
+    location: location || material.storageLocation,
     reference: req.body.reference || 'Material Return',
     project: projectId || null,
     invoice: invoiceId || null,

@@ -5,6 +5,8 @@ import { toast } from 'react-toastify'
 import MaterialModal from '../../components/Modals/MaterialModal'
 import MaterialHistoryModal from '../../components/Modals/MaterialHistoryModal'
 import ReturnStockModal from '../../components/Modals/ReturnStockModal'
+import StockInwardModal from '../../components/Modals/StockInwardModal'
+import StockOutwardModal from '../../components/Modals/StockOutwardModal'
 
 const Materials = () => {
   const [materials, setMaterials] = useState([])
@@ -29,6 +31,10 @@ const Materials = () => {
   const [historyMaterialId, setHistoryMaterialId] = useState(null)
   const [showReturnModal, setShowReturnModal] = useState(false)
   const [returnMaterial, setReturnMaterial] = useState(null)
+  const [showInwardModal, setShowInwardModal] = useState(false)
+  const [inwardMaterial, setInwardMaterial] = useState(null)
+  const [showOutwardModal, setShowOutwardModal] = useState(false)
+  const [outwardMaterial, setOutwardMaterial] = useState(null)
 
   useEffect(() => {
     fetchMaterials()
@@ -106,38 +112,24 @@ const Materials = () => {
     fetchMaterials()
   }
 
-  const handleInward = async (material) => {
-    const quantity = prompt(`Enter quantity to add (${material.unit}):`)
-    if (!quantity || isNaN(quantity)) return
-
-    try {
-      await API.inventory.materialInward(material._id, {
-        quantity: parseFloat(quantity),
-        reference: 'Manual Entry',
-        notes: 'Stock added manually'
-      })
-      toast.success(`${quantity} ${material.unit} added to stock`)
-      fetchMaterials()
-    } catch (error) {
-      toast.error('Failed to update stock')
-    }
+  const handleInward = (material) => {
+    setInwardMaterial(material)
+    setShowInwardModal(true)
   }
 
-  const handleOutward = async (material) => {
-    const quantity = prompt(`Enter quantity to deduct (${material.unit}):`)
-    if (!quantity || isNaN(quantity)) return
+  const handleOutward = (material) => {
+    setOutwardMaterial(material)
+    setShowOutwardModal(true)
+  }
 
-    try {
-      await API.inventory.materialOutward(material._id, {
-        quantity: parseFloat(quantity),
-        reference: 'Manual Entry',
-        notes: 'Stock deducted manually'
-      })
-      toast.success(`${quantity} ${material.unit} deducted from stock`)
-      fetchMaterials()
-    } catch (error) {
-      toast.error('Failed to update stock')
-    }
+  const handleInwardSuccess = () => {
+    fetchMaterials()
+    fetchStockSummary()
+  }
+
+  const handleOutwardSuccess = () => {
+    fetchMaterials()
+    fetchStockSummary()
   }
 
   const handleReturn = (material) => {
@@ -592,6 +584,22 @@ const Materials = () => {
         isOpen={showHistoryModal}
         onClose={() => setShowHistoryModal(false)}
         materialId={historyMaterialId}
+      />
+
+      {/* Stock Inward Modal */}
+      <StockInwardModal
+        isOpen={showInwardModal}
+        onClose={() => setShowInwardModal(false)}
+        onSuccess={handleInwardSuccess}
+        material={inwardMaterial}
+      />
+
+      {/* Stock Outward Modal */}
+      <StockOutwardModal
+        isOpen={showOutwardModal}
+        onClose={() => setShowOutwardModal(false)}
+        onSuccess={handleOutwardSuccess}
+        material={outwardMaterial}
       />
     </div>
   )
