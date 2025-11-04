@@ -1899,3 +1899,62 @@ export const generateMyPayslip = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Failed to generate payslip' });
   }
 });
+
+// @desc    Add employee document
+// @route   POST /api/employee/employees/:id/documents
+// @access  Private (Admin)
+export const addEmployeeDocument = asyncHandler(async (req, res) => {
+  const { name, type, url, fileSize, mimeType, expiryDate, notes } = req.body;
+
+  const employee = await Employee.findById(req.params.id);
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+  }
+
+  employee.documents.push({
+    name,
+    type,
+    url,
+    fileSize,
+    mimeType,
+    uploadDate: new Date(),
+    expiryDate: expiryDate || null,
+    uploadedBy: req.user._id,
+    notes,
+    isVerified: false
+  });
+
+  await employee.save();
+
+  res.status(201).json({
+    success: true,
+    message: 'Document added successfully',
+    data: employee.documents[employee.documents.length - 1]
+  });
+});
+
+// @desc    Delete employee document
+// @route   DELETE /api/employee/employees/:id/documents/:documentId
+// @access  Private (Admin)
+export const deleteEmployeeDocument = asyncHandler(async (req, res) => {
+  const employee = await Employee.findById(req.params.id);
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+  }
+
+  const documentIndex = employee.documents.findIndex(
+    doc => doc._id.toString() === req.params.documentId
+  );
+
+  if (documentIndex === -1) {
+    return res.status(404).json({ message: 'Document not found' });
+  }
+
+  employee.documents.splice(documentIndex, 1);
+  await employee.save();
+
+  res.json({
+    success: true,
+    message: 'Document deleted successfully'
+  });
+});

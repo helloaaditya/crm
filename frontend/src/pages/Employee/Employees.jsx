@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiEdit, FiTrash2, FiUsers, FiUserCheck, FiBriefcase } from 'react-icons/fi'
+import { FiPlus, FiEdit, FiTrash2, FiUsers, FiUserCheck, FiBriefcase, FiFileText, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import EmployeeModal from '../../components/Modals/EmployeeModal'
 import AssignProjectModal from '../../components/Modals/AssignProjectModal'
+import DocumentUpload from '../../components/Employee/DocumentUpload'
 
 const Employees = () => {
   const [employees, setEmployees] = useState([])
@@ -12,7 +13,9 @@ const Employees = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
+  const [showDocumentsModal, setShowDocumentsModal] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
+  const [documentEmployee, setDocumentEmployee] = useState(null)
   const [filterRole, setFilterRole] = useState('')
 
   useEffect(() => {
@@ -51,6 +54,26 @@ const Employees = () => {
   const handleEdit = (employee) => {
     setSelectedEmployee(employee)
     setShowModal(true)
+  }
+
+  const handleDocuments = async (employee) => {
+    try {
+      // Fetch full employee details with documents
+      const response = await API.employees.getById(employee._id)
+      setDocumentEmployee(response.data.data)
+      setShowDocumentsModal(true)
+    } catch (error) {
+      console.error('Error fetching employee:', error)
+      toast.error('Failed to load employee details')
+    }
+  }
+
+  const handleDocumentSuccess = async () => {
+    // Refresh employee details to show updated documents
+    if (documentEmployee) {
+      const response = await API.employees.getById(documentEmployee._id)
+      setDocumentEmployee(response.data.data)
+    }
   }
 
   const handleAdd = () => {
@@ -192,6 +215,13 @@ const Employees = () => {
                             <FiBriefcase />
                           </button>
                           <button 
+                            onClick={() => handleDocuments(employee)}
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded"
+                            title="Documents"
+                          >
+                            <FiFileText />
+                          </button>
+                          <button 
                             onClick={() => handleEdit(employee)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title="Edit"
@@ -258,7 +288,14 @@ const Employees = () => {
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    <button 
+                      onClick={() => handleDocuments(employee)}
+                      className="flex items-center justify-center px-2 py-2 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"
+                    >
+                      <FiFileText className="mr-1" size={12} />
+                      Docs
+                    </button>
                     <button 
                       onClick={() => handleEdit(employee)}
                       className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
@@ -271,7 +308,7 @@ const Employees = () => {
                       className="flex items-center justify-center px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs"
                     >
                       <FiTrash2 className="mr-1" size={12} />
-                      Deactivate
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -324,6 +361,34 @@ const Employees = () => {
           onSuccess={fetchEmployees}
           employee={selectedEmployee}
         />
+      )}
+
+      {/* Documents Modal */}
+      {showDocumentsModal && documentEmployee && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-10">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Employee Documents</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {documentEmployee.name} ({documentEmployee.employeeId})
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowDocumentsModal(false); setDocumentEmployee(null); }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <DocumentUpload
+                employee={documentEmployee}
+                onSuccess={handleDocumentSuccess}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

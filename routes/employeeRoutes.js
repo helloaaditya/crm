@@ -47,7 +47,10 @@ import {
   resetAllReminders,
   listHoldRequests,
   approveHoldRequest,
-  rejectHoldRequest
+  rejectHoldRequest,
+  // Documents
+  addEmployeeDocument,
+  deleteEmployeeDocument
 } from '../controllers/employeeController.js';
 import { employeeBulkSample, employeeBulkUpload } from '../controllers/importController.js';
 
@@ -149,5 +152,9 @@ router.get('/:id/salary/:salaryId/payslip', generatePayslip);
 // Work Updates (Admin)
 router.post('/:id/work-update', addWorkUpdate);
 router.get('/:id/work-updates', getWorkUpdates);
+
+// Documents (Admin)
+router.post('/:id/documents', checkPermission('canCreate'), addEmployeeDocument);
+router.delete('/:id/documents/:documentId', checkPermission('canDelete'), deleteEmployeeDocument);
 
 export default router;

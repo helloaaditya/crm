@@ -12,6 +12,9 @@ router.get('/proxy', proxyS3Media);
 // Upload vendor PO bills and documents
 router.post('/upload/vendor-po', protect, uploadMemory.single('file'), uploadVendorDocument);
 
+// Upload employee documents
+router.post('/upload/employee-document', protect, uploadMemory.single('file'), uploadVendorDocument); // Reusing the same function
+
 export default router;
 
 

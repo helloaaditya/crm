@@ -97,16 +97,28 @@ export const uploadVendorDocument = asyncHandler(async (req, res) => {
   }
 
   try {
-    console.log('📤 Uploading vendor PO bill:', req.file.originalname);
+    // Determine folder based on the route path
+    const routePath = req.route.path;
+    let folder = 'documents';
+    let documentType = 'document';
+    
+    if (routePath.includes('vendor-po')) {
+      folder = 'vendor-po-bills';
+      documentType = 'vendor PO bill';
+    } else if (routePath.includes('employee-document')) {
+      folder = 'employee-documents';
+      documentType = 'employee document';
+    }
+
+    console.log(`📤 Uploading ${documentType}:`, req.file.originalname);
     console.log('📦 File buffer size:', req.file.buffer?.length, 'bytes');
 
     // Upload buffer to S3 (using uploadMemory, file is in buffer not on disk)
-    const folder = 'vendor-po-bills';
     const key = `${folder}/${Date.now()}-${req.file.originalname}`;
     
     const result = await uploadBufferToS3(req.file.buffer, key, req.file.mimetype);
 
-    console.log('✅ Vendor PO bill uploaded to S3:', result.url);
+    console.log(`✅ ${documentType} uploaded to S3:`, result.url);
 
     res.json({
       success: true,
@@ -117,7 +129,7 @@ export const uploadVendorDocument = asyncHandler(async (req, res) => {
       mimeType: req.file.mimetype
     });
   } catch (error) {
-    console.error('❌ Error uploading vendor PO bill:', error);
+    console.error('❌ Error uploading document:', error);
     res.status(500).json({ 
       message: 'Failed to upload file',
       error: error.message 
