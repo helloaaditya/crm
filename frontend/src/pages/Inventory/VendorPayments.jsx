@@ -28,6 +28,7 @@ const VendorPayments = () => {
   });
   const [poBillFile, setPoBillFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedVendorDetails, setSelectedVendorDetails] = useState(null);
 
   useEffect(() => {
     fetchVendors();
@@ -61,8 +62,22 @@ const VendorPayments = () => {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = async (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // If vendor is selected, fetch and display vendor details
+    if (name === 'vendor' && value) {
+      try {
+        const response = await api.get(`/inventory/vendors/${value}`);
+        setSelectedVendorDetails(response.data.data);
+      } catch (error) {
+        console.error('Error fetching vendor details:', error);
+        setSelectedVendorDetails(null);
+      }
+    } else if (name === 'vendor' && !value) {
+      setSelectedVendorDetails(null);
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -135,6 +150,7 @@ const VendorPayments = () => {
       toast.success('Payment recorded successfully!');
       setShowModal(false);
       setPoBillFile(null);
+      setSelectedVendorDetails(null);
       setFormData({
         vendor: '',
         amount: '',
@@ -155,6 +171,12 @@ const VendorPayments = () => {
       console.error('Error recording payment:', error);
       toast.error(error.response?.data?.message || 'Failed to record payment');
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedVendorDetails(null);
+    setPoBillFile(null);
   };
 
   const getStatusColor = (status) => {
@@ -309,7 +331,7 @@ const VendorPayments = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Record Vendor Payment</h2>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={handleCloseModal}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕
@@ -337,6 +359,78 @@ const VendorPayments = () => {
                     ))}
                   </select>
                 </div>
+
+                {/* Vendor Bank Details Display */}
+                {selectedVendorDetails && selectedVendorDetails.bankDetails && (
+                  <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
+                      🏦 Vendor Bank Details
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Account Name</label>
+                        <p className="font-medium text-gray-900">
+                          {selectedVendorDetails.bankDetails.accountName || '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Bank Name</label>
+                        <p className="font-medium text-gray-900">
+                          {selectedVendorDetails.bankDetails.bankName || '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Account Number</label>
+                        <p className="font-medium text-gray-900 font-mono">
+                          {selectedVendorDetails.bankDetails.accountNumber || '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">IFSC Code</label>
+                        <p className="font-medium text-gray-900 font-mono">
+                          {selectedVendorDetails.bankDetails.ifscCode || '-'}
+                        </p>
+                      </div>
+                      {selectedVendorDetails.bankDetails.branch && (
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-600 block mb-1">Branch</label>
+                          <p className="font-medium text-gray-900">
+                            {selectedVendorDetails.bankDetails.branch}
+                          </p>
+                        </div>
+                      )}
+                      {selectedVendorDetails.gstNumber && (
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-600 block mb-1">GST Number</label>
+                          <p className="font-medium text-gray-900 font-mono">
+                            {selectedVendorDetails.gstNumber}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-blue-800">
+                        <span>
+                          📞 Contact: <strong>{selectedVendorDetails.contactPerson}</strong> - {selectedVendorDetails.contactNumber}
+                        </span>
+                        {selectedVendorDetails.outstandingBalance > 0 && (
+                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                            Outstanding: ₹{selectedVendorDetails.outstandingBalance?.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show message if vendor has no bank details */}
+                {selectedVendorDetails && !selectedVendorDetails.bankDetails?.accountNumber && (
+                  <div className="col-span-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ No bank details available for this vendor. Please update vendor information.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -527,7 +621,7 @@ const VendorPayments = () => {
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
