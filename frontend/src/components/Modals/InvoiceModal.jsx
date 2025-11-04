@@ -12,6 +12,7 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     customer: '',
     project: '',
     invoiceType: 'tax_invoice',
+    billType: 'service_bill',
     isGST: true,
     gstNumber: '',
     items: [{ material: '', description: '', quantity: 1, unit: 'pcs', rate: 0, gstRate: 18, stockAvailable: undefined }],
@@ -29,6 +30,7 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         customer: invoice.customer?._id || '',
         project: invoice.project?._id || '',
         invoiceType: invoice.invoiceType || 'tax_invoice',
+        billType: invoice.billType || 'service_bill',
         isGST: invoice.isGST ?? true,
         gstNumber: invoice.gstNumber || '',
         items: invoice.items?.map(item => ({
@@ -51,6 +53,7 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         customer: '',
         project: '',
         invoiceType: 'tax_invoice',
+        billType: 'service_bill',
         isGST: true,
         gstNumber: '',
         items: [{ material: '', description: '', quantity: 1, unit: 'pcs', rate: 0, gstRate: 18, stockAvailable: undefined }],
@@ -74,6 +77,13 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
       fetchProjects(formData.customer)
     }
   }, [formData.customer])
+
+  // Auto-load project items when Service Bill and project is selected
+  useEffect(() => {
+    if (formData.billType === 'service_bill' && formData.project) {
+      loadProjectItems(formData.project)
+    }
+  }, [formData.project, formData.billType])
 
   const fetchCustomers = async () => {
     try {
@@ -103,12 +113,54 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     }
   }
 
+  const loadProjectItems = async (projectId) => {
+    try {
+      const response = await API.projects.getById(projectId)
+      const project = response.data.data
+      
+      // Load items from project's material requirements
+      if (project.materialRequirements && project.materialRequirements.length > 0) {
+        const projectItems = project.materialRequirements.map(item => ({
+          material: item.material?._id || '',
+          description: item.material?.name || 'Project Material',
+          quantity: item.quantityRequired || 0,
+          unit: item.unit || 'pcs',
+          rate: item.material?.saleCost || 0,
+          gstRate: 18,
+          stockAvailable: item.material?.quantity
+        }))
+        
+        setFormData(prev => ({
+          ...prev,
+          items: projectItems
+        }))
+        
+        toast.success(`Loaded ${projectItems.length} item(s) from project`)
+      } else {
+        toast.info('No materials found in this project. Add items manually.')
+      }
+    } catch (error) {
+      console.error('Error loading project items:', error)
+      toast.error('Failed to load project items')
+    }
+  }
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
+    
+    // If changing billType to sales_bill, reset items to allow manual entry
+    if (name === 'billType' && value === 'sales_bill') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        items: [{ material: '', description: '', quantity: 1, unit: 'pcs', rate: 0, gstRate: 18, stockAvailable: undefined }]
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }))
+    }
   }
 
   const handleItemChange = (index, field, value) => {
@@ -211,6 +263,7 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         customer: formData.customer,
         project: formData.project,
         invoiceType: formData.invoiceType,
+        billType: formData.billType,
         isGST: formData.isGST,
         gstNumber: formData.gstNumber,
         items: preparedItems,
@@ -312,6 +365,24 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
                 <option value="proforma">Proforma Invoice</option>
                 <option value="tax_invoice">Tax Invoice</option>
                 <option value="final">Final Invoice</option>
+                <option value="dc">DC (Delivery Challan)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Bill Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="billType"
+                value={formData.billType}
+                onChange={handleChange}
+                required
+                disabled={isViewMode}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              >
+                <option value="service_bill">Service Bill</option>
+                <option value="sales_bill">Sales Bill</option>
               </select>
             </div>
 
@@ -359,7 +430,7 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-gray-700">Invoice Items</h3>
-              {!isViewMode && (
+              {!isViewMode && formData.billType === 'sales_bill' && (
                 <button
                   type="button"
                   onClick={addItem}
@@ -371,6 +442,24 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
               )}
             </div>
 
+            {/* Info message for Service Bill */}
+            {formData.billType === 'service_bill' && formData.project && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  ℹ️ <strong>Service Bill:</strong> Items are automatically loaded from the selected project's materials.
+                </p>
+              </div>
+            )}
+
+            {/* Info message for Sales Bill */}
+            {formData.billType === 'sales_bill' && (
+              <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  📦 <strong>Sales Bill:</strong> Add items manually from inventory or custom items.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               {formData.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-start p-3 border rounded-lg">
@@ -379,8 +468,8 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
                       options={materials.map(m => ({ value: m._id, label: `${m.name} - Stock: ${m.quantity} ${m.unit}` }))}
                       value={item.material}
                       onChange={(val) => handleItemChange(index, 'material', val)}
-                      placeholder="Select Material"
-                      disabled={isViewMode}
+                      placeholder={formData.billType === 'service_bill' ? 'From Project' : 'Select Material'}
+                      disabled={isViewMode || formData.billType === 'service_bill'}
                       required
                     />
                     {/* Stock warning indicator */}
@@ -392,12 +481,12 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Description"
+                    placeholder={formData.billType === 'service_bill' ? 'From Project' : 'Description'}
                     value={item.description}
                     onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                     required
-                    disabled={isViewMode}
-                    className={`col-span-2 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    disabled={isViewMode || formData.billType === 'service_bill'}
+                    className={`col-span-2 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary ${(isViewMode || formData.billType === 'service_bill') ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   <div className="col-span-1 relative">
                     <input
@@ -463,14 +552,20 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
                       className={`col-span-1 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
                   )}
-                  {!isViewMode && (
+                  {!isViewMode && formData.billType === 'sales_bill' && (
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
                       className="col-span-1 p-1 text-red-600 hover:bg-red-50 rounded"
+                      title="Remove item"
                     >
                       <FiTrash2 size={16} />
                     </button>
+                  )}
+                  {formData.billType === 'service_bill' && (
+                    <div className="col-span-1 p-1 text-center">
+                      <span className="text-xs text-gray-400" title="Item from project">🔒</span>
+                    </div>
                   )}
                 </div>
               ))}

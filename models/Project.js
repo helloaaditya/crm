@@ -12,7 +12,7 @@ const projectSchema = new mongoose.Schema({
   },
   projectType: {
     type: String,
-    enum: ['new', 'rework'],
+    enum: ['new', 'rework', 'repeat'],
     required: true
   },
   category: {

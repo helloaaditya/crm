@@ -69,6 +69,8 @@ export const getProject = asyncHandler(async (req, res) => {
 // @route   POST /api/projects
 // @access  Private
 export const createProject = asyncHandler(async (req, res) => {
+  console.log('📥 Received project data:', JSON.stringify(req.body, null, 2));
+
   const {
     customer,
     projectType,
@@ -76,12 +78,22 @@ export const createProject = asyncHandler(async (req, res) => {
     subCategory,
     description,
     siteAddress,
+    billingAddress,
     startDate,
     expectedEndDate,
     supervisors,
     workers,
-    estimatedCost
+    estimatedCost,
+    materialRequirements,
+    itemsToBeUsed,
+    brand,
+    thickness,
+    units,
+    clientGstNumber
   } = req.body;
+
+  console.log('📦 Material Requirements:', materialRequirements);
+  console.log('📝 Item Details:', { itemsToBeUsed, brand, thickness, units });
 
   const project = await Project.create({
     customer,
@@ -90,13 +102,23 @@ export const createProject = asyncHandler(async (req, res) => {
     subCategory,
     description,
     siteAddress,
+    billingAddress,
     startDate,
     expectedEndDate,
     supervisors,
     workers,
     estimatedCost,
+    materialRequirements,
+    itemsToBeUsed,
+    brand,
+    thickness,
+    units,
+    clientGstNumber,
     createdBy: req.user._id
   });
+
+  console.log('✅ Project created:', project.projectId);
+  console.log('📦 Saved material requirements:', project.materialRequirements);
 
   // Notify assigned employees
   const assignedEmployees = [

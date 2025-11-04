@@ -78,9 +78,16 @@ const Projects = () => {
     }
   }
 
-  const handleEdit = (project) => {
-    setSelectedProject(project)
-    setShowModal(true)
+  const handleEdit = async (project) => {
+    try {
+      // Fetch full project details with populated materialRequirements
+      const response = await API.projects.getById(project._id)
+      setSelectedProject(response.data.data)
+      setShowModal(true)
+    } catch (error) {
+      console.error('Error fetching project details:', error)
+      toast.error('Failed to load project details')
+    }
   }
 
   const handleAdd = () => {

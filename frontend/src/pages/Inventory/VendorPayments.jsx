@@ -26,6 +26,8 @@ const VendorPayments = () => {
     tdsAmount: 0,
     notes: ''
   });
+  const [poBillFile, setPoBillFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -67,12 +69,72 @@ const VendorPayments = () => {
     }));
   };
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload only PDF or image files');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setPoBillFile(file);
+    toast.success('File selected: ' + file.name);
+  };
+
+  const uploadPoBill = async () => {
+    if (!poBillFile) return null;
+
+    try {
+      setUploading(true);
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', poBillFile);
+      uploadFormData.append('type', 'vendor_po');
+
+      const response = await api.post('/media/upload', uploadFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      return response.data.url;
+    } catch (error) {
+      console.error('Error uploading PO bill:', error);
+      toast.error('Failed to upload PO bill');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/vendor-payments', formData);
+      let poBillUrl = formData.poBillUrl;
+
+      // Upload PO bill if file is selected
+      if (poBillFile) {
+        const uploadedUrl = await uploadPoBill();
+        if (uploadedUrl) {
+          poBillUrl = uploadedUrl;
+        }
+      }
+
+      const submitData = {
+        ...formData,
+        poBillUrl
+      };
+
+      await api.post('/vendor-payments', submitData);
       toast.success('Payment recorded successfully!');
       setShowModal(false);
+      setPoBillFile(null);
       setFormData({
         vendor: '',
         amount: '',
@@ -211,7 +273,19 @@ const VendorPayments = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.poBillNumber || '-'}
+                    <div>
+                      {payment.poBillNumber || '-'}
+                      {payment.poBillUrl && (
+                        <a
+                          href={payment.poBillUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-xs block mt-1"
+                        >
+                          📄 View Bill
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
@@ -335,6 +409,28 @@ const VendorPayments = () => {
                     onChange={handleInputChange}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload PO Bill (PDF or Image)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                  {poBillFile && (
+                    <p className="text-sm text-green-600 mt-1">
+                      ✓ Selected: {poBillFile.name}
+                    </p>
+                  )}
+                  {uploading && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      ⏳ Uploading...
+                    </p>
+                  )}
                 </div>
 
                 <div>

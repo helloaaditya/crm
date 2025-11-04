@@ -6,12 +6,21 @@ import { toast } from 'react-toastify'
 const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
   const [customers, setCustomers] = useState([])
   const [supervisors, setSupervisors] = useState([])
+  const [materials, setMaterials] = useState([])
   const [formData, setFormData] = useState({
     customer: '',
     projectType: 'new',
     category: 'residential',
     subCategory: 'waterproofing',
     description: '',
+    materialItems: [{ material: '', itemName: '', brand: '', thickness: '', quantity: '', unit: '' }],
+    clientGstNumber: '',
+    billingAddress: {
+      street: '',
+      city: '',
+      state: '',
+      pincode: ''
+    },
     siteAddress: {
       street: '',
       city: '',
@@ -29,12 +38,59 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
   // Load project data when editing
   useEffect(() => {
     if (project) {
+      console.log('📖 Loading project for edit:', project)
+      console.log('📦 Material Requirements in project:', project.materialRequirements)
+      console.log('📝 Legacy fields:', {
+        itemsToBeUsed: project.itemsToBeUsed,
+        brand: project.brand,
+        thickness: project.thickness,
+        units: project.units
+      })
+
+      // Load material items if they exist in the old format or new format
+      let materialItems = [{ material: '', itemName: '', brand: '', thickness: '', quantity: '', unit: '' }]
+      if (project.materialRequirements && project.materialRequirements.length > 0) {
+        console.log('✅ Loading from materialRequirements')
+        materialItems = project.materialRequirements.map((item, index) => ({
+          material: item.material?._id || item.material || '',
+          itemName: item.material?.name || '',
+          // Use project-level brand/thickness for all items (for now)
+          // TODO: Store brand/thickness per material item in future
+          brand: project.brand || '',
+          thickness: project.thickness || '',
+          quantity: item.quantityRequired || '',
+          unit: item.unit || ''
+        }))
+        console.log('📦 Loaded material items:', materialItems)
+      } else if (project.itemsToBeUsed || project.brand || project.thickness || project.units) {
+        console.log('✅ Loading from legacy fields')
+        // Convert old single-item format to new array format
+        materialItems = [{
+          material: '',
+          itemName: project.itemsToBeUsed || '',
+          brand: project.brand || '',
+          thickness: project.thickness || '',
+          quantity: '',
+          unit: project.units || ''
+        }]
+      } else {
+        console.log('⚠️ No material data found in project')
+      }
+
       setFormData({
         customer: project.customer?._id || '',
         projectType: project.projectType || 'new',
         category: project.category || 'residential',
         subCategory: project.subCategory || 'waterproofing',
         description: project.description || '',
+        materialItems: materialItems,
+        clientGstNumber: project.clientGstNumber || '',
+        billingAddress: {
+          street: project.billingAddress?.street || '',
+          city: project.billingAddress?.city || '',
+          state: project.billingAddress?.state || '',
+          pincode: project.billingAddress?.pincode || ''
+        },
         siteAddress: {
           street: project.siteAddress?.street || '',
           city: project.siteAddress?.city || '',
@@ -54,6 +110,14 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
         category: 'residential',
         subCategory: 'waterproofing',
         description: '',
+        materialItems: [{ material: '', itemName: '', brand: '', thickness: '', quantity: '', unit: '' }],
+        clientGstNumber: '',
+        billingAddress: {
+          street: '',
+          city: '',
+          state: '',
+          pincode: ''
+        },
         siteAddress: {
           street: '',
           city: '',
@@ -72,6 +136,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
     if (isOpen) {
       fetchCustomers()
       fetchSupervisors()
+      fetchMaterials()
     }
   }, [isOpen])
 
@@ -93,6 +158,15 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
     }
   }
 
+  const fetchMaterials = async () => {
+    try {
+      const response = await API.inventory.getMaterials({ limit: 1000, isActive: true })
+      setMaterials(response.data.data || [])
+    } catch (error) {
+      console.error('Error fetching materials:', error)
+    }
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
     if (name.includes('.')) {
@@ -109,19 +183,82 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
     }
   }
 
+  const handleMaterialItemChange = (index, field, value) => {
+    const newItems = [...formData.materialItems]
+    newItems[index][field] = value
+    
+    // If material is selected, auto-fill details
+    if (field === 'material' && value) {
+      const selectedMaterial = materials.find(m => m._id === value)
+      if (selectedMaterial) {
+        newItems[index].itemName = selectedMaterial.name
+        newItems[index].unit = selectedMaterial.unit
+        // Brand and thickness remain editable
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, materialItems: newItems }))
+  }
+
+  const addMaterialItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      materialItems: [...prev.materialItems, { material: '', itemName: '', brand: '', thickness: '', quantity: '', unit: '' }]
+    }))
+  }
+
+  const removeMaterialItem = (index) => {
+    if (formData.materialItems.length === 1) {
+      toast.error('At least one material item is required')
+      return
+    }
+    setFormData(prev => ({
+      ...prev,
+      materialItems: prev.materialItems.filter((_, i) => i !== index)
+    }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
 
     try {
+      // Prepare material requirements for backend
+      const materialRequirements = formData.materialItems
+        .filter(item => item.material && item.quantity) // Only include items with material and quantity
+        .map(item => ({
+          material: item.material,
+          quantityRequired: parseFloat(item.quantity) || 0,
+          unit: item.unit || 'pcs'
+        }))
+
+      console.log('📦 Material Items:', formData.materialItems)
+      console.log('📋 Material Requirements:', materialRequirements)
+
+      // Prepare project data
+      const projectData = {
+        ...formData,
+        materialRequirements: materialRequirements.length > 0 ? materialRequirements : undefined,
+        // Store first item's details in old fields for backward compatibility
+        itemsToBeUsed: formData.materialItems[0]?.itemName || '',
+        brand: formData.materialItems[0]?.brand || '',
+        thickness: formData.materialItems[0]?.thickness || '',
+        units: formData.materialItems[0]?.unit || ''
+      }
+
+      // Remove materialItems from the data sent to backend (we use materialRequirements instead)
+      delete projectData.materialItems
+
+      console.log('🚀 Sending to backend:', projectData)
+
       let projectId
       
       if (project) {
-        await API.projects.update(project._id, formData)
+        await API.projects.update(project._id, projectData)
         projectId = project._id
         toast.success('Project updated successfully!')
       } else {
-        const response = await API.projects.create(formData)
+        const response = await API.projects.create(projectData)
         projectId = response.data.data._id
         toast.success(`Project created! ID: ${response.data.data.projectId}`)
       }
@@ -214,6 +351,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
               >
                 <option value="new">New</option>
                 <option value="rework">Rework</option>
+                <option value="repeat">Repeat</option>
               </select>
             </div>
 
@@ -325,6 +463,191 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
               rows="3"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
+          </div>
+
+          {/* Material Items */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-700">Materials & Specifications</h3>
+              <button
+                type="button"
+                onClick={addMaterialItem}
+                className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100"
+              >
+                + Add Item
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {formData.materialItems.map((item, index) => (
+                <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-medium text-gray-700">Item {index + 1}</span>
+                    {formData.materialItems.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMaterialItem(index)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Select Material from Inventory
+                      </label>
+                      <select
+                        value={item.material}
+                        onChange={(e) => handleMaterialItemChange(index, 'material', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="">Select Material (Optional)</option>
+                        {materials.map(material => (
+                          <option key={material._id} value={material._id}>
+                            {material.name} - {material.category} (Stock: {material.quantity} {material.unit})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Item Name / Description
+                      </label>
+                      <input
+                        type="text"
+                        value={item.itemName}
+                        onChange={(e) => handleMaterialItemChange(index, 'itemName', e.target.value)}
+                        placeholder="e.g., Waterproofing membrane"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Brand
+                      </label>
+                      <input
+                        type="text"
+                        value={item.brand}
+                        onChange={(e) => handleMaterialItemChange(index, 'brand', e.target.value)}
+                        placeholder="e.g., Dr. Fixit"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Thickness
+                      </label>
+                      <input
+                        type="text"
+                        value={item.thickness}
+                        onChange={(e) => handleMaterialItemChange(index, 'thickness', e.target.value)}
+                        placeholder="e.g., 2mm, 5mm"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleMaterialItemChange(index, 'quantity', e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Unit
+                      </label>
+                      <input
+                        type="text"
+                        value={item.unit}
+                        onChange={(e) => handleMaterialItemChange(index, 'unit', e.target.value)}
+                        placeholder="e.g., sqft, kg, pcs"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Client Billing Details */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-gray-700">Client Billing Details</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Client GST Number
+                </label>
+                <input
+                  type="text"
+                  name="clientGstNumber"
+                  value={formData.clientGstNumber}
+                  onChange={handleChange}
+                  placeholder="e.g., 29ABCDE1234F1Z5"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <input
+                  type="text"
+                  name="billingAddress.street"
+                  value={formData.billingAddress.street}
+                  onChange={handleChange}
+                  placeholder="Billing Street Address"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="billingAddress.city"
+                  value={formData.billingAddress.city}
+                  onChange={handleChange}
+                  placeholder="Billing City"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="billingAddress.state"
+                  value={formData.billingAddress.state}
+                  onChange={handleChange}
+                  placeholder="Billing State"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="billingAddress.pincode"
+                  value={formData.billingAddress.pincode}
+                  onChange={handleChange}
+                  placeholder="Billing Pincode"
+                  maxLength="6"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Site Address */}
