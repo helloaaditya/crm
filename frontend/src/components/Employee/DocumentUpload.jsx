@@ -66,6 +66,7 @@ const DocumentUpload = ({ employee, onSuccess }) => {
 
     try {
       // First upload the file to S3
+      console.log('📤 Starting file upload to S3...');
       const uploadFormData = new FormData();
       uploadFormData.append('file', formData.file);
 
@@ -73,7 +74,15 @@ const DocumentUpload = ({ employee, onSuccess }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
+      console.log('✅ S3 upload response:', uploadResponse.data);
+
+      // Check if upload was successful
+      if (!uploadResponse.data.url) {
+        throw new Error('Upload failed: No URL returned from server');
+      }
+
       // Then save document details to employee
+      console.log('💾 Saving document metadata to employee...');
       await api.post(`/employee/employees/${employee._id}/documents`, {
         name: formData.documentName,
         type: formData.documentType,
@@ -84,6 +93,7 @@ const DocumentUpload = ({ employee, onSuccess }) => {
         notes: formData.notes
       });
 
+      console.log('✅ Document uploaded and saved successfully');
       toast.success('Document uploaded successfully!');
       setShowUploadModal(false);
       setFormData({
@@ -95,8 +105,17 @@ const DocumentUpload = ({ employee, onSuccess }) => {
       });
       onSuccess();
     } catch (error) {
-      console.error('Error uploading document:', error);
-      toast.error(error.response?.data?.message || 'Failed to upload document');
+      console.error('❌ Error uploading document:', error);
+      console.error('Error details:', error.response?.data);
+      
+      // Provide more specific error messages
+      if (error.response?.status === 500) {
+        toast.error('Server error: ' + (error.response?.data?.message || 'Failed to upload to S3. Please check server configuration.'));
+      } else if (error.response?.status === 400) {
+        toast.error('Invalid file: ' + (error.response?.data?.message || 'Please check file type and size'));
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to upload document');
+      }
     } finally {
       setUploading(false);
     }

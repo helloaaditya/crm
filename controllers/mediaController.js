@@ -97,6 +97,15 @@ export const uploadVendorDocument = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Check if AWS credentials are configured
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.S3_BUCKET_NAME) {
+      console.error('❌ AWS credentials not configured');
+      return res.status(500).json({ 
+        message: 'S3 storage not configured on server. Please contact administrator.',
+        error: 'Missing AWS credentials'
+      });
+    }
+
     // Determine folder based on the route path
     const routePath = req.route.path;
     let folder = 'documents';
@@ -130,9 +139,21 @@ export const uploadVendorDocument = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error uploading document:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to upload file';
+    if (error.message?.includes('credentials')) {
+      errorMessage = 'S3 credentials are invalid. Please check AWS configuration.';
+    } else if (error.message?.includes('bucket')) {
+      errorMessage = 'S3 bucket not found or not accessible.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     res.status(500).json({ 
-      message: 'Failed to upload file',
-      error: error.message 
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Upload failed'
     });
   }
 });

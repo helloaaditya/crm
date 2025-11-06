@@ -115,7 +115,7 @@ const Materials = () => {
   const handleInward = (material) => {
     setInwardMaterial(material)
     setShowInwardModal(true)
-  }
+  } 
 
   const handleOutward = (material) => {
     setOutwardMaterial(material)
