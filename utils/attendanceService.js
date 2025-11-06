@@ -126,9 +126,11 @@ export const autoGenerateAttendanceRecords = async () => {
 
 /**
  * Generate missing attendance for a specific employee
+ * **OPTIMIZED: Only processes last 30 days to avoid timeouts**
  */
 export const generateMissingAttendanceForEmployee = async (employeeId) => {
   try {
+    console.log(`📝 Fetching employee ${employeeId}...`);
     const employee = await Employee.findById(employeeId);
     
     if (!employee) {
@@ -139,21 +141,42 @@ export const generateMissingAttendanceForEmployee = async (employeeId) => {
       throw new Error('Employee is not active');
     }
     
+    console.log(`✓ Employee found: ${employee.name || employeeId}`);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // **FIX: Limit to last 30 days like the bulk generation**
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    
     const startDate = employee.joiningDate || employee.createdAt;
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use the later of joining date or 30 days ago
+    const processingStartDate = start > thirtyDaysAgo ? start : thirtyDaysAgo;
+    
+    console.log(`📅 Processing from ${processingStartDate.toISOString().split('T')[0]} to yesterday`);
     
     // Process up to yesterday
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     
-    const currentDate = new Date(start);
+    const currentDate = new Date(processingStartDate);
     let created = 0;
+    let checkedDays = 0;
     
     while (currentDate <= yesterday) {
+      checkedDays++;
+      
+      // Safety check - prevent infinite loop
+      if (checkedDays > 31) {
+        console.error(`⚠️ Safety limit reached - stopping at 31 days`);
+        break;
+      }
+      
       // Check if attendance exists
       const existingAttendance = employee.attendance.find(a => {
         const attDate = new Date(a.date);
@@ -178,18 +201,24 @@ export const generateMissingAttendanceForEmployee = async (employeeId) => {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
+    console.log(`📊 Checked ${checkedDays} days, creating ${created} missing records`);
+    
     if (created > 0) {
+      console.log(`💾 Saving employee with ${created} new attendance records...`);
       await employee.save();
+      console.log(`✅ Saved successfully`);
+    } else {
+      console.log(`✓ No missing attendance records`);
     }
     
     return {
       success: true,
       created,
-      message: `Generated ${created} missing attendance records`
+      message: `Generated ${created} missing attendance records (last 30 days)`
     };
     
   } catch (error) {
-    console.error('Error generating missing attendance:', error);
+    console.error('❌ Error generating missing attendance:', error);
     throw error;
   }
 };

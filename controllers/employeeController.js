@@ -322,13 +322,34 @@ export const autoGenerateAllAttendance = asyncHandler(async (req, res) => {
 // @route   POST /api/employees/:id/attendance/generate-missing
 // @access  Private
 export const generateMissingAttendance = asyncHandler(async (req, res) => {
-  const result = await generateMissingAttendanceForEmployee(req.params.id);
-  
-  res.json({
-    success: true,
-    data: result,
-    message: result.message
-  });
+  try {
+    console.log(`📋 Generate missing attendance for employee: ${req.params.id}`);
+    
+    // Set a timeout of 30 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Operation timed out after 30 seconds')), 30000);
+    });
+    
+    // Race between the actual operation and timeout
+    const result = await Promise.race([
+      generateMissingAttendanceForEmployee(req.params.id),
+      timeoutPromise
+    ]);
+    
+    console.log('✅ Generate missing completed:', result);
+    
+    res.json({
+      success: true,
+      data: result,
+      message: result.message || `Generated ${result.created} attendance records`
+    });
+  } catch (error) {
+    console.error('❌ Generate missing attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to generate missing attendance'
+    });
+  }
 });
 
 // @desc    Apply for leave
