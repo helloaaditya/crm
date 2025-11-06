@@ -108,6 +108,7 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
 
     try {
       setLoading(true)
+      console.log('💾 Saving user account...');
       
       // Convert modules array to appropriate format for backend
       const submitData = {
@@ -126,27 +127,44 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
       
       delete submitData.modules;
 
+      console.log('📤 Submitting data:', { ...submitData, password: submitData.password ? '***' : undefined });
+
       if (user) {
         // Update existing user
         if (!submitData.password) {
           delete submitData.password // Don't update password if empty
         }
+        console.log('🔄 Updating user:', user._id);
         await API.auth.update(user._id, submitData)
+        console.log('✅ User updated successfully');
         toast.success('User account updated successfully')
       } else {
-        // Create new user
+        // Create new user with extended timeout (60 seconds)
+        console.log('➕ Creating new user...');
         await API.auth.register(submitData)
-        toast.success('User account created successfully')
+        console.log('✅ User created successfully');
+        toast.success('User account created successfully! Employee record also created.')
       }
       onSuccess()
       onClose()
     } catch (error) {
-      console.error('Error saving user account:', error)
-      const errorMessage = error.response?.data?.message || 
-                          (error.response?.data?.errors ? 
-                            error.response.data.errors.map(e => e.msg).join(', ') : 
-                            'Failed to save user account')
-      toast.error(errorMessage)
+      console.error('❌ Error saving user account:', error)
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response?.data);
+      
+      // Handle timeout specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error('Request timed out. Account may have been created - please refresh and check.', {
+          duration: 5000
+        });
+      } else {
+        const errorMessage = error.response?.data?.message || 
+                            (error.response?.data?.errors ? 
+                              error.response.data.errors.map(e => e.msg).join(', ') : 
+                              'Failed to save user account');
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false)
     }

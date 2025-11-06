@@ -80,41 +80,101 @@ const EmployeeManagement = () => {
     return roots;
   };
 
-  const renderHierarchyNode = (node, level = 0) => {
+  const renderHierarchyNode = (node, level = 0, isLast = false, parentPrefix = '') => {
+    const hasChildren = node.children && node.children.length > 0;
+    
     return (
-      <div key={node._id} className="mb-2">
-        <div 
-          className={`bg-white rounded-lg shadow p-4 ${level > 0 ? 'ml-8' : ''} hover:shadow-md transition-shadow`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <span className="text-2xl">{getDesignationIcon(node.designation)}</span>
-              <div>
-                <div className="font-semibold text-gray-900">
-                  {node.name}
-                </div>
-                <div className="text-sm text-gray-500">
-                  {node.employeeId} • {node.designation}
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(node.isActive)}`}>
-                {node.isActive ? 'Active' : 'Inactive'}
-              </span>
-              {node.children.length > 0 && (
-                <div className="text-xs text-gray-500 mt-1">
-                  {node.children.length} report(s)
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        {node.children.length > 0 && (
-          <div className="mt-2">
-            {node.children.map(child => renderHierarchyNode(child, level + 1))}
+      <div key={node._id} className="relative">
+        {/* Tree connector lines */}
+        {level > 0 && (
+          <div className="absolute left-0 top-0 h-full w-8">
+            {/* Vertical line */}
+            {!isLast && (
+              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+            )}
+            {/* Horizontal line */}
+            <div className="absolute left-4 top-8 w-4 h-0.5 bg-gray-300"></div>
           </div>
         )}
+        
+        <div className={`${level > 0 ? 'ml-8' : ''} mb-3`}>
+          <div 
+            className={`bg-white rounded-lg shadow-md p-5 hover:shadow-xl transition-all border-l-4 ${
+              level === 0 ? 'border-blue-600' : 
+              level === 1 ? 'border-purple-500' :
+              level === 2 ? 'border-green-500' : 'border-orange-500'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                {/* Icon */}
+                <div className={`text-4xl w-16 h-16 flex items-center justify-center rounded-full ${
+                  level === 0 ? 'bg-blue-100' :
+                  level === 1 ? 'bg-purple-100' :
+                  level === 2 ? 'bg-green-100' : 'bg-orange-100'
+                }`}>
+                  {getDesignationIcon(node.designation)}
+                </div>
+                
+                {/* Employee Info */}
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <div className="font-bold text-gray-900 text-lg">
+                      {node.name}
+                    </div>
+                    {level === 0 && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                        TOP LEVEL
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {node.employeeId} • {node.designation?.toUpperCase()}
+                  </div>
+                  <div className="flex items-center space-x-3 mt-2 text-xs text-gray-500">
+                    {node.phone && (
+                      <span>📞 {node.phone}</span>
+                    )}
+                    {node.department && (
+                      <span>🏢 {node.department}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Status and Stats */}
+              <div className="text-right">
+                <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusColor(node.isActive)}`}>
+                  {node.isActive ? '✓ Active' : '✗ Inactive'}
+                </span>
+                {hasChildren && (
+                  <div className="mt-2 text-sm font-semibold text-blue-600">
+                    👥 {node.children.length} Team Member{node.children.length > 1 ? 's' : ''}
+                  </div>
+                )}
+                {node.assignedProjects && node.assignedProjects.length > 0 && (
+                  <div className="text-xs text-green-600 mt-1">
+                    📊 {node.assignedProjects.filter(p => p.status === 'active').length} Project(s)
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Children */}
+          {hasChildren && (
+            <div className="mt-3 relative">
+              {node.children.map((child, index) => 
+                renderHierarchyNode(
+                  child, 
+                  level + 1, 
+                  index === node.children.length - 1,
+                  parentPrefix
+                )
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -198,8 +258,46 @@ const EmployeeManagement = () => {
       {loading ? (
         <div className="text-center py-8">Loading...</div>
       ) : viewMode === 'hierarchy' ? (
-        <div className="space-y-4">
-          {buildHierarchy().map(node => renderHierarchyNode(node))}
+        <div>
+          {/* Hierarchy Legend */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow p-4 mb-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Organizational Hierarchy</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-blue-600 rounded"></div>
+                <span>Top Level (No Manager)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                <span>Level 1 (Direct Reports)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span>Level 2 (Sub-team)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                <span>Level 3+ (Deeper)</span>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-gray-600">
+              💡 Lines show reporting relationships. Employees are grouped by their manager.
+            </div>
+          </div>
+
+          {/* Hierarchy Tree */}
+          <div className="space-y-4">
+            {buildHierarchy().length > 0 ? (
+              buildHierarchy().map((node, index) => 
+                renderHierarchyNode(node, 0, index === buildHierarchy().length - 1)
+              )
+            ) : (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                <div className="text-4xl mb-2">👥</div>
+                <div>No employees found in hierarchy</div>
+              </div>
+            )}
+          </div>
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

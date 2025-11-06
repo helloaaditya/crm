@@ -44,6 +44,7 @@ export const register = asyncHandler(async (req, res) => {
   // Auto-create Employee record for non-admin users
   if (role && role !== 'main_admin') {
     try {
+      console.log('📝 Creating employee record...');
       // Generate unique employee ID
       const employeeCount = await Employee.countDocuments();
       const employeeId = `EMP${String(employeeCount + 1).padStart(4, '0')}`;
@@ -61,16 +62,18 @@ export const register = asyncHandler(async (req, res) => {
         employmentType: 'full_time',
         createdBy: req.user?._id || user._id
       });
+      console.log('✅ Employee record created:', employeeId);
     } catch (error) {
-      console.log('Employee record creation skipped:', error.message);
+      console.log('⚠️ Employee record creation skipped:', error.message);
     }
   }
 
-  // Send welcome email (optional, can be disabled)
-  try {
-    await sendWelcomeEmail(email, name, password);
-  } catch (error) {
-    console.log('Email not sent:', error.message);
+  // Send welcome email asynchronously (don't wait for it)
+  // This prevents timeout if email service is slow
+  if (typeof sendWelcomeEmail === 'function') {
+    sendWelcomeEmail(email, name, password).catch(error => {
+      console.log('⚠️ Email not sent:', error.message);
+    });
   }
 
   const token = generateToken(user._id);

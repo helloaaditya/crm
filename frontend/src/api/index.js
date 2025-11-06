@@ -216,10 +216,10 @@ export const reminderAPI = {
 // ============= AUTH =============
 export const authAPI = {
   login: (data) => api.post('/auth/login', data),
-  register: (data) => api.post('/auth/register', data),
+  register: (data) => api.post('/auth/register', data, { timeout: 60000 }), // 60 second timeout for user creation
   getMe: () => api.get('/auth/me'),
   getAll: () => api.get('/auth/users'),
-  update: (id, data) => api.put(`/auth/users/${id}`, data),
+  update: (id, data) => api.put(`/auth/users/${id}`, data, { timeout: 60000 }), // 60 second timeout for updates
   delete: (id) => api.delete(`/auth/users/${id}`),
   resetPassword: (id, data) => api.put(`/auth/users/${id}/reset-password`, data),
   makeAdmin: (id) => api.put(`/auth/users/${id}/make-admin`),
