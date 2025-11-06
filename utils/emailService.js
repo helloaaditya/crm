@@ -3,18 +3,44 @@ import nodemailer from 'nodemailer';
 // Create transporter
 const createTransporter = () => {
   // Check if email credentials are configured
-  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.warn('⚠️ Email not configured: Missing EMAIL_USER or EMAIL_PASSWORD');
+    return null;
+  }
+  
+  // Gmail-specific configuration
+  if (process.env.EMAIL_SERVICE === 'gmail') {
+    console.log('📧 Configuring Gmail transporter...');
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      },
+      // Add timeout settings to prevent hanging
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 10000,
+      socketTimeout: 20000
+    });
+  }
+  
+  // Generic SMTP configuration (for other email services)
+  if (!process.env.EMAIL_HOST) {
+    console.warn('⚠️ Email not configured: Missing EMAIL_HOST or EMAIL_SERVICE');
     return null;
   }
   
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT || 587,
-    secure: false, // true for 465, false for other ports
+    secure: process.env.EMAIL_PORT === '465', // true for 465, false for 587
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD
-    }
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000
   });
 };
 
