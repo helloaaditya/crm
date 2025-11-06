@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
-import { FiClock, FiBriefcase, FiCalendar, FiCheckCircle, FiMapPin, FiGift, FiSearch, FiFilter, FiX } from 'react-icons/fi'
+import { FiClock, FiBriefcase, FiCalendar, FiCheckCircle, FiMapPin, FiGift, FiSearch, FiFilter, FiX, FiNavigation } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
 import Confetti from 'react-confetti'
+import useLocationTracking from '../../hooks/useLocationTracking'
 
 const MyDashboard = () => {
   const { user } = useAuth()
+  const { isTracking, currentLocation, startTracking, stopTracking } = useLocationTracking()
   const [employee, setEmployee] = useState(null) // Add employee state
   const [projects, setProjects] = useState([])
   const [leaves, setLeaves] = useState([])
@@ -70,17 +72,52 @@ const MyDashboard = () => {
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          
+          console.log('📍 Dashboard - Captured coordinates:', latitude, longitude);
+          
+          // Get human-readable address from backend geocoding service
+          try {
+            const response = await API.employees.geocode({
+              lat: latitude,
+              lon: longitude
+            });
+            
+            if (response.data && response.data.success) {
+              console.log('📍 Dashboard - Geocoded address:', response.data.data.address);
+              setLocation({
+                coordinates: response.data.data.coordinates,
+                address: response.data.data.address
+              });
+              return;
+            }
+          } catch (error) {
+            console.log('⚠️ Dashboard - Could not geocode, using coordinates');
+          }
+          
+          // Fallback to coordinates
+          const fallbackAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
           setLocation({
-            type: 'Point',
-            coordinates: [position.coords.longitude, position.coords.latitude],
-            address: `Lat: ${position.coords.latitude.toFixed(4)}, Lng: ${position.coords.longitude.toFixed(4)}`
+            coordinates: [longitude, latitude],
+            address: fallbackAddress
           })
         },
         (error) => {
-          console.log('Location error:', error)
+          console.error('❌ Dashboard - Location error:', error)
+          setLocation({
+            coordinates: [0, 0],
+            address: 'Location not available'
+          })
         }
       )
+    } else {
+      console.log('⚠️ Dashboard - Geolocation not supported');
+      setLocation({
+        coordinates: [0, 0],
+        address: 'Location not available'
+      });
     }
   }
 
@@ -124,15 +161,33 @@ const MyDashboard = () => {
       return
     }
 
+    console.log('📥 Dashboard - Check-in button clicked');
+    console.log('📍 Dashboard - Current location:', location);
+
     try {
       setLoading(true)
+      
+      // Mark attendance check-in
+      console.log('⏱️ Dashboard - Marking attendance check-in...');
       await API.employees.myAttendance.mark({
         type: 'checkin',
-        location: location
+        location: {
+          coordinates: location?.coordinates || [0, 0],
+          address: location?.address || 'Location not provided'
+        }
       })
-      toast.success('Checked in successfully!')
+      console.log('✅ Dashboard - Check-in marked successfully');
+      
+      // Start live location tracking
+      console.log('🎯 Dashboard - Calling startTracking()...');
+      startTracking()
+      console.log('✅ Dashboard - startTracking() called');
+      
+      toast.success('Checked in successfully! 🎯 Live tracking started')
       fetchDashboardData()
     } catch (error) {
+      console.error('❌ Dashboard - Check-in error:', error);
+      console.error('Error details:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to check in')
     } finally {
       setLoading(false)
@@ -146,15 +201,33 @@ const MyDashboard = () => {
       return
     }
 
+    console.log('📤 Dashboard - Check-out button clicked');
+    console.log('📍 Dashboard - Current location:', location);
+
     try {
       setLoading(true)
+      
+      // Mark attendance check-out
+      console.log('⏱️ Dashboard - Marking attendance check-out...');
       await API.employees.myAttendance.mark({
         type: 'checkout',
-        location: location
+        location: {
+          coordinates: location?.coordinates || [0, 0],
+          address: location?.address || 'Location not provided'
+        }
       })
-      toast.success('Checked out successfully!')
+      console.log('✅ Dashboard - Check-out marked successfully');
+      
+      // Stop live location tracking
+      console.log('🛑 Dashboard - Calling stopTracking()...');
+      await stopTracking()
+      console.log('✅ Dashboard - stopTracking() called');
+      
+      toast.success('Checked out successfully! 🛑 Tracking stopped')
       fetchDashboardData()
     } catch (error) {
+      console.error('❌ Dashboard - Check-out error:', error);
+      console.error('Error details:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to check out')
     } finally {
       setLoading(false)
@@ -260,6 +333,19 @@ const MyDashboard = () => {
                 <p className="text-sm text-green-600 mt-1">
                   Out: {new Date(todayAttendance.checkOutTime).toLocaleTimeString()}
                 </p>
+              )}
+              
+              {/* Live Tracking Indicator */}
+              {isTracking && !todayAttendance.checkOutTime && (
+                <div className="mt-2 flex items-center gap-2 text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                  <FiNavigation className="animate-pulse" size={16} />
+                  <span className="text-xs font-medium">Live Tracking Active</span>
+                  {currentLocation && (
+                    <span className="text-xs bg-green-100 px-2 py-0.5 rounded">
+                      {Math.round(currentLocation.accuracy)}m
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           ) : (
