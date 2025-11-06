@@ -3,6 +3,7 @@ import Employee from '../models/Employee.js';
 /**
  * Auto-generate attendance records for all active employees
  * Marks as 'absent' if no check-in was made for a given date
+ * **OPTIMIZED: Only processes last 30 days to avoid server overload**
  */
 export const autoGenerateAttendanceRecords = async () => {
   try {
@@ -19,6 +20,11 @@ export const autoGenerateAttendanceRecords = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // **FIX: Only process last 30 days to avoid server overload**
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    
     let totalCreated = 0;
     let totalProcessed = 0;
     
@@ -34,11 +40,14 @@ export const autoGenerateAttendanceRecords = async () => {
           continue;
         }
         
+        // **FIX: Only process last 30 days, not from joining date**
+        const processingStartDate = start > thirtyDaysAgo ? start : thirtyDaysAgo;
+        
         // Process each date from start date to yesterday (not today)
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         
-        const currentDate = new Date(start);
+        const currentDate = new Date(processingStartDate);
         let createdForEmployee = 0;
         
         while (currentDate <= yesterday) {
@@ -83,12 +92,13 @@ export const autoGenerateAttendanceRecords = async () => {
       }
     }
     
-    console.log(`✅ Auto-attendance complete: ${totalCreated} records created for ${totalProcessed} employees`);
+    console.log(`✅ Auto-attendance complete: ${totalCreated} records created for ${totalProcessed} employees (last 30 days)`);
     
     return {
       success: true,
       processed: totalProcessed,
-      created: totalCreated
+      created: totalCreated,
+      message: `Generated ${totalCreated} attendance records for ${totalProcessed} employees (last 30 days only)`
     };
     
   } catch (error) {
