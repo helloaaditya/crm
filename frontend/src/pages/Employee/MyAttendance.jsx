@@ -128,12 +128,14 @@ function MyAttendance() {
       return
     }
 
-    console.log('Sending location data for check-in:', location);
+    console.log('📥 Check-in button clicked');
+    console.log('📍 Current location:', location);
 
     try {
       setLoading(true)
       
       // Mark attendance check-in
+      console.log('⏱️ Marking attendance check-in...');
       await API.employees.myAttendance.mark({
         type: 'checkin',
         location: {
@@ -141,13 +143,18 @@ function MyAttendance() {
           address: location?.address || 'Location not provided'
         }
       })
+      console.log('✅ Check-in marked successfully');
       
       // Start live location tracking
+      console.log('🎯 Calling startTracking()...');
       startTracking()
+      console.log('✅ startTracking() called');
       
       toast.success('Checked in successfully! 🎯 Live tracking started')
       fetchAttendance()
     } catch (error) {
+      console.error('❌ Check-in error:', error);
+      console.error('Error details:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to check in')
     } finally {
       setLoading(false)

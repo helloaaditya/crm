@@ -64,19 +64,27 @@ const useLocationTracking = () => {
     try {
       if (isFirst) {
         console.log('🚀 Starting new tracking session...');
+        console.log('📤 Sending to /api/location-tracking/start:', locationData);
         const response = await API.locationTracking.startTracking(locationData);
-        console.log('✅ Tracking started:', response.data);
-        toast.success('Location tracking started');
+        console.log('✅ Tracking started successfully:', response.data);
+        toast.success('Location tracking started', { duration: 2000 });
       } else {
         console.log('📍 Updating existing session...');
+        console.log('📤 Sending to /api/location-tracking/update:', locationData);
         await API.locationTracking.updateLocation(locationData);
-        console.log('✅ Location updated:', { latitude, longitude, accuracy });
+        console.log('✅ Location updated successfully:', { latitude, longitude, accuracy });
       }
     } catch (error) {
       console.error('❌ Failed to send location:', error);
-      console.error('Error details:', error.response?.data);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      console.error('Error message:', error.message);
       setError(error.message);
-      toast.error(`Tracking error: ${error.response?.data?.message || error.message}`);
+      
+      // Show detailed error to user
+      const errorMsg = error.response?.data?.message || error.message || 'Unknown error';
+      toast.error(`Tracking error: ${errorMsg}`, { duration: 5000 });
     }
   }, [sessionId]);
   

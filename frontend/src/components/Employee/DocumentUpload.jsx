@@ -83,7 +83,7 @@ const DocumentUpload = ({ employee, onSuccess }) => {
 
       // Then save document details to employee
       console.log('💾 Saving document metadata to employee...');
-      await api.post(`/employee/employees/${employee._id}/documents`, {
+      await api.post(`/employees/${employee._id}/documents`, {
         name: formData.documentName,
         type: formData.documentType,
         url: uploadResponse.data.url,
@@ -127,7 +127,7 @@ const DocumentUpload = ({ employee, onSuccess }) => {
     }
 
     try {
-      await api.delete(`/employee/employees/${employee._id}/documents/${documentId}`);
+      await api.delete(`/employees/${employee._id}/documents/${documentId}`);
       toast.success('Document deleted successfully');
       onSuccess();
     } catch (error) {
