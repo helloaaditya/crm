@@ -281,18 +281,39 @@ export const updateAttendanceEntry = asyncHandler(async (req, res) => {
 // @route   POST /api/employees/attendance/auto-generate
 // @access  Private (Admin only)
 export const autoGenerateAllAttendance = asyncHandler(async (req, res) => {
-  const result = await autoGenerateAttendanceRecords();
-  
-  if (result.success) {
-    res.json({
-      success: true,
-      data: result,
-      message: `Successfully generated ${result.created} attendance records for ${result.processed} employees`
+  try {
+    console.log('📋 Auto-generate attendance request received');
+    
+    // Set a timeout of 30 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Operation timed out after 30 seconds')), 30000);
     });
-  } else {
+    
+    // Race between the actual operation and timeout
+    const result = await Promise.race([
+      autoGenerateAttendanceRecords(),
+      timeoutPromise
+    ]);
+    
+    console.log('✅ Auto-generate completed:', result);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        data: result,
+        message: result.message || `Successfully generated ${result.created} attendance records for ${result.processed} employees (last 30 days)`
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.error || 'Failed to generate attendance records'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Auto-generate attendance error:', error);
     res.status(500).json({
       success: false,
-      message: result.error || 'Failed to generate attendance records'
+      message: error.message || 'Failed to generate attendance records'
     });
   }
 });

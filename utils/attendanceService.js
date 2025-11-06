@@ -30,6 +30,8 @@ export const autoGenerateAttendanceRecords = async () => {
     
     for (const employee of employees) {
       try {
+        console.log(`📝 Processing employee ${totalProcessed + 1}/${employees.length}`);
+        
         // Determine start date (joining date or account creation date)
         const startDate = employee.joiningDate || employee.createdAt;
         const start = new Date(startDate);
@@ -37,6 +39,7 @@ export const autoGenerateAttendanceRecords = async () => {
         
         // Don't process future dates
         if (start > today) {
+          console.log(`⏭️ Skipping employee (future joining date)`);
           continue;
         }
         
@@ -49,9 +52,16 @@ export const autoGenerateAttendanceRecords = async () => {
         
         const currentDate = new Date(processingStartDate);
         let createdForEmployee = 0;
+        let checkedDays = 0;
         
         while (currentDate <= yesterday) {
-          const dateStr = currentDate.toISOString().split('T')[0];
+          checkedDays++;
+          
+          // Safety check - prevent infinite loop
+          if (checkedDays > 31) {
+            console.error(`⚠️ Safety limit reached for employee ${employee._id}`);
+            break;
+          }
           
           // Check if attendance already exists for this date
           const existingAttendance = employee.attendance.find(a => {
@@ -81,14 +91,18 @@ export const autoGenerateAttendanceRecords = async () => {
         
         // Save employee if any new records were created
         if (createdForEmployee > 0) {
+          console.log(`💾 Saving ${createdForEmployee} records for employee...`);
           await employee.save();
-          console.log(`✅ Created ${createdForEmployee} attendance records for employee ${employee._id}`);
+          console.log(`✅ Saved ${createdForEmployee} attendance records`);
+        } else {
+          console.log(`✓ No missing attendance for this employee`);
         }
         
         totalProcessed++;
         
       } catch (empError) {
         console.error(`❌ Error processing employee ${employee._id}:`, empError.message);
+        // Continue with next employee instead of failing completely
       }
     }
     
