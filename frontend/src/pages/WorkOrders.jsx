@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../api/axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 
 const WorkOrders = () => {
   const [workOrders, setWorkOrders] = useState([]);

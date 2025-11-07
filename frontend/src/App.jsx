@@ -38,11 +38,6 @@ import MyExpenses from './pages/Employee/MyExpenses'
 // Layout
 import Layout from './components/Layout/Layout'
 
-// Toast Notifications
-import { ToastContainer } from 'react-toastify'
-import { Toaster } from 'react-hot-toast'
-import 'react-toastify/dist/ReactToastify.css'
-
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth()
@@ -62,58 +57,20 @@ function App() {
   const { user } = useAuth()
 
   return (
-    <>
-      {/* Toast Containers for Notifications */}
-      <ToastContainer 
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            duration: 4000,
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
+    <Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
 
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-
-          {/* Protected Routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<DashboardRouter />} />
           
           {/* CRM Routes */}
@@ -165,7 +122,6 @@ function App() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
-    </>
   )
 }
 
