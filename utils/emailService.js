@@ -47,17 +47,26 @@ const createTransporter = () => {
 // Send Email
 export const sendEmail = async (to, subject, text, html, attachments = []) => {
   try {
+    // Validate email configuration
+    console.log('📧 Email Config Check:', {
+      SERVICE: process.env.EMAIL_SERVICE || 'NOT SET',
+      USER: process.env.EMAIL_USER ? '✓ Set' : '✗ Missing',
+      PASSWORD: process.env.EMAIL_PASSWORD ? '✓ Set' : '✗ Missing',
+      PASSWORD_LENGTH: process.env.EMAIL_PASSWORD?.length || 0
+    });
+    
     const transporter = createTransporter();
     
     // If no transporter (email not configured), log warning and skip
     if (!transporter) {
       console.warn('⚠️  Email service not configured. Skipping email send.');
-      console.warn('To enable email: Configure EMAIL_HOST, EMAIL_USER, and EMAIL_PASSWORD in .env');
+      console.warn('Missing: EMAIL_USER or EMAIL_PASSWORD');
+      console.warn('For Gmail: Also set EMAIL_SERVICE=gmail');
       return { skipped: true, message: 'Email service not configured' };
     }
 
     const mailOptions = {
-      from: `"Sanjana CRM" <${process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"Sanjana CRM" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: subject,
       text: text,
@@ -65,11 +74,28 @@ export const sendEmail = async (to, subject, text, html, attachments = []) => {
       attachments: attachments
     };
 
+    console.log(`📤 Sending email to: ${to}`);
+    console.log(`📨 Subject: ${subject}`);
+    
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent:', info.messageId);
+    console.log('✅ Email sent successfully:', info.messageId);
     return info;
   } catch (error) {
     console.error('❌ Email Error:', error.message);
+    console.error('Error code:', error.code);
+    
+    // Provide helpful error messages
+    if (error.message.includes('timeout') || error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
+      console.error('💡 Possible causes:');
+      console.error('   1. Wrong Gmail App Password (must be 16 chars, no spaces)');
+      console.error('   2. Gmail 2FA not enabled');
+      console.error('   3. Network firewall blocking Gmail SMTP');
+      console.error('   4. EMAIL_PASSWORD not set in environment variables');
+    } else if (error.message.includes('Invalid login')) {
+      console.error('💡 Gmail App Password is incorrect or 2FA not enabled');
+      console.error('   Generate new: https://myaccount.google.com/apppasswords');
+    }
+    
     throw new Error('Failed to send email: ' + error.message);
   }
 };
