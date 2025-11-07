@@ -399,7 +399,7 @@ export const processExpensePayment = asyncHandler(async (req, res) => {
       recipient: expense.submittedBy._id,
       type: 'expense_paid',
       title: 'Expense Payment Processed',
-      message: `Payment of ₹${amountToPay} for your ${expense.category} expense has been processed`,
+      message: `Payment of ₹${paidAmount} for your ${expense.category} expense has been processed`,
       actionUrl: `/my-expenses`,
       priority: 'high',
       triggeredBy: req.user._id
