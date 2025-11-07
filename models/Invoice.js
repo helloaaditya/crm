@@ -149,40 +149,49 @@ invoiceSchema.pre('validate', async function(next) {
       const month = String(new Date().getMonth() + 1).padStart(2, '0');
       
       // Generate QUOTATION number for quotations
-      if (this.invoiceType === 'quotation' && !this.quotationNumber) {
-        const prefix = `QUO${year}${month}`;
-        const pattern = new RegExp(`^${prefix}\\d{4}$`);
+      if (this.invoiceType === 'quotation') {
+        // Explicitly clear invoiceNumber for quotations to avoid unique constraint issues
+        this.invoiceNumber = undefined;
         
-        const quotations = await mongoose.model('Invoice')
-          .find({ quotationNumber: { $regex: pattern } })
-          .select('quotationNumber')
-          .lean();
-        
-        let nextNumber = 1;
-        
-        if (quotations && quotations.length > 0) {
-          const numbers = quotations.map(quo => {
-            const expectedLength = prefix.length + 4;
-            if (quo.quotationNumber && quo.quotationNumber.length === expectedLength) {
-              const numPart = quo.quotationNumber.slice(-4);
-              const parsed = parseInt(numPart, 10);
-              return (!isNaN(parsed) && parsed >= 1 && parsed <= 9999) ? parsed : 0;
-            }
-            return 0;
-          }).filter(num => num > 0);
+        if (!this.quotationNumber) {
+          const prefix = `QUO${year}${month}`;
+          const pattern = new RegExp(`^${prefix}\\d{4}$`);
           
-          if (numbers.length > 0) {
-            const maxNumber = Math.max(...numbers);
-            nextNumber = maxNumber >= 9999 ? 1 : maxNumber + 1;
+          const quotations = await mongoose.model('Invoice')
+            .find({ quotationNumber: { $regex: pattern } })
+            .select('quotationNumber')
+            .lean();
+          
+          let nextNumber = 1;
+          
+          if (quotations && quotations.length > 0) {
+            const numbers = quotations.map(quo => {
+              const expectedLength = prefix.length + 4;
+              if (quo.quotationNumber && quo.quotationNumber.length === expectedLength) {
+                const numPart = quo.quotationNumber.slice(-4);
+                const parsed = parseInt(numPart, 10);
+                return (!isNaN(parsed) && parsed >= 1 && parsed <= 9999) ? parsed : 0;
+              }
+              return 0;
+            }).filter(num => num > 0);
+            
+            if (numbers.length > 0) {
+              const maxNumber = Math.max(...numbers);
+              nextNumber = maxNumber >= 9999 ? 1 : maxNumber + 1;
+            }
           }
+          
+          const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
+          this.quotationNumber = `${prefix}${sequenceNumber}`;
         }
-        
-        const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
-        this.quotationNumber = `${prefix}${sequenceNumber}`;
       }
       
       // Generate INVOICE number for invoices (not quotations)
-      if (this.invoiceType !== 'quotation' && !this.invoiceNumber) {
+      if (this.invoiceType !== 'quotation') {
+        // Explicitly clear quotationNumber for invoices to avoid unique constraint issues
+        this.quotationNumber = undefined;
+        
+        if (!this.invoiceNumber) {
         const prefix = `INV${year}${month}`;
         const pattern = new RegExp(`^${prefix}\\d{4}$`);
         
@@ -210,8 +219,9 @@ invoiceSchema.pre('validate', async function(next) {
           }
         }
         
-        const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
-        this.invoiceNumber = `${prefix}${sequenceNumber}`;
+          const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
+          this.invoiceNumber = `${prefix}${sequenceNumber}`;
+        }
       }
       
     } catch (error) {

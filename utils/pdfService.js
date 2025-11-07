@@ -43,11 +43,12 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       doc.rect(margin, yPos, contentWidth, 60)
          .fill(primaryColor);
       
-      // Tax Invoice label
+      // Tax Invoice or Quotation label
+      const documentTitle = type === 'quotation' ? 'QUOTATION' : 'TAX INVOICE';
       doc.fontSize(28)
          .font('Helvetica-Bold')
          .fillColor('#ffffff')
-         .text('TAX INVOICE', margin + 20, yPos + 15);
+         .text(documentTitle, margin + 20, yPos + 15);
       
       // Company name and logo area
       doc.fontSize(22)
@@ -69,11 +70,12 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       const rightColX = pageWidth - margin - 200;
       const colStartY = yPos;
       
-      // LEFT COLUMN - Invoice To
+      // LEFT COLUMN - Invoice To / Quotation To
+      const toLabel = type === 'quotation' ? 'QUOTATION TO' : 'INVOICE TO';
       doc.fontSize(10)
          .font('Helvetica-Bold')
          .fillColor(primaryColor)
-         .text('INVOICE TO', leftColX, yPos);
+         .text(toLabel, leftColX, yPos);
       
       yPos += 18;
       
@@ -99,8 +101,9 @@ export const generateInvoicePDF = async (invoiceData, type = 'invoice') => {
       // RIGHT COLUMN - Invoice Details
       yPos = colStartY;
       
+      const numberLabel = type === 'quotation' ? 'Quotation No.' : 'Invoice No.';
       const detailsBox = [
-        { label: 'Invoice No.', value: invoiceData.invoiceNumber || '' },
+        { label: numberLabel, value: invoiceData.invoiceNumber || '' },
         { label: 'Date', value: new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString('en-IN') },
         { label: 'Payment Mode', value: invoiceData.paymentMode || 'As per terms' },
         { label: 'Order No.', value: invoiceData.buyerOrderNo || '-' },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter } from 'react-icons/fi'
+import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import API from '../../api'
 import { toast } from 'react-toastify'
@@ -94,6 +94,28 @@ const Invoices = () => {
       fetchInvoices()
     } catch (error) {
       toast.error('Failed to cancel invoice')
+    }
+  }
+
+  const handleConvertToInvoice = async (id) => {
+    const quotation = invoices.find(inv => inv._id === id);
+    if (!quotation) return;
+
+    if (!window.confirm(`Convert Quotation ${quotation.quotationNumber || quotation.invoiceNumber} to Invoice?\n\nThis will:\n- Create a new invoice\n- Deduct inventory from stock\n- Mark this quotation as converted`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await API.invoices.convertToInvoice(id);
+      toast.success(response.data.message || 'Quotation converted to invoice successfully!');
+      fetchInvoices();
+    } catch (error) {
+      console.error('Error converting quotation:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data?.errors?.[0] || 'Failed to convert quotation to invoice';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -435,7 +457,13 @@ Sanjana CRM Team`
                   {invoices.map((invoice) => (
                     <tr key={invoice._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {invoice.invoiceNumber}
+                        {invoice.invoiceType === 'quotation' 
+                          ? (invoice.quotationNumber || 'Generating...') 
+                          : (invoice.invoiceNumber || 'Generating...')
+                        }
+                        {invoice.invoiceType === 'quotation' && invoice.isConvertedToInvoice && (
+                          <span className="ml-2 text-xs text-gray-500">(Converted)</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {invoice.customer?.name}<br/>
@@ -475,11 +503,22 @@ Sanjana CRM Team`
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex space-x-2">
+                          {/* Convert to Invoice button - Only for quotations that haven't been converted */}
+                          {invoice.invoiceType === 'quotation' && !invoice.isConvertedToInvoice && (
+                            <button 
+                              onClick={() => handleConvertToInvoice(invoice._id)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Convert to Invoice"
+                              disabled={loading}
+                            >
+                              <FiCheck />
+                            </button>
+                          )}
                           <button 
                             onClick={() => handleRecordPayment(invoice)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title="Record Payment"
-                            disabled={invoice.status === 'cancelled'}
+                            disabled={invoice.status === 'cancelled' || invoice.invoiceType === 'quotation'}
                           >
                             <FiDollarSign />
                           </button>
@@ -496,7 +535,10 @@ Sanjana CRM Team`
                                 ? 'text-green-600 hover:bg-green-50' 
                                 : 'text-blue-600 hover:bg-blue-50'
                             }`}
-                            title={invoice.pdfUrl ? 'Left-click: Download PDF (Cached) | Right-click: Force Regenerate' : 'Generate & Download PDF'}
+                            title={invoice.pdfUrl 
+                              ? `Left-click: Download ${invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} PDF (Cached) | Right-click: Force Regenerate` 
+                              : `Generate & Download ${invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} PDF`
+                            }
                             disabled={downloadingPDF === invoice._id}
                           >
                             {downloadingPDF === invoice._id ? (

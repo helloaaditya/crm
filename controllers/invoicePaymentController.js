@@ -22,7 +22,11 @@ export const getInvoices = asyncHandler(async (req, res) => {
   let query = {};
 
   if (search) {
-    query.invoiceNumber = { $regex: search, $options: 'i' };
+    // Search in both invoice numbers and quotation numbers
+    query.$or = [
+      { invoiceNumber: { $regex: search, $options: 'i' } },
+      { quotationNumber: { $regex: search, $options: 'i' } }
+    ];
   }
 
   if (status) query.status = status;
@@ -575,8 +579,10 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
       layout: invoiceSettings.theme?.layout || {}
     },
     
-    // Invoice Information (from database)
-    invoiceNumber: invoice.invoiceNumber,
+    // Invoice/Quotation Information (from database)
+    invoiceNumber: invoice.invoiceType === 'quotation' ? invoice.quotationNumber : invoice.invoiceNumber,
+    quotationNumber: invoice.quotationNumber,
+    invoiceType: invoice.invoiceType,
     customerName: invoice.customer?.name || 'Customer Name',
     customerPhone: invoice.customer?.contactNumber || '',
     customerEmail: invoice.customer?.email || '',
@@ -636,7 +642,11 @@ export const generateInvoicePDFFile = asyncHandler(async (req, res) => {
       hasBankDetails: !!invoiceData.bankDetails
     });
     
-    const pdf = await generateInvoicePDF(invoiceData, 'invoice');
+    // Determine PDF type: 'quotation' or 'invoice'
+    const pdfType = invoice.invoiceType === 'quotation' ? 'quotation' : 'invoice';
+    console.log(`Generating ${pdfType} PDF for ${pdfType === 'quotation' ? invoice.quotationNumber : invoice.invoiceNumber}`);
+    
+    const pdf = await generateInvoicePDF(invoiceData, pdfType);
     console.log('PDF generated successfully:', pdf);
 
     // If S3 configured, upload and use S3 URL
