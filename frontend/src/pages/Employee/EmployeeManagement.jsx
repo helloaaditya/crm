@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
-import { toast } from 'react-toastify';
+import { toast } from 'react-hot-toast';
 
 const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
