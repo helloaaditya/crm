@@ -106,17 +106,11 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 font-medium mb-2">Demo Credentials for Admin:</p>
-            <p className="text-xs text-gray-500">Username: Sanjana Enterprises</p>
-            <p className="text-xs text-gray-500">Password: admin123</p>
-          </div>
         </div>
 
         {/* Footer */}
         <p className="text-center text-white text-xs sm:text-sm mt-4 sm:mt-6">
-          © 2024 Sanjana CRM. All rights reserved.
+          Connect with Admin regarding the credentials.
         </p>
       </div>
     </div>
