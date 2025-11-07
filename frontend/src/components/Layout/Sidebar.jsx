@@ -31,7 +31,7 @@ const Sidebar = () => {
     
     // Employee Section
     { name: 'Employees', icon: FiUserCheck, path: '/employees', module: 'employee' },
-    { name: 'Employee Management', icon: FiUsers, path: '/employees/management', module: 'employee' },
+    { name: 'Employee Planning', icon: FiUsers, path: '/employees/management', module: 'employee' },
     { name: 'Attendance', icon: FiCalendar, path: '/employees/attendance', module: 'employee', notificationCount: counts.attendance },
     { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee' },
     { name: 'Leave Management', icon: FiCalendar, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
