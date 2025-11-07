@@ -15,6 +15,12 @@ router.post('/upload/vendor-po', protect, uploadMemory.single('file'), uploadVen
 // Upload employee documents
 router.post('/upload/employee-document', protect, uploadMemory.single('file'), uploadVendorDocument); // Reusing the same function
 
+// Upload work order documents
+router.post('/upload/work-order-doc', protect, uploadMemory.single('file'), uploadVendorDocument); // Reusing the same function
+
+// Upload company documents
+router.post('/upload/company-doc', protect, uploadMemory.single('file'), uploadVendorDocument); // Reusing the same function
+
 export default router;
 
 

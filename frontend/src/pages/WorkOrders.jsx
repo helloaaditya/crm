@@ -16,8 +16,12 @@ const WorkOrders = () => {
     expectedCompletionDate: '',
     estimatedCost: '',
     terms: '',
-    notes: ''
+    notes: '',
+    documents: []
   });
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
 
   useEffect(() => {
     fetchWorkOrders();
@@ -47,27 +51,139 @@ const WorkOrders = () => {
     }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size should be less than 10MB');
+        return;
+      }
+      setUploadFile(file);
+      toast.success(`File selected: ${file.name}`);
+    }
+  };
+
+  const uploadToS3 = async () => {
+    if (!uploadFile) return null;
+
+    try {
+      setUploading(true);
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', uploadFile);
+
+      const response = await api.post('/media/upload/work-order-doc', uploadFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      console.log('✅ Document uploaded to S3:', response.data.url);
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading to S3:', error);
+      toast.error('Failed to upload file');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      await api.post('/work-orders', formData);
-      toast.success('Work order created successfully!');
-      setShowModal(false);
-      setFormData({
-        title: '',
-        description: '',
-        type: 'installation',
-        startDate: '',
-        expectedCompletionDate: '',
-        estimatedCost: '',
-        terms: '',
-        notes: ''
-      });
+      let documents = [...(formData.documents || [])];
+
+      // Upload file to S3 if a new file is selected
+      if (uploadFile) {
+        const uploadResult = await uploadToS3();
+        if (!uploadResult) return; // Upload failed
+        
+        documents.push({
+          name: uploadFile.name,
+          url: uploadResult.url,
+          fileSize: uploadFile.size,
+          mimeType: uploadFile.type,
+          uploadDate: new Date()
+        });
+      }
+
+      const submitData = {
+        ...formData,
+        documents
+      };
+
+      if (editingOrder) {
+        // Update existing work order
+        await api.put(`/work-orders/${editingOrder._id}`, submitData);
+        toast.success('Work order updated successfully!');
+      } else {
+        // Create new work order
+        await api.post('/work-orders', submitData);
+        toast.success('Work order created successfully!');
+      }
+
+      handleCloseModal();
       fetchWorkOrders();
     } catch (error) {
-      console.error('Error creating work order:', error);
-      toast.error(error.response?.data?.message || 'Failed to create work order');
+      console.error('Error saving work order:', error);
+      toast.error(error.response?.data?.message || 'Failed to save work order');
     }
+  };
+
+  const handleEdit = (order) => {
+    setEditingOrder(order);
+    setFormData({
+      title: order.title || '',
+      description: order.description || '',
+      type: order.type || 'installation',
+      startDate: order.startDate ? order.startDate.split('T')[0] : '',
+      expectedCompletionDate: order.expectedCompletionDate ? order.expectedCompletionDate.split('T')[0] : '',
+      estimatedCost: order.estimatedCost || '',
+      terms: order.terms || '',
+      notes: order.notes || '',
+      documents: order.documents || []
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this work order?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/work-orders/${id}`);
+      toast.success('Work order deleted successfully');
+      fetchWorkOrders();
+    } catch (error) {
+      console.error('Error deleting work order:', error);
+      toast.error('Failed to delete work order');
+    }
+  };
+
+  const handleDeleteDocument = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index)
+    }));
+    toast.success('Document removed');
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingOrder(null);
+    setUploadFile(null);
+    setFormData({
+      title: '',
+      description: '',
+      type: 'installation',
+      startDate: '',
+      expectedCompletionDate: '',
+      estimatedCost: '',
+      terms: '',
+      notes: '',
+      documents: []
+    });
   };
 
   const getStatusColor = (status) => {
@@ -175,10 +291,16 @@ const WorkOrders = () => {
 
               <div className="flex space-x-2">
                 <button
-                  onClick={() => {/* TODO: View details */}}
-                  className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                  onClick={() => handleEdit(wo)}
+                  className="flex-1 bg-green-50 text-green-600 px-3 py-2 rounded-lg hover:bg-green-100 text-sm font-medium"
                 >
-                  View Details
+                  ✏️ Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(wo._id)}
+                  className="flex-1 bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 text-sm font-medium"
+                >
+                  🗑️ Delete
                 </button>
               </div>
             </div>
@@ -191,9 +313,9 @@ const WorkOrders = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Create Work Order</h2>
+              <h2 className="text-xl font-bold">{editingOrder ? 'Edit Work Order' : 'Create Work Order'}</h2>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={handleCloseModal}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕
@@ -316,19 +438,74 @@ const WorkOrders = () => {
                 />
               </div>
 
+              {/* Document Upload Section */}
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Attach Documents
+                </label>
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                />
+                {uploadFile && (
+                  <p className="text-sm text-green-600 mt-2">
+                    ✓ Selected: {uploadFile.name} ({(uploadFile.size / 1024).toFixed(2)} KB)
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  PDF, DOC, DOCX, JPG, PNG, XLSX (Max 10MB)
+                </p>
+
+                {/* Attached Documents List */}
+                {formData.documents && formData.documents.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Attached Files:</p>
+                    {formData.documents.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <div className="flex items-center space-x-2">
+                          <span>📎</span>
+                          <span className="text-sm text-gray-700">{doc.name}</span>
+                        </div>
+                        <div className="flex space-x-2">
+                          {doc.url && (
+                            <button
+                              type="button"
+                              onClick={() => window.open(doc.url, '_blank')}
+                              className="text-blue-600 hover:text-blue-800 text-sm"
+                            >
+                              View
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDocument(index)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Create Work Order
+                  {uploading ? 'Uploading...' : editingOrder ? 'Update Work Order' : 'Create Work Order'}
                 </button>
               </div>
             </form>
