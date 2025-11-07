@@ -16,8 +16,16 @@ export const useAuth = () => {
 }
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(() => {
+    // Load user from localStorage immediately (synchronous)
+    const storedUser = localStorage.getItem('user')
+    return storedUser ? JSON.parse(storedUser) : null
+  })
+  const [loading, setLoading] = useState(() => {
+    // If user exists in localStorage, no need to show loading screen
+    const storedUser = localStorage.getItem('user')
+    return !storedUser
+  })
 
   // Set axios default config
   axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -27,6 +35,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token')
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      // Validate token with backend (async)
       loadUser()
     } else {
       setLoading(false)
@@ -37,7 +46,10 @@ export const AuthProvider = ({ children }) => {
   const loadUser = async () => {
     try {
       const res = await axios.get('/auth/me')
-      setUser(res.data.data)
+      const userData = res.data.data
+      setUser(userData)
+      // Store user in localStorage for instant load on next visit
+      localStorage.setItem('user', JSON.stringify(userData))
     } catch (error) {
       console.error('Load user error:', error)
       logout()
@@ -53,6 +65,7 @@ export const AuthProvider = ({ children }) => {
       const { token, ...userData } = res.data.data
       
       localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(userData))
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       
       setUser(userData)
@@ -68,6 +81,7 @@ export const AuthProvider = ({ children }) => {
   // Logout
   const logout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
     delete axios.defaults.headers.common['Authorization']
     setUser(null)
     toast.info('Logged out successfully')
@@ -76,6 +90,8 @@ export const AuthProvider = ({ children }) => {
   // Update user
   const updateUser = (userData) => {
     setUser(userData)
+    // Also update localStorage
+    localStorage.setItem('user', JSON.stringify(userData))
   }
 
   const value = {

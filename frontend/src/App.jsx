@@ -40,8 +40,22 @@ import Layout from './components/Layout/Layout'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { user } = useAuth()
-  return user ? children : <Navigate to="/login" />
+  const { user, loading } = useAuth()
+  
+  // Show loading screen while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Only redirect to login if loading is complete and user is not found
+  return user ? children : <Navigate to="/login" replace />
 }
 
 // Dashboard Router - Shows different dashboard based on role
@@ -54,13 +68,25 @@ const DashboardRouter = () => {
 }
 
 function App() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+
+  // Show loading screen while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
 
         {/* Protected Routes */}
         <Route
