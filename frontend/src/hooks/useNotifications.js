@@ -16,7 +16,9 @@ export const useNotifications = () => {
       const response = await API.dashboard.getNotificationCounts();
       setCounts(response.data.data);
     } catch (error) {
-      console.error('Failed to fetch notification counts:', error);
+      // Silently fail - don't show errors to user for background polling
+      console.error('Failed to fetch notification counts:', error.message);
+      // Keep existing counts instead of resetting
     } finally {
       setLoading(false);
     }
@@ -24,8 +26,8 @@ export const useNotifications = () => {
 
   useEffect(() => {
     fetchNotificationCounts();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchNotificationCounts, 30000);
+    // Refresh every 60 seconds (increased from 30s to reduce server load)
+    const interval = setInterval(fetchNotificationCounts, 60000);
     return () => clearInterval(interval);
   }, []);
 

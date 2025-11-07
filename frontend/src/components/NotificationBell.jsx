@@ -39,10 +39,10 @@ const NotificationBell = () => {
     }
   }, [isOpen, filter]);
 
-  // Poll for unread count every 30 seconds
+  // Poll for unread count every 60 seconds (reduced from 30s)
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    const interval = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -71,26 +71,33 @@ const NotificationBell = () => {
       // Check if there are new notifications
       if (newCount > previousUnreadCount.current && previousUnreadCount.current !== 0) {
         // Fetch the latest notification to show in browser notification
-        const notifResponse = await API.notifications.getAll({ limit: 1, unreadOnly: true });
-        const latestNotification = notifResponse.data.data[0];
-        
-        if (latestNotification && permission === 'granted') {
-          showNotification(
-            latestNotification.title,
-            latestNotification.message,
-            latestNotification.actionUrl,
-            {
-              requireInteraction: latestNotification.priority === 'urgent' || latestNotification.priority === 'high',
-              tag: latestNotification.type
-            }
-          );
+        try {
+          const notifResponse = await API.notifications.getAll({ limit: 1, unreadOnly: true });
+          const latestNotification = notifResponse.data.data[0];
+          
+          if (latestNotification && permission === 'granted') {
+            showNotification(
+              latestNotification.title,
+              latestNotification.message,
+              latestNotification.actionUrl,
+              {
+                requireInteraction: latestNotification.priority === 'urgent' || latestNotification.priority === 'high',
+                tag: latestNotification.type
+              }
+            );
+          }
+        } catch (notifError) {
+          // Silently fail for browser notification
+          console.error('Error showing browser notification:', notifError.message);
         }
       }
       
       previousUnreadCount.current = newCount;
       setUnreadCount(newCount);
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      // Silently fail - don't crash the app if notifications endpoint is down
+      console.error('Error fetching unread count:', error.message);
+      // Keep existing count
     }
   };
 
