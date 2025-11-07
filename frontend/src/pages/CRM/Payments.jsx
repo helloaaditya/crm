@@ -307,7 +307,8 @@ const Payments = () => {
           </div>
         ) : payments.length > 0 ? (
           <>
-            <table className="min-w-full divide-y divide-gray-200">
+            {/* Desktop Table */}
+            <table className="hidden md:table min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
@@ -379,8 +380,78 @@ const Payments = () => {
               </tbody>
             </table>
 
+            {/* Mobile Cards */}
+            <div className="md:hidden divide-y divide-gray-200">
+              {payments.map((payment) => (
+                <div key={payment._id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">
+                        {payment.invoice?.invoiceNumber || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {payment.invoice?.customer?.name || payment.customer?.name || 'N/A'}
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(payment.status)}`}>
+                      {payment.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Amount:</span>
+                      <span className="font-semibold text-gray-900">₹{payment.amount?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Payment Mode:</span>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${getPaymentModeBadge(payment.paymentMethod)}`}>
+                        {displayPaymentMethod(payment.paymentMethod) || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Reference:</span>
+                      <span className="text-gray-900 text-xs">
+                        {payment.paymentMethod === 'cheque' 
+                          ? (payment.chequeDetails?.chequeNumber || '-') 
+                          : (payment.transactionId || payment.referenceNumber || '-')
+                        }
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Date:</span>
+                      <span className="text-gray-900">
+                        {new Date(payment.paymentDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {payment.notes && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Notes:</span>
+                        <span className="text-gray-900 text-xs truncate ml-2">{payment.notes}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 mt-3 pt-3 border-t">
+                    <button 
+                      onClick={() => handleEdit(payment)}
+                      className="flex-1 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-medium text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(payment._id)}
+                      className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Pagination */}
-            <div className="px-6 py-4 flex items-center justify-between border-t bg-gray-50">
+            <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t bg-gray-50 gap-3">
               <div className="text-sm text-gray-600">
                 Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, totalCount)} of {totalCount} payments
               </div>

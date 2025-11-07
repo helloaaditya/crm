@@ -458,8 +458,8 @@ const VendorPayments = () => {
 
       {/* Payment Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Record Vendor Payment</h2>
               <button
@@ -470,9 +470,9 @@ const VendorPayments = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Vendor *
                   </label>
@@ -772,21 +772,21 @@ const VendorPayments = () => {
 
       {/* Payment Details Modal */}
       {showDetailsModal && selectedPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 my-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Payment Details</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg sm:text-xl font-bold">Payment Details</h2>
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 text-2xl"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Payment Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Payment ID</label>
                   <p className="text-lg font-semibold text-gray-900">{selectedPayment.paymentId}</p>
@@ -802,7 +802,7 @@ const VendorPayments = () => {
               {/* Vendor Details */}
               <div className="border-t pt-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Vendor Information</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Vendor Name</label>
                     <p className="text-gray-900">{selectedPayment.vendor?.name}</p>
@@ -819,7 +819,7 @@ const VendorPayments = () => {
               {/* Payment Details */}
               <div className="border-t pt-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Information</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Amount</label>
                     <p className="text-2xl font-bold text-gray-900">₹{selectedPayment.amount?.toLocaleString()}</p>
@@ -856,7 +856,7 @@ const VendorPayments = () => {
               {(selectedPayment.poBillNumber || selectedPayment.poBillUrl) && (
                 <div className="border-t pt-4">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">PO Bill Details</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedPayment.poBillNumber && (
                       <div>
                         <label className="block text-sm font-medium text-gray-500 mb-1">PO Bill Number</label>
