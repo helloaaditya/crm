@@ -1,8 +1,36 @@
 import nodemailer from 'nodemailer';
+import AWS from 'aws-sdk';
 
 // Create transporter
 const createTransporter = () => {
-  // Check if email credentials are configured
+  // AWS SES configuration (Recommended for production)
+  // SES uses AWS credentials, not EMAIL_USER/PASSWORD
+  if (process.env.EMAIL_SERVICE === 'ses' || process.env.EMAIL_SERVICE === 'aws-ses') {
+    console.log('📧 Configuring AWS SES transporter...');
+    
+    // Check AWS credentials
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      console.error('❌ AWS credentials missing for SES');
+      return null;
+    }
+    
+    // Configure AWS SES
+    const ses = new AWS.SES({
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      region: process.env.AWS_SES_REGION || process.env.AWS_REGION || 'ap-south-1',
+      apiVersion: '2010-12-01'
+    });
+    
+    console.log('✅ AWS SES configured with region:', process.env.AWS_SES_REGION || process.env.AWS_REGION || 'ap-south-1');
+    
+    return nodemailer.createTransport({
+      SES: { ses, aws: AWS },
+      sendingRate: 1 // Max 1 email per second (safe for sandbox)
+    });
+  }
+  
+  // Check if email credentials are configured for other services
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
     console.warn('⚠️ Email not configured: Missing EMAIL_USER or EMAIL_PASSWORD');
     return null;
