@@ -8,7 +8,9 @@ export const dashboardAPI = {
   getEmployeeStats: () => api.get('/dashboard/employee-stats'),
   getRevenueStats: (months = 6) => api.get(`/dashboard/revenue-stats?months=${months}`),
   getRecentActivities: (limit = 10) => api.get(`/dashboard/recent-activities?limit=${limit}`),
-  getNotificationCounts: () => api.get('/dashboard/notifications')
+  getNotificationCounts: () => api.get('/dashboard/notifications'),
+  getDailyRevenueTrends: (params) => api.get('/dashboard/daily-revenue-trends', { params }),
+  getPaymentReminders: (params) => api.get('/dashboard/payment-reminders', { params })
 };
 
 // ============= CUSTOMERS =============

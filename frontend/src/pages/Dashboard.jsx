@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FiUsers, FiBriefcase, FiPackage, FiUserCheck, FiDollarSign, FiTrendingUp, FiAlertCircle } from 'react-icons/fi'
+import { FiUsers, FiBriefcase, FiPackage, FiUserCheck, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCalendar, FiArrowDown, FiArrowUp } from 'react-icons/fi'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import API from '../api'
 import { toast } from 'react-toastify'
+import { format } from 'date-fns'
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null)
@@ -10,10 +11,43 @@ const Dashboard = () => {
   const [projectData, setProjectData] = useState([])
   const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(true)
+  
+  // Daily revenue trends state
+  const [dailyRevenueData, setDailyRevenueData] = useState([])
+  const [revenueStartDate, setRevenueStartDate] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 30)
+    return date.toISOString().split('T')[0]
+  })
+  const [revenueEndDate, setRevenueEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0]
+  })
+  const [revenueTotals, setRevenueTotals] = useState({ received: 0, sent: 0, net: 0 })
+  
+  // Payment reminders state
+  const [paymentReminders, setPaymentReminders] = useState([])
+  const [reminderStartDate, setReminderStartDate] = useState(() => {
+    return new Date().toISOString().split('T')[0]
+  })
+  const [reminderEndDate, setReminderEndDate] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 30)
+    return date.toISOString().split('T')[0]
+  })
 
   useEffect(() => {
     fetchDashboardData()
+    fetchDailyRevenueTrends()
+    fetchPaymentReminders()
   }, [])
+
+  useEffect(() => {
+    fetchDailyRevenueTrends()
+  }, [revenueStartDate, revenueEndDate])
+
+  useEffect(() => {
+    fetchPaymentReminders()
+  }, [reminderStartDate, reminderEndDate])
 
   const fetchDashboardData = async () => {
     try {
@@ -52,6 +86,44 @@ const Dashboard = () => {
       toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchDailyRevenueTrends = async () => {
+    try {
+      const response = await API.dashboard.getDailyRevenueTrends({
+        startDate: revenueStartDate,
+        endDate: revenueEndDate
+      })
+      
+      const data = response.data.data || []
+      const formatted = data.map(item => ({
+        date: format(new Date(item.date), 'dd MMM'),
+        received: item.received || 0,
+        sent: item.sent || 0,
+        net: item.net || 0
+      }))
+      
+      setDailyRevenueData(formatted)
+      setRevenueTotals(response.data.totals || { received: 0, sent: 0, net: 0 })
+    } catch (error) {
+      console.error('Error fetching daily revenue trends:', error)
+      toast.error('Failed to load revenue trends')
+    }
+  }
+
+  const fetchPaymentReminders = async () => {
+    try {
+      const response = await API.dashboard.getPaymentReminders({
+        startDate: reminderStartDate,
+        endDate: reminderEndDate
+      })
+      
+      const data = response.data.data || []
+      setPaymentReminders(data)
+    } catch (error) {
+      console.error('Error fetching payment reminders:', error)
+      toast.error('Failed to load payment reminders')
     }
   }
 
@@ -172,17 +244,90 @@ const Dashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Revenue Trend */}
+        {/* Daily Revenue Trend with Date Filters */}
         <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Revenue Trend (6 Months)</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">Daily Revenue Trend</h2>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="date"
+                value={revenueStartDate}
+                onChange={(e) => setRevenueStartDate(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="date"
+                value={revenueEndDate}
+                onChange={(e) => setRevenueEndDate(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          
+          {/* Summary Cards */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="bg-green-50 rounded-lg p-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-green-700 mb-1">
+                <FiArrowDown size={16} />
+                <span className="text-xs font-semibold">Received</span>
+              </div>
+              <p className="text-sm font-bold text-green-800">₹{(revenueTotals.received / 1000).toFixed(1)}K</p>
+            </div>
+            <div className="bg-red-50 rounded-lg p-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-red-700 mb-1">
+                <FiArrowUp size={16} />
+                <span className="text-xs font-semibold">Paid</span>
+              </div>
+              <p className="text-sm font-bold text-red-800">₹{(revenueTotals.sent / 1000).toFixed(1)}K</p>
+            </div>
+            <div className={`rounded-lg p-3 text-center ${revenueTotals.net >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+              <div className={`flex items-center justify-center gap-1 mb-1 ${revenueTotals.net >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+                <FiDollarSign size={16} />
+                <span className="text-xs font-semibold">Net</span>
+              </div>
+              <p className={`text-sm font-bold ${revenueTotals.net >= 0 ? 'text-blue-800' : 'text-orange-800'}`}>
+                ₹{(revenueTotals.net / 1000).toFixed(1)}K
+              </p>
+            </div>
+          </div>
+
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={revenueData}>
+            <LineChart data={dailyRevenueData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" fontSize={12} />
-              <YAxis fontSize={12} />
-              <Tooltip formatter={(value) => `₹${(value / 100000).toFixed(1)}L`} />
+              <XAxis dataKey="date" fontSize={10} />
+              <YAxis fontSize={10} />
+              <Tooltip 
+                formatter={(value, name) => {
+                  const formatted = `₹${(value / 1000).toFixed(1)}K`
+                  const label = name === 'received' ? 'Received' : name === 'sent' ? 'Paid' : 'Net'
+                  return [formatted, label]
+                }}
+              />
               <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} name="Revenue" />
+              <Line 
+                type="monotone" 
+                dataKey="received" 
+                stroke="#10b981" 
+                strokeWidth={2} 
+                name="Received Money"
+                dot={{ r: 3 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="sent" 
+                stroke="#ef4444" 
+                strokeWidth={2} 
+                name="Paid to Vendors"
+                dot={{ r: 3 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="net" 
+                stroke="#3b82f6" 
+                strokeWidth={2} 
+                name="Net Amount"
+                strokeDasharray="5 5"
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -210,6 +355,100 @@ const Dashboard = () => {
             </PieChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Payment Reminders */}
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">Date-wise Payment Reminders</h2>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="date"
+              value={reminderStartDate}
+              onChange={(e) => setReminderStartDate(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="date"
+              value={reminderEndDate}
+              onChange={(e) => setReminderEndDate(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {paymentReminders.length > 0 ? (
+          <div className="space-y-4">
+            {paymentReminders.map((reminder, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FiCalendar className="text-blue-600" size={18} />
+                    <h3 className="font-semibold text-gray-800">
+                      {format(new Date(reminder.date), 'dd MMM yyyy')}
+                    </h3>
+                    <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">
+                      {reminder.invoices?.length || 0} Invoice(s)
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">Total Pending</p>
+                    <p className="text-lg font-bold text-orange-600">
+                      ₹{reminder.totalPending?.toLocaleString() || 0}
+                    </p>
+                  </div>
+                </div>
+
+                {reminder.invoices && reminder.invoices.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    {reminder.invoices.map((invoice, invIndex) => (
+                      <div 
+                        key={invIndex} 
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">
+                              {invoice.invoiceType === 'quotation' 
+                                ? invoice.quotationNumber || invoice.invoiceNumber 
+                                : invoice.invoiceNumber
+                              }
+                            </p>
+                            <span className={`px-2 py-0.5 text-xs rounded ${
+                              invoice.paymentStatus === 'unpaid' 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {invoice.paymentStatus}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {invoice.customer?.name || 'Customer'} • 
+                            {invoice.project?.projectId ? ` Project: ${invoice.project.projectId}` : ''}
+                          </p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-sm text-gray-600">Due Amount</p>
+                          <p className="font-semibold text-gray-900">
+                            ₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Total: ₹{invoice.totalAmount.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <FiAlertCircle className="mx-auto mb-2" size={32} />
+            <p>No payment reminders for the selected date range</p>
+          </div>
+        )}
       </div>
 
       {/* Recent Activities */}
