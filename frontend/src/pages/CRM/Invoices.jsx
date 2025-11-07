@@ -143,19 +143,81 @@ const Invoices = () => {
   }
 
   const handleSendEmail = async (id) => {
-    // Check if invoice is cancelled
     const invoice = invoices.find(inv => inv._id === id);
-    if (invoice && invoice.status === 'cancelled') {
-      toast.error('Cannot send email for cancelled invoice');
+    if (!invoice) return;
+
+    // Check if cancelled
+    if (invoice.status === 'cancelled') {
+      toast.error(`Cannot send email for cancelled ${invoice.invoiceType === 'quotation' ? 'quotation' : 'invoice'}`);
       return;
     }
-    
-    try {
-      await API.invoices.sendEmail(id)
-      toast.success('Invoice sent via email!')
-    } catch (error) {
-      toast.error('Failed to send email')
+
+    // Check if PDF exists
+    if (!invoice.pdfUrl) {
+      toast.error(`Please generate ${invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} PDF first before sending email`);
+      return;
     }
+
+    // Get customer email
+    if (!invoice.customer?.email) {
+      toast.error('Customer email not found');
+      return;
+    }
+
+    const isQuotation = invoice.invoiceType === 'quotation';
+    const docNumber = isQuotation ? (invoice.quotationNumber || invoice.invoiceNumber) : invoice.invoiceNumber;
+    const docType = isQuotation ? 'Quotation' : 'Invoice';
+    
+    // Email subject
+    const subject = isQuotation 
+      ? `Quotation ${docNumber} from Sanjana Enterprises`
+      : `Invoice ${docNumber} from Sanjana Enterprises`;
+    
+    // Email body
+    const body = isQuotation ? `Dear ${invoice.customer.name},
+
+Please find attached our quotation for your reference.
+
+Quotation Number: ${docNumber}
+Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}
+Total Amount: ₹${invoice.totalAmount.toLocaleString()}
+
+${invoice.project?.projectId ? `Project: ${invoice.project.projectId}\n` : ''}
+View/Download Quotation: ${invoice.pdfUrl}
+
+This quotation is valid for 30 days from the date of issue.
+
+Please feel free to contact us for any clarifications.
+
+Best Regards,
+Sanjana Enterprises`
+    : `Dear ${invoice.customer.name},
+
+Please find attached your invoice for payment.
+
+Invoice Number: ${docNumber}
+Invoice Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}
+${invoice.dueDate ? `Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}\n` : ''}
+Total Amount: ₹${invoice.totalAmount.toLocaleString()}
+Paid Amount: ₹${invoice.paidAmount.toLocaleString()}
+Balance Due: ₹${(invoice.totalAmount - invoice.paidAmount).toLocaleString()}
+
+${invoice.project?.projectId ? `Project: ${invoice.project.projectId}\n` : ''}
+View/Download Invoice: ${invoice.pdfUrl}
+
+Please make the payment by the due date.
+
+Thank you for your business!
+
+Best Regards,
+Sanjana Enterprises`;
+
+    // Create mailto link
+    const mailtoLink = `mailto:${invoice.customer.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Open email client
+    window.location.href = mailtoLink;
+    toast.success(`Email client opened with ${docType} details!`);
   }
 
   const handleAdd = () => {
@@ -166,74 +228,97 @@ const Invoices = () => {
   const handleWhatsAppReminder = async (invoice) => {
     // Check if invoice is cancelled
     if (invoice.status === 'cancelled') {
-      toast.error('Cannot send WhatsApp reminder for cancelled invoice');
+      toast.error(`Cannot send WhatsApp for cancelled ${invoice.invoiceType === 'quotation' ? 'quotation' : 'invoice'}`);
       return;
     }
+
+    // Check if PDF exists - IMPORTANT VALIDATION
+    if (!invoice.pdfUrl) {
+      toast.error(`Please generate ${invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} PDF first before sending WhatsApp`);
+      return;
+    }
+
+    // Get customer phone number
+    const phone = invoice.customer?.contactNumber?.replace(/\D/g, ''); // Remove non-digits
     
-    try {
-      // Generate PDF if not exists
-      if (!invoice.pdfUrl) {
-        await API.invoices.generatePDF(invoice._id)
-      }
+    if (!phone || phone.length !== 10) {
+      toast.error('Invalid customer phone number');
+      return;
+    }
 
-      // Calculate payment details
-      const balance = invoice.balanceAmount || invoice.totalAmount - invoice.paidAmount
-      const dueDate = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'Not set'
-      
-      // Format currency
-      const totalAmount = `₹${invoice.totalAmount.toLocaleString()}`
-      const paidAmount = `₹${invoice.paidAmount.toLocaleString()}`
-      const balanceAmount = `₹${balance.toLocaleString()}`
+    const isQuotation = invoice.invoiceType === 'quotation';
+    const docNumber = isQuotation ? (invoice.quotationNumber || invoice.invoiceNumber) : invoice.invoiceNumber;
+    
+    // Calculate payment details
+    const balance = invoice.balanceAmount || invoice.totalAmount - invoice.paidAmount;
+    const dueDate = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'Not set';
+    
+    // Format currency
+    const totalAmount = `₹${invoice.totalAmount.toLocaleString()}`;
+    const paidAmount = `₹${invoice.paidAmount.toLocaleString()}`;
+    const balanceAmount = `₹${balance.toLocaleString()}`;
 
-      // Create WhatsApp message
-      const message = `*Invoice Payment Reminder*
+    // Create WhatsApp message based on document type
+    const message = isQuotation ? `*Quotation from Sanjana Enterprises* 📋
 
 Dear ${invoice.customer?.name},
 
-This is a friendly reminder about your invoice:
+We are pleased to share our quotation for your requirements:
 
-*Invoice Number:* ${invoice.invoiceNumber}
+*Quotation Number:* ${docNumber}
+*Date:* ${new Date(invoice.invoiceDate).toLocaleDateString()}
+${invoice.project?.projectId ? `*Project:* ${invoice.project.projectId}\n` : ''}
+*Total Amount:* ${totalAmount}
+
+📄 *View/Download Quotation:*
+${invoice.pdfUrl}
+
+This quotation is valid for 30 days from the date of issue.
+
+Please feel free to contact us for any clarifications or modifications.
+
+We look forward to working with you! 🤝
+
+Best Regards,
+*Sanjana Enterprises*`
+    : `*Invoice ${balance > 0 ? 'Payment Reminder' : 'Receipt'}* 💰
+
+Dear ${invoice.customer?.name},
+
+${balance > 0 ? 'This is a friendly reminder about your invoice:' : 'Thank you for your payment! Here are your invoice details:'}
+
+*Invoice Number:* ${docNumber}
 *Invoice Date:* ${new Date(invoice.invoiceDate).toLocaleDateString()}
-*Due Date:* ${dueDate}
-
+${invoice.dueDate ? `*Due Date:* ${dueDate}\n` : ''}
+${invoice.project?.projectId ? `*Project:* ${invoice.project.projectId}\n` : ''}
 *Total Amount:* ${totalAmount}
 *Paid Amount:* ${paidAmount}
 *Balance Due:* ${balanceAmount}
 
-${balance > 0 ? `⚠️ *Payment of ${balanceAmount} is pending*` : '✅ Payment completed. Thank you!'}
+${balance > 0 ? `⚠️ *Payment of ${balanceAmount} is pending*
 
-Please make the payment at your earliest convenience.
+Please make the payment at your earliest convenience.` : '✅ *Payment completed. Thank you!*'}
 
-Thank you for your business!
+📄 *View/Download Invoice:*
+${invoice.pdfUrl}
 
-Regards,
-Sanjana CRM Team`
+Thank you for your business! 🙏
 
-      // Get customer phone number
-      const phone = invoice.customer?.contactNumber?.replace(/\D/g, '') // Remove non-digits
-      
-      if (!phone || phone.length !== 10) {
-        toast.error('Invalid customer phone number')
-        return
-      }
+Best Regards,
+*Sanjana Enterprises*`;
 
-      // Format for Indian number: add country code
-      const whatsappNumber = `91${phone}` // India country code
-      
-      // Encode message for URL
-      const encodedMessage = encodeURIComponent(message)
-      
-      // Create WhatsApp URL
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
-      
-      // Open WhatsApp in new window
-      window.open(whatsappUrl, '_blank')
-      
-      toast.success('Opening WhatsApp...')
-    } catch (error) {
-      console.error('Error sending WhatsApp reminder:', error)
-      toast.error('Failed to open WhatsApp')
-    }
+    // Format for Indian number: add country code
+    const whatsappNumber = `91${phone}`; // India country code
+    
+    // Encode message for URL
+    const encodedMessage = encodeURIComponent(message);
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+    
+    // Open WhatsApp in new window
+    window.open(whatsappUrl, '_blank');
+    toast.success(`WhatsApp opened with ${isQuotation ? 'Quotation' : 'Invoice'} details!`);
   }
 
   const handleRecordPayment = (invoice) => {
