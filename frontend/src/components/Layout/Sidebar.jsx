@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard 
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut 
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true)
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { counts } = useNotifications()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   const menuItems = [
     { name: 'Dashboard', icon: FiHome, path: '/', module: 'all' },
@@ -21,7 +27,6 @@ const Sidebar = () => {
     { name: 'Projects', icon: FiBriefcase, path: '/projects', module: 'crm' },
     { name: 'Invoices', icon: FiFileText, path: '/invoices', module: 'crm', notificationCount: counts.invoices },
     { name: 'Payments', icon: FiDollarSign, path: '/payments', module: 'all' ,adminOnly: true },
-    { name: 'Work Orders', icon: FiClipboard, path: '/work-orders', module: 'crm' },
     
     // Inventory Section
     { name: 'Materials', icon: FiPackage, path: '/inventory/materials', module: 'inventory', notificationCount: counts.lowStock },
@@ -31,10 +36,11 @@ const Sidebar = () => {
     
     // Employee Section
     { name: 'Employees', icon: FiUserCheck, path: '/employees', module: 'employee' },
-    { name: 'Employee Planning', icon: FiUsers, path: '/employees/management', module: 'employee' },
     { name: 'Attendance', icon: FiCalendar, path: '/employees/attendance', module: 'employee', notificationCount: counts.attendance },
     { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee' },
     { name: 'Leave Management', icon: FiCalendar, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
+    { name: 'Employee Planning', icon: FiUsers, path: '/employees/management', module: 'employee' },
+
     
     // Employee Self-Service (Non-Admin) - Show separately for easy access
     { name: 'My Projects', icon: FiBriefcase, path: '/my-projects', module: 'all', employeeOnly: true },
@@ -54,11 +60,13 @@ const Sidebar = () => {
     // Live Tracking - admin/main_admin only
     { name: 'Live Tracking', icon: FiNavigation, path: '/live-tracking', module: 'all', adminOnly: true },
     
-    // Bulk Import - admin/main_admin only
-    { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
+
+    { name: 'Work Orders', icon: FiClipboard, path: '/work-orders', module: 'crm' },
+
     
     // Company Documents - accessible to all modules
     { name: 'Documents', icon: FiFolder, path: '/company-documents', module: 'all' },
+    { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
     
     // Common
     { name: 'Settings', icon: FiSettings, path: '/settings', module: 'all'},
@@ -173,7 +181,7 @@ const Sidebar = () => {
         </div>
 
         {/* Navigation */}
-          <nav className="mt-4 lg:mt-6 px-3 sm:px-4 pb-20 lg:pb-0 overflow-y-auto" style={{ maxHeight: 'calc(100svh - 140px)' }}>
+          <nav className="mt-4 lg:mt-6 px-3 sm:px-4 pb-24 overflow-y-auto" style={{ maxHeight: 'calc(100svh - 200px)' }}>
           <div className="space-y-1">
             {filteredMenuItems.map((item) => (
               <NavLink
@@ -205,21 +213,16 @@ const Sidebar = () => {
           </div>
         </nav>
 
-        {/* User Info - Hidden on mobile, shown on desktop */}
-        {/* <div className="hidden lg:block absolute bottom-0 w-full p-4 border-t">
-          <div className="flex items-center">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold">
-              {user?.name?.charAt(0).toUpperCase()}
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-800">{user?.name}</p>
-              <p className="text-xs text-gray-500 capitalize">
-                {user?.role?.replace('_', ' ')}
-                {user?.role === 'admin' && ' ✓'}
-              </p>
-            </div>
-          </div>
-        </div> */}
+        {/* Logout Button at Bottom */}
+        <div className="absolute bottom-0 w-full p-4 border-t bg-white">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center px-3 py-2.5 sm:px-4 sm:py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm sm:text-base font-medium"
+          >
+            <FiLogOut className="mr-2 sm:mr-3 flex-shrink-0" size={18} />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Overlay for mobile */}
