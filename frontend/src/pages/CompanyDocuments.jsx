@@ -368,8 +368,8 @@ const CompanyDocuments = () => {
 
       {/* Upload Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">{editingDoc ? 'Edit Document' : 'Upload Document'}</h2>
               <button
@@ -469,37 +469,40 @@ const CompanyDocuments = () => {
                 />
               </div>
 
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Document URL *
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
                 </label>
-                <input
-                  type="url"
-                  name="url"
-                  value={formData.url}
+                <textarea
+                  name="description"
+                  value={formData.description}
                   onChange={handleInputChange}
-                  required
-                  placeholder="https://..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  rows="2"
+                  placeholder="Brief description..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Effective Date
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Access Level
                   </label>
-                  <input
-                    type="date"
-                    name="effectiveDate"
-                    value={formData.effectiveDate}
+                  <select
+                    name="accessLevel"
+                    value={formData.accessLevel}
                     onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="internal">Internal</option>
+                    <option value="confidential">Confidential</option>
+                    <option value="public">Public</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Expiry Date
                   </label>
                   <input
@@ -507,81 +510,39 @@ const CompanyDocuments = () => {
                     name="expiryDate"
                     value={formData.expiryDate}
                     onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Access Level *
-                </label>
-                <select
-                  name="accessLevel"
-                  value={formData.accessLevel}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                >
-                  <option value="public">Public</option>
-                  <option value="internal">Internal</option>
-                  <option value="confidential">Confidential</option>
-                  <option value="restricted">Restricted</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags (comma-separated)
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tags
                 </label>
                 <input
                   type="text"
                   name="tags"
                   value={formData.tags}
                   onChange={handleInputChange}
-                  placeholder="contract, 2025, important"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="policy, hr, 2025"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows="3"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows="2"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm w-full sm:w-auto order-2 sm:order-1"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm w-full sm:w-auto order-1 sm:order-2"
                 >
-                  Upload Document
+                  {uploading ? 'Uploading...' : editingDoc ? 'Update' : 'Upload'}
                 </button>
               </div>
             </form>

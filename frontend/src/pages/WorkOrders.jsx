@@ -310,8 +310,8 @@ const WorkOrders = () => {
 
       {/* Create Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">{editingOrder ? 'Edit Work Order' : 'Create Work Order'}</h2>
               <button
@@ -322,9 +322,9 @@ const WorkOrders = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Title *
                 </label>
                 <input
@@ -333,19 +333,20 @@ const WorkOrders = () => {
                   value={formData.title}
                   onChange={handleInputChange}
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="e.g., Installation at Site ABC"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Type *
                 </label>
                 <select
                   name="type"
                   value={formData.type}
                   onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 >
                   <option value="installation">Installation</option>
                   <option value="maintenance">Maintenance</option>
@@ -356,9 +357,23 @@ const WorkOrders = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows="2"
+                  placeholder="Work order description..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Start Date
                   </label>
                   <input
@@ -366,12 +381,12 @@ const WorkOrders = () => {
                     name="startDate"
                     value={formData.startDate}
                     onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Expected Completion
                   </label>
                   <input
@@ -379,13 +394,13 @@ const WorkOrders = () => {
                     name="expectedCompletionDate"
                     value={formData.expectedCompletionDate}
                     onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estimated Cost
                 </label>
                 <input
@@ -395,85 +410,41 @@ const WorkOrders = () => {
                   onChange={handleInputChange}
                   min="0"
                   step="0.01"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows="4"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Terms & Conditions
-                </label>
-                <textarea
-                  name="terms"
-                  value={formData.terms}
-                  onChange={handleInputChange}
-                  rows="3"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows="2"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="₹"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 />
               </div>
 
               {/* Document Upload Section */}
-              <div className="border-t pt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Attach Documents
+              <div className="border-t pt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Attach Document
                 </label>
                 <input
                   type="file"
                   onChange={handleFileChange}
                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 />
                 {uploadFile && (
-                  <p className="text-sm text-green-600 mt-2">
-                    ✓ Selected: {uploadFile.name} ({(uploadFile.size / 1024).toFixed(2)} KB)
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ {uploadFile.name} ({(uploadFile.size / 1024).toFixed(2)} KB)
                   </p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                  PDF, DOC, DOCX, JPG, PNG, XLSX (Max 10MB)
-                </p>
 
                 {/* Attached Documents List */}
                 {formData.documents && formData.documents.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-sm font-medium text-gray-700">Attached Files:</p>
+                  <div className="mt-3 space-y-1">
+                    <p className="text-xs font-medium text-gray-700">Attached ({formData.documents.length}):</p>
                     {formData.documents.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <div className="flex items-center space-x-2">
-                          <span>📎</span>
-                          <span className="text-sm text-gray-700">{doc.name}</span>
-                        </div>
-                        <div className="flex space-x-2">
+                      <div key={index} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded text-xs">
+                        <span className="truncate">📎 {doc.name}</span>
+                        <div className="flex gap-2 ml-2">
                           {doc.url && (
                             <button
                               type="button"
                               onClick={() => window.open(doc.url, '_blank')}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
+                              className="text-blue-600 hover:text-blue-800"
                             >
                               View
                             </button>
@@ -481,9 +452,9 @@ const WorkOrders = () => {
                           <button
                             type="button"
                             onClick={() => handleDeleteDocument(index)}
-                            className="text-red-600 hover:text-red-800 text-sm"
+                            className="text-red-600 hover:text-red-800"
                           >
-                            Remove
+                            ✕
                           </button>
                         </div>
                       </div>
@@ -492,20 +463,20 @@ const WorkOrders = () => {
                 )}
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm w-full sm:w-auto order-2 sm:order-1"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm w-full sm:w-auto order-1 sm:order-2"
                 >
-                  {uploading ? 'Uploading...' : editingOrder ? 'Update Work Order' : 'Create Work Order'}
+                  {uploading ? 'Uploading...' : editingOrder ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>
