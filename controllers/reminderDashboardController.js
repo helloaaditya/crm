@@ -586,6 +586,8 @@ export const getDailyRevenueTrends = asyncHandler(async (req, res) => {
 export const getPaymentReminders = asyncHandler(async (req, res) => {
   const { date, startDate, endDate } = req.query;
 
+  console.log('📅 Payment Reminders Query Params:', { date, startDate, endDate });
+
   let query = {};
 
   if (date) {
@@ -605,55 +607,74 @@ export const getPaymentReminders = asyncHandler(async (req, res) => {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
     
+    // Include invoices where dueDate is in range OR invoiceDate is in range (for invoices without dueDate)
     query = {
-      dueDate: { $gte: start, $lte: end },
+      $or: [
+        { dueDate: { $gte: start, $lte: end } },
+        { 
+          dueDate: { $exists: false },
+          invoiceDate: { $gte: start, $lte: end }
+        }
+      ],
       paymentStatus: { $in: ['unpaid', 'partial'] },
       status: { $ne: 'cancelled' }
     };
+    
+    console.log('📅 Date range query:', { start, end });
   } else {
-    // Default: Get all pending payments
+    // Default: Get all pending payments (with or without dueDate)
     query = {
       paymentStatus: { $in: ['unpaid', 'partial'] },
       status: { $ne: 'cancelled' }
     };
   }
 
+  console.log('📅 MongoDB Query:', JSON.stringify(query, null, 2));
+
   const invoices = await Invoice.find(query)
     .populate('customer', 'name contactNumber email')
     .populate('project', 'projectId description')
     .sort({ dueDate: 1 });
+  
+  console.log(`📅 Found ${invoices.length} invoices with pending payments`);
 
   // Group by date if range is provided
   const remindersByDate = {};
   
   invoices.forEach(invoice => {
-    if (invoice.dueDate) {
-      const dateKey = invoice.dueDate.toISOString().split('T')[0];
-      if (!remindersByDate[dateKey]) {
-        remindersByDate[dateKey] = {
-          date: dateKey,
-          invoices: [],
-          totalPending: 0,
-          count: 0
-        };
-      }
-      remindersByDate[dateKey].invoices.push({
-        invoiceNumber: invoice.invoiceNumber,
-        quotationNumber: invoice.quotationNumber,
-        invoiceType: invoice.invoiceType,
-        customer: invoice.customer,
-        project: invoice.project,
-        totalAmount: invoice.totalAmount,
-        paidAmount: invoice.paidAmount,
-        balanceAmount: invoice.balanceAmount,
-        paymentStatus: invoice.paymentStatus,
-        dueDate: invoice.dueDate,
-        isOverdue: invoice.dueDate < new Date()
-      });
-      remindersByDate[dateKey].totalPending += invoice.balanceAmount;
-      remindersByDate[dateKey].count += 1;
+    // Use dueDate if available, otherwise use invoiceDate
+    const dateToUse = invoice.dueDate || invoice.invoiceDate;
+    const dateKey = dateToUse ? dateToUse.toISOString().split('T')[0] : 'no-date';
+    
+    if (!remindersByDate[dateKey]) {
+      remindersByDate[dateKey] = {
+        date: dateKey,
+        invoices: [],
+        totalPending: 0,
+        count: 0
+      };
     }
+    
+    remindersByDate[dateKey].invoices.push({
+      invoiceNumber: invoice.invoiceNumber,
+      quotationNumber: invoice.quotationNumber,
+      invoiceType: invoice.invoiceType,
+      customer: invoice.customer,
+      project: invoice.project,
+      totalAmount: invoice.totalAmount,
+      paidAmount: invoice.paidAmount,
+      balanceAmount: invoice.balanceAmount,
+      paymentStatus: invoice.paymentStatus,
+      dueDate: invoice.dueDate,
+      invoiceDate: invoice.invoiceDate,
+      isOverdue: invoice.dueDate ? invoice.dueDate < new Date() : false
+    });
+    
+    remindersByDate[dateKey].totalPending += invoice.balanceAmount;
+    remindersByDate[dateKey].count += 1;
   });
+  
+  console.log('📅 Reminders grouped by date:', Object.keys(remindersByDate).length, 'dates');
 
   const remindersArray = Object.values(remindersByDate).sort((a, b) => 
     new Date(a.date) - new Date(b.date)

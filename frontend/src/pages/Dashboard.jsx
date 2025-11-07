@@ -29,7 +29,10 @@ const Dashboard = () => {
   const [paymentReminders, setPaymentReminders] = useState([])
   const [remindersLoading, setRemindersLoading] = useState(false)
   const [reminderStartDate, setReminderStartDate] = useState(() => {
-    return new Date().toISOString().split('T')[0]
+    // Start from 30 days ago to show overdue payments
+    const date = new Date()
+    date.setDate(date.getDate() - 30)
+    return date.toISOString().split('T')[0]
   })
   const [reminderEndDate, setReminderEndDate] = useState(() => {
     const date = new Date()
@@ -130,16 +133,23 @@ const Dashboard = () => {
   const fetchPaymentReminders = async () => {
     try {
       setRemindersLoading(true)
+      console.log('📅 Fetching payment reminders:', { startDate: reminderStartDate, endDate: reminderEndDate })
+      
       const response = await API.dashboard.getPaymentReminders({
         startDate: reminderStartDate,
         endDate: reminderEndDate
       })
       
+      console.log('📅 Payment reminders response:', response.data)
+      
       // Backend returns: { success: true, data: { reminders: [...], summary: {...} } }
       const reminders = response.data?.data?.reminders || []
+      console.log('📅 Payment reminders count:', reminders.length)
+      console.log('📅 Payment reminders data:', reminders)
+      
       setPaymentReminders(Array.isArray(reminders) ? reminders : [])
     } catch (error) {
-      console.error('Error fetching payment reminders:', error)
+      console.error('❌ Error fetching payment reminders:', error)
       toast.error('Failed to load payment reminders')
       setPaymentReminders([])
     } finally {
@@ -439,7 +449,10 @@ const Dashboard = () => {
                   <div className="flex items-center gap-2">
                     <FiCalendar className="text-blue-600" size={18} />
                     <h3 className="font-semibold text-gray-800">
-                      {format(new Date(reminder.date), 'dd MMM yyyy')}
+                      {reminder.date === 'no-date' 
+                        ? '⚠️ No Due Date Set' 
+                        : format(new Date(reminder.date), 'dd MMM yyyy')
+                      }
                     </h3>
                     <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">
                       {reminder.invoices?.length || 0} Invoice(s)
