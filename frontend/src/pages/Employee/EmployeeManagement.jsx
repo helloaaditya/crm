@@ -1,24 +1,21 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 
 const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid', 'hierarchy', 'list'
-  const [filterDesignation, setFilterDesignation] = useState('');
-  const [filterStatus, setFilterStatus] = useState('active');
+  const [filterStatus, setFilterStatus] = useState(''); // Show all by default
 
   useEffect(() => {
     fetchEmployees();
-  }, [filterDesignation, filterStatus]);
+  }, [filterStatus]);
 
   const fetchEmployees = async () => {
     try {
       setLoading(true);
       const params = {};
-      if (filterDesignation) params.designation = filterDesignation;
       if (filterStatus === 'active') params.isActive = true;
       if (filterStatus === 'inactive') params.isActive = false;
 
@@ -53,6 +50,70 @@ const EmployeeManagement = () => {
     return icons[designation] || '👤';
   };
 
+  // Get employee availability status
+  const getAvailabilityStatus = (employee) => {
+    const today = new Date().toDateString();
+    
+    // Check if on leave today
+    const onLeaveToday = employee.leaves?.find(leave => {
+      if (leave.status !== 'approved') return false;
+      const start = new Date(leave.startDate).toDateString();
+      const end = new Date(leave.endDate).toDateString();
+      return today >= start && today <= end;
+    });
+    
+    if (onLeaveToday) {
+      return {
+        status: 'on_leave',
+        label: '🌴 On Leave',
+        color: 'bg-orange-100 text-orange-800',
+        details: `${onLeaveToday.leaveType} till ${format(new Date(onLeaveToday.endDate), 'dd MMM')}`
+      };
+    }
+    
+    // Check if checked in today
+    const todayAttendance = employee.attendance?.find(att => {
+      return new Date(att.date).toDateString() === today;
+    });
+    
+    if (todayAttendance) {
+      if (todayAttendance.checkInTime && !todayAttendance.checkOutTime) {
+        return {
+          status: 'working',
+          label: '✅ Working',
+          color: 'bg-green-100 text-green-800',
+          details: `Since ${format(new Date(todayAttendance.checkInTime), 'hh:mm a')}`
+        };
+      }
+      if (todayAttendance.checkOutTime) {
+        return {
+          status: 'completed',
+          label: '✓ Completed',
+          color: 'bg-blue-100 text-blue-800',
+          details: `${todayAttendance.workHours?.toFixed(1) || 0}h worked`
+        };
+      }
+    }
+    
+    // Check if inactive
+    if (!employee.isActive) {
+      return {
+        status: 'inactive',
+        label: '⭕ Inactive',
+        color: 'bg-gray-100 text-gray-800',
+        details: 'Not active'
+      };
+    }
+    
+    // Available but not checked in
+    return {
+      status: 'available',
+      label: '🟡 Available',
+      color: 'bg-yellow-100 text-yellow-800',
+      details: 'Not checked in yet'
+    };
+  };
+
   // Group employees by reporting structure
   const buildHierarchy = () => {
     const employeeMap = {};
@@ -82,6 +143,7 @@ const EmployeeManagement = () => {
 
   const renderHierarchyNode = (node, level = 0, isLast = false, parentPrefix = '') => {
     const hasChildren = node.children && node.children.length > 0;
+    const availability = getAvailabilityStatus(node);
     
     return (
       <div key={node._id} className="relative">
@@ -93,22 +155,22 @@ const EmployeeManagement = () => {
               <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300"></div>
             )}
             {/* Horizontal line */}
-            <div className="absolute left-4 top-8 w-4 h-0.5 bg-gray-300"></div>
+            <div className="absolute left-4 top-10 w-4 h-0.5 bg-gray-300"></div>
           </div>
         )}
         
         <div className={`${level > 0 ? 'ml-8' : ''} mb-3`}>
           <div 
-            className={`bg-white rounded-lg shadow-md p-5 hover:shadow-xl transition-all border-l-4 ${
+            className={`bg-white rounded-lg shadow-md p-4 hover:shadow-xl transition-all border-l-4 ${
               level === 0 ? 'border-blue-600' : 
               level === 1 ? 'border-purple-500' :
               level === 2 ? 'border-green-500' : 'border-orange-500'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-3">
                 {/* Icon */}
-                <div className={`text-4xl w-16 h-16 flex items-center justify-center rounded-full ${
+                <div className={`text-3xl sm:text-4xl w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full flex-shrink-0 ${
                   level === 0 ? 'bg-blue-100' :
                   level === 1 ? 'bg-purple-100' :
                   level === 2 ? 'bg-green-100' : 'bg-orange-100'
@@ -117,21 +179,31 @@ const EmployeeManagement = () => {
                 </div>
                 
                 {/* Employee Info */}
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <div className="font-bold text-gray-900 text-lg">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="font-bold text-gray-900 text-base sm:text-lg truncate">
                       {node.name}
                     </div>
-                    {level === 0 && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                        TOP LEVEL
+                    {/* Show TOP badge only for level 0 employees who have team members */}
+                    {level === 0 && hasChildren && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded whitespace-nowrap">
+                        TOP
                       </span>
                     )}
+                    {/* Availability Badge */}
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap ${availability.color}`}>
+                      {availability.label}
+                    </span>
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
+                  <div className="text-xs sm:text-sm text-gray-600 mt-1">
                     {node.employeeId} • {node.designation?.toUpperCase()}
                   </div>
-                  <div className="flex items-center space-x-3 mt-2 text-xs text-gray-500">
+                  {availability.details && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {availability.details}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs text-gray-500">
                     {node.phone && (
                       <span>📞 {node.phone}</span>
                     )}
@@ -142,18 +214,15 @@ const EmployeeManagement = () => {
                 </div>
               </div>
               
-              {/* Status and Stats */}
-              <div className="text-right">
-                <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusColor(node.isActive)}`}>
-                  {node.isActive ? '✓ Active' : '✗ Inactive'}
-                </span>
+              {/* Stats */}
+              <div className="text-left sm:text-right flex sm:flex-col gap-2 flex-wrap">
                 {hasChildren && (
-                  <div className="mt-2 text-sm font-semibold text-blue-600">
-                    👥 {node.children.length} Team Member{node.children.length > 1 ? 's' : ''}
+                  <div className="text-xs sm:text-sm font-semibold text-blue-600 whitespace-nowrap">
+                    👥 {node.children.length} Team
                   </div>
                 )}
                 {node.assignedProjects && node.assignedProjects.length > 0 && (
-                  <div className="text-xs text-green-600 mt-1">
+                  <div className="text-xs text-green-600 whitespace-nowrap">
                     📊 {node.assignedProjects.filter(p => p.status === 'active').length} Project(s)
                   </div>
                 )}
@@ -179,239 +248,162 @@ const EmployeeManagement = () => {
     );
   };
 
+  // Calculate availability summary
+  const availabilitySummary = employees.reduce((acc, emp) => {
+    const status = getAvailabilityStatus(emp).status;
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Employee Management</h1>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`px-4 py-2 rounded-lg ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-          >
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode('hierarchy')}
-            className={`px-4 py-2 rounded-lg ${viewMode === 'hierarchy' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-          >
-            Hierarchy
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-          >
-            List
-          </button>
+    <div className="p-4 sm:p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Employee Planning</h1>
+        <p className="text-sm text-gray-600 mt-1">Real-time employee availability and organizational hierarchy</p>
+      </div>
+
+      {/* Availability Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+        <div className="bg-green-50 border-l-4 border-green-500 rounded-lg p-3 sm:p-4" title="Checked in, currently working">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-green-600 font-medium">Working Now</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-700">{availabilitySummary.working || 0}</p>
+              <p className="text-[10px] text-green-600 mt-0.5">Checked in today</p>
+            </div>
+            <div className="text-2xl">✅</div>
+          </div>
+        </div>
+
+        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-3 sm:p-4" title="On approved leave">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-orange-600 font-medium">On Leave</p>
+              <p className="text-xl sm:text-2xl font-bold text-orange-700">{availabilitySummary.on_leave || 0}</p>
+              <p className="text-[10px] text-orange-600 mt-0.5">Not available</p>
+            </div>
+            <div className="text-2xl">🌴</div>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-3 sm:p-4" title="Not checked in yet">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-yellow-600 font-medium">Available</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-700">{availabilitySummary.available || 0}</p>
+              <p className="text-[10px] text-yellow-600 mt-0.5">Not checked in</p>
+            </div>
+            <div className="text-2xl">🟡</div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-3 sm:p-4" title="Checked in and checked out">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-blue-600 font-medium">Day Complete</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-700">{availabilitySummary.completed || 0}</p>
+              <p className="text-[10px] text-blue-600 mt-0.5">Checked out</p>
+            </div>
+            <div className="text-2xl">✓</div>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-3 sm:p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-600 font-medium">Total</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-700">{employees.length}</p>
+              <p className="text-[10px] text-gray-600 mt-0.5">All employees</p>
+            </div>
+            <div className="text-2xl">👥</div>
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Designation
-            </label>
-            <select
-              value={filterDesignation}
-              onChange={(e) => setFilterDesignation(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            >
-              <option value="">All Designations</option>
-              <option value="manager">Manager</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="engineer">Engineer</option>
-              <option value="worker">Worker</option>
-              <option value="technician">Technician</option>
-              <option value="helper">Helper</option>
-              <option value="driver">Driver</option>
-              <option value="admin">Admin</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+      {/* Simple Filter */}
+      <div className="flex justify-end mb-6">
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="border border-gray-300 rounded-lg px-4 py-2 text-sm"
+        >
+          <option value="">All Employees</option>
+          <option value="active">Active Only</option>
+          <option value="inactive">Inactive Only</option>
+        </select>
+      </div>
 
+      {/* Hierarchy Legend */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow p-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Availability Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <div className="text-sm text-gray-600">
-              <div className="font-semibold">Total: {employees.length} employees</div>
-              <div>Active: {employees.filter(e => e.isActive).length}</div>
+            <p className="text-xs font-medium text-gray-700 mb-2">📊 Availability Status:</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center space-x-1">
+                <span>✅</span>
+                <span>Working Now</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span>🌴</span>
+                <span>On Leave</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span>🟡</span>
+                <span>Available</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span>✓</span>
+                <span>Completed</span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Content based on view mode */}
-      {loading ? (
-        <div className="text-center py-8">Loading...</div>
-      ) : viewMode === 'hierarchy' ? (
-        <div>
-          {/* Hierarchy Legend */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow p-4 mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Organizational Hierarchy</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div className="flex items-center space-x-2">
+          {/* Hierarchy Levels */}
+          <div>
+            <p className="text-xs font-medium text-gray-700 mb-2">🌳 Hierarchy Levels:</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center space-x-1">
                 <div className="w-3 h-3 bg-blue-600 rounded"></div>
-                <span>Top Level (No Manager)</span>
+                <span>Top Level</span>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
                 <div className="w-3 h-3 bg-purple-500 rounded"></div>
-                <span>Level 1 (Direct Reports)</span>
+                <span>Managers</span>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
                 <div className="w-3 h-3 bg-green-500 rounded"></div>
-                <span>Level 2 (Sub-team)</span>
+                <span>Team</span>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
                 <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                <span>Level 3+ (Deeper)</span>
+                <span>Sub-team</span>
               </div>
             </div>
-            <div className="mt-3 text-xs text-gray-600">
-              💡 Lines show reporting relationships. Employees are grouped by their manager.
-            </div>
-          </div>
-
-          {/* Hierarchy Tree */}
-          <div className="space-y-4">
-            {buildHierarchy().length > 0 ? (
-              buildHierarchy().map((node, index) => 
-                renderHierarchyNode(node, 0, index === buildHierarchy().length - 1)
-              )
-            ) : (
-              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-                <div className="text-4xl mb-2">👥</div>
-                <div>No employees found in hierarchy</div>
-              </div>
-            )}
           </div>
         </div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {employees.map((employee) => (
-            <div key={employee._id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <span className="text-3xl">{getDesignationIcon(employee.designation)}</span>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{employee.name}</h3>
-                    <p className="text-sm text-gray-500">{employee.employeeId}</p>
-                  </div>
-                </div>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(employee.isActive)}`}>
-                  {employee.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
+      </div>
 
-              <div className="space-y-2 text-sm text-gray-600 mb-4">
-                <div>
-                  <span className="font-medium">Designation:</span> {employee.designation}
-                </div>
-                <div>
-                  <span className="font-medium">Phone:</span> {employee.phone}
-                </div>
-                {employee.email && (
-                  <div>
-                    <span className="font-medium">Email:</span> {employee.email}
-                  </div>
-                )}
-                <div>
-                  <span className="font-medium">Joined:</span>{' '}
-                  {format(new Date(employee.joiningDate), 'dd MMM yyyy')}
-                </div>
-                {employee.department && (
-                  <div>
-                    <span className="font-medium">Department:</span> {employee.department}
-                  </div>
-                )}
-              </div>
-
-              {employee.assignedProjects && employee.assignedProjects.length > 0 && (
-                <div className="text-sm text-blue-600 mb-2">
-                  🔹 {employee.assignedProjects.filter(p => p.status === 'active').length} Active Project(s)
-                </div>
-              )}
-
-              <div className="text-xs text-gray-500">
-                {employee.documents && employee.documents.length > 0 && (
-                  <span>📄 {employee.documents.length} Document(s)</span>
-                )}
-              </div>
-            </div>
-          ))}
+      {/* Hierarchy Tree */}
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-gray-600">Loading employee data...</p>
+        </div>
+      ) : buildHierarchy().length > 0 ? (
+        <div className="space-y-4">
+          {buildHierarchy().map((node, index) => 
+            renderHierarchyNode(node, 0, index === buildHierarchy().length - 1)
+          )}
         </div>
       ) : (
-        // List view
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Projects</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {employees.map((employee) => (
-                <tr key={employee._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <span className="mr-3">{getDesignationIcon(employee.designation)}</span>
-                      <div>
-                        <div className="font-medium text-gray-900">{employee.name}</div>
-                        <div className="text-sm text-gray-500">{employee.employeeId}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {employee.designation}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {employee.department || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {employee.phone}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(new Date(employee.joiningDate), 'dd MMM yyyy')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(employee.isActive)}`}>
-                      {employee.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {employee.assignedProjects?.filter(p => p.status === 'active').length || 0}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="text-6xl mb-4">👥</div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Employees Found</h3>
+          <p className="text-gray-500">Add employees to see the organizational hierarchy</p>
         </div>
       )}
 
-      {!loading && employees.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No employees found
-        </div>
-      )}
     </div>
   );
 };
