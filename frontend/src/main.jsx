@@ -30,8 +30,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         closeOnClick
         pauseOnHover
         draggable
-        toastClassName="!bg-transparent"
-        bodyClassName="!bg-transparent"
       />
     </AuthProvider>
   </React.StrictMode>,
