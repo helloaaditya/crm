@@ -122,7 +122,7 @@ const Dashboard = () => {
       })
     } catch (error) {
       console.error('Error fetching daily revenue trends:', error)
-      toast.error('Failed to load revenue trends')
+      toast.error('Failed to load revenue trends.')
       setDailyRevenueData([])
       setRevenueTotals({ received: 0, sent: 0, net: 0 })
     } finally {
@@ -390,25 +390,47 @@ const Dashboard = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : projectData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={projectData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {projectData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <div>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={projectData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={false}
+                    outerRadius={window.innerWidth < 640 ? 60 : 80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {projectData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              
+              {/* Legend Below Chart */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {projectData.map((entry, index) => {
+                  const total = projectData.reduce((sum, item) => sum + item.value, 0)
+                  const percentage = ((entry.value / total) * 100).toFixed(0)
+                  return (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <div 
+                        className="w-4 h-4 rounded flex-shrink-0" 
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      ></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{entry.name}</p>
+                        <p className="text-xs text-gray-600">{entry.value} projects ({percentage}%)</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-[250px] text-gray-500">
               <p>No project data available</p>
