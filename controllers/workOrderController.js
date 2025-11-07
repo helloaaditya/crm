@@ -1,5 +1,6 @@
 import WorkOrder from '../models/WorkOrder.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { deleteFromS3 } from '../utils/s3Service.js';
 
 // @desc    Create work order
 // @route   POST /api/work-orders
@@ -113,6 +114,51 @@ export const addWorkOrderDocument = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
+    data: workOrder
+  });
+});
+
+// @desc    Delete document from work order
+// @route   DELETE /api/work-orders/:id/documents/:documentId
+// @access  Private
+export const deleteWorkOrderDocument = asyncHandler(async (req, res) => {
+  const workOrder = await WorkOrder.findById(req.params.id);
+
+  if (!workOrder) {
+    res.status(404);
+    throw new Error('Work order not found');
+  }
+
+  // Find the document
+  const document = workOrder.documents.id(req.params.documentId);
+  
+  if (!document) {
+    res.status(404);
+    throw new Error('Document not found');
+  }
+
+  // Delete from S3 if URL exists
+  if (document.url) {
+    try {
+      const urlParts = document.url.split('.com/');
+      if (urlParts.length > 1) {
+        const s3Key = urlParts[1];
+        console.log('🗑️ Deleting work order document from S3:', s3Key);
+        await deleteFromS3(s3Key);
+        console.log('✅ Work order document deleted from S3');
+      }
+    } catch (s3Error) {
+      console.error('⚠️ Error deleting work order document from S3:', s3Error.message);
+    }
+  }
+
+  // Remove document from array
+  document.remove();
+  await workOrder.save();
+
+  res.json({
+    success: true,
+    message: 'Document deleted successfully from S3 and work order',
     data: workOrder
   });
 });

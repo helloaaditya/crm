@@ -1,5 +1,6 @@
 import CompanyDocument from '../models/CompanyDocument.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { deleteFromS3 } from '../utils/s3Service.js';
 
 // @desc    Upload/Create company document
 // @route   POST /api/company-documents
@@ -141,11 +142,31 @@ export const deleteCompanyDocument = asyncHandler(async (req, res) => {
     throw new Error('Document not found');
   }
 
-  document.status = 'deleted';
-  await document.save();
+  // Delete file from S3 if URL exists
+  if (document.url) {
+    try {
+      // Extract S3 key from URL
+      // URL format: https://bucket-name.s3.region.amazonaws.com/folder/filename
+      // or: https://s3.region.amazonaws.com/bucket-name/folder/filename
+      const urlParts = document.url.split('.com/');
+      if (urlParts.length > 1) {
+        const s3Key = urlParts[1]; // This is the key after .com/
+        console.log('🗑️ Deleting file from S3:', s3Key);
+        await deleteFromS3(s3Key);
+        console.log('✅ File deleted from S3 successfully');
+      }
+    } catch (s3Error) {
+      console.error('⚠️ Error deleting from S3:', s3Error.message);
+      // Continue with database deletion even if S3 deletion fails
+    }
+  }
+
+  // Delete document from database
+  await CompanyDocument.findByIdAndDelete(req.params.id);
 
   res.json({
     success: true,
+    message: 'Document deleted successfully from database and S3',
     data: {}
   });
 });

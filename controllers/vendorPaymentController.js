@@ -1,6 +1,7 @@
 import VendorPayment from '../models/VendorPayment.js';
 import Vendor from '../models/Vendor.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { deleteFromS3 } from '../utils/s3Service.js';
 
 // @desc    Create vendor payment
 // @route   POST /api/vendor-payments
@@ -170,6 +171,49 @@ export const cancelVendorPayment = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: payment
+  });
+});
+
+// @desc    Delete vendor payment
+// @route   DELETE /api/vendor-payments/:id
+// @access  Private (Admin)
+export const deleteVendorPayment = asyncHandler(async (req, res) => {
+  const payment = await VendorPayment.findById(req.params.id);
+
+  if (!payment) {
+    res.status(404);
+    throw new Error('Vendor payment not found');
+  }
+
+  // Delete PO Bill from S3 if URL exists
+  if (payment.poBillUrl) {
+    try {
+      const urlParts = payment.poBillUrl.split('.com/');
+      if (urlParts.length > 1) {
+        const s3Key = urlParts[1];
+        console.log('🗑️ Deleting PO Bill from S3:', s3Key);
+        await deleteFromS3(s3Key);
+        console.log('✅ PO Bill deleted from S3');
+      }
+    } catch (s3Error) {
+      console.error('⚠️ Error deleting PO Bill from S3:', s3Error.message);
+    }
+  }
+
+  // Update vendor outstanding balance
+  const vendor = await Vendor.findById(payment.vendor);
+  if (vendor) {
+    vendor.outstandingBalance = (vendor.outstandingBalance || 0) - payment.amount;
+    await vendor.save();
+  }
+
+  // Delete payment from database
+  await VendorPayment.findByIdAndDelete(req.params.id);
+
+  res.json({
+    success: true,
+    message: 'Vendor payment and PO Bill deleted successfully from database and S3',
+    data: {}
   });
 });
 

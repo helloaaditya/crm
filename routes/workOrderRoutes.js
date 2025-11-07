@@ -5,6 +5,7 @@ import {
   getWorkOrderById,
   updateWorkOrder,
   addWorkOrderDocument,
+  deleteWorkOrderDocument,
   deleteWorkOrder,
   updateWorkOrderStatus,
   assignEmployeeToWorkOrder
@@ -29,6 +30,7 @@ router.route('/:id')
   .delete(deleteWorkOrder);
 
 router.post('/:id/documents', addWorkOrderDocument);
+router.delete('/:id/documents/:documentId', deleteWorkOrderDocument);
 router.put('/:id/status', updateWorkOrderStatus);
 router.post('/:id/assign', assignEmployeeToWorkOrder);
 

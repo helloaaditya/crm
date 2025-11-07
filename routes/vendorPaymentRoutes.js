@@ -4,6 +4,7 @@ import {
   getVendorPayments,
   getVendorPaymentById,
   updateVendorPayment,
+  deleteVendorPayment,
   cancelVendorPayment,
   getPaymentStats,
   getVendorWisePayments
@@ -27,7 +28,8 @@ router.get('/stats/by-vendor', getVendorWisePayments);
 
 router.route('/:id')
   .get(getVendorPaymentById)
-  .put(updateVendorPayment);
+  .put(updateVendorPayment)
+  .delete(deleteVendorPayment);
 
 router.put('/:id/cancel', cancelVendorPayment);
 
