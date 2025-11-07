@@ -70,9 +70,15 @@ export const register = asyncHandler(async (req, res) => {
 
   // Send welcome email asynchronously (don't wait for it)
   // This prevents timeout if email service is slow
+  // Wrapped in setImmediate to completely decouple from response
   if (typeof sendWelcomeEmail === 'function') {
-    sendWelcomeEmail(email, name, password).catch(error => {
-      console.log('⚠️ Email not sent:', error.message);
+    setImmediate(() => {
+      sendWelcomeEmail(email, name, password)
+        .then(() => console.log('✅ Welcome email sent successfully'))
+        .catch(error => {
+          console.log('⚠️ Email not sent:', error.message);
+          console.log('💡 User account created successfully, email skipped.');
+        });
     });
   }
 

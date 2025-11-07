@@ -17,10 +17,10 @@ const createTransporter = () => {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
       },
-      // Add timeout settings to prevent hanging
-      connectionTimeout: 10000, // 10 seconds
-      greetingTimeout: 10000,
-      socketTimeout: 20000
+      // Reduced timeouts to fail faster if Gmail is blocked
+      connectionTimeout: 5000, // 5 seconds to connect
+      greetingTimeout: 5000,   // 5 seconds for handshake
+      socketTimeout: 5000      // 5 seconds for response
     });
   }
   
