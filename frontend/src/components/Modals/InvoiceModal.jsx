@@ -311,7 +311,12 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white z-10">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800">
-            {isViewMode ? 'View Invoice' : (invoice ? 'Edit Invoice' : 'Create New Invoice')}
+            {isViewMode 
+              ? `View ${formData.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'}` 
+              : invoice 
+                ? `Edit ${formData.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'}` 
+                : `Create New ${formData.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'}`
+            }
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
             <FiX size={20} />
