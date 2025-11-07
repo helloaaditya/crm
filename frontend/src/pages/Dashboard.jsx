@@ -149,21 +149,7 @@ const Dashboard = () => {
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b']
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="spinner"></div>
-      </div>
-    )
-  }
-
-  if (!stats) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-600">Unable to load dashboard data</p>
-      </div>
-    )
-  }
+  // Don't block rendering - show UI immediately
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -182,7 +168,11 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-gray-600 text-xs sm:text-sm font-medium">Total Customers</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats.totalCustomers}</p>
+              {loading ? (
+                <div className="h-8 bg-gray-200 rounded w-20 mt-2 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats?.totalCustomers || 0}</p>
+              )}
               <p className="text-green-600 text-xs sm:text-sm mt-1 sm:mt-2">+12% from last month</p>
             </div>
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -196,7 +186,11 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-gray-600 text-xs sm:text-sm font-medium">Active Projects</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats.totalProjects}</p>
+              {loading ? (
+                <div className="h-8 bg-gray-200 rounded w-20 mt-2 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats?.totalProjects || 0}</p>
+              )}
               <p className="text-green-600 text-xs sm:text-sm mt-1 sm:mt-2">+8% from last month</p>
             </div>
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -210,8 +204,12 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-gray-600 text-xs sm:text-sm font-medium">Materials in Stock</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats.totalMaterials}</p>
-              <p className="text-red-600 text-xs sm:text-sm mt-1 sm:mt-2">{stats.lowStockCount} items low stock</p>
+              {loading ? (
+                <div className="h-8 bg-gray-200 rounded w-20 mt-2 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats?.totalMaterials || 0}</p>
+              )}
+              <p className="text-red-600 text-xs sm:text-sm mt-1 sm:mt-2">{stats?.lowStockCount || 0} items low stock</p>
             </div>
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
               <FiPackage className="text-accent" size={20} />
@@ -224,7 +222,11 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-gray-600 text-xs sm:text-sm font-medium">Total Employees</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats.totalEmployees}</p>
+              {loading ? (
+                <div className="h-8 bg-gray-200 rounded w-20 mt-2 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats?.totalEmployees || 0}</p>
+              )}
               <p className="text-gray-600 text-xs sm:text-sm mt-1 sm:mt-2">Active employees</p>
             </div>
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -238,8 +240,12 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-gray-600 text-xs sm:text-sm font-medium">Total Revenue</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">₹{(stats.totalRevenue / 100000).toFixed(1)}L</p>
-              <p className="text-green-600 text-xs sm:text-sm mt-1 sm:mt-2">₹{(stats.paidRevenue / 100000).toFixed(1)}L paid</p>
+              {loading ? (
+                <div className="h-8 bg-gray-200 rounded w-20 mt-2 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">₹{((stats?.totalRevenue || 0) / 100000).toFixed(1)}L</p>
+              )}
+              <p className="text-green-600 text-xs sm:text-sm mt-1 sm:mt-2">₹{((stats?.paidRevenue || 0) / 100000).toFixed(1)}L paid</p>
             </div>
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
               <FiDollarSign className="text-success" size={20} />
@@ -252,7 +258,11 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-gray-600 text-xs sm:text-sm font-medium">Pending Invoices</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats.pendingInvoices}</p>
+              {loading ? (
+                <div className="h-8 bg-gray-200 rounded w-20 mt-2 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stats?.pendingInvoices || 0}</p>
+              )}
               <p className="text-orange-600 text-xs sm:text-sm mt-1 sm:mt-2">Action required</p>
             </div>
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -365,25 +375,35 @@ const Dashboard = () => {
         {/* Project Distribution */}
         <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Project Distribution</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={projectData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {projectData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          {loading ? (
+            <div className="flex items-center justify-center h-[250px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : projectData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={projectData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {projectData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-gray-500">
+              <p>No project data available</p>
+            </div>
+          )}
         </div>
       </div>
 
