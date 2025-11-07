@@ -270,8 +270,8 @@ const VendorPayments = () => {
         </div>
       </div>
 
-      {/* Payments Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Payments Table - Desktop */}
+      <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -368,6 +368,92 @@ const VendorPayments = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Payments Cards - Mobile */}
+      <div className="md:hidden space-y-4">
+        {loading ? (
+          <div className="text-center py-8">Loading...</div>
+        ) : payments.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+            No payments found
+          </div>
+        ) : (
+          payments.map((payment) => (
+            <div key={payment._id} className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="font-semibold text-gray-900">{payment.paymentId}</div>
+                  <div className="text-sm text-gray-600 mt-1">{payment.vendor?.name}</div>
+                  <div className="text-xs text-gray-500">{payment.vendor?.vendorId}</div>
+                </div>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status)}`}>
+                  {payment.status}
+                </span>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount:</span>
+                  <span className="font-semibold text-gray-900">₹{payment.amount.toLocaleString()}</span>
+                </div>
+                {payment.isGST && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">GST:</span>
+                    <span className="text-gray-700">₹{payment.gstAmount}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Payment Mode:</span>
+                  <span className="text-gray-900">{payment.paymentMode.replace('_', ' ').toUpperCase()}</span>
+                </div>
+                {payment.referenceNumber && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Ref:</span>
+                    <span className="text-gray-700">{payment.referenceNumber}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">PO Bill:</span>
+                  <span className="text-gray-900">
+                    {payment.poBillNumber || '-'}
+                    {payment.poBillUrl && (
+                      <a
+                        href={payment.poBillUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-xs ml-2"
+                      >
+                        📄 View
+                      </a>
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Date:</span>
+                  <span className="text-gray-900">{format(new Date(payment.paymentDate), 'dd MMM yyyy')}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-4 pt-3 border-t">
+                <button
+                  onClick={() => handleViewPayment(payment)}
+                  className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm"
+                >
+                  <FiEye className="inline mr-1" /> View
+                </button>
+                {payment.status !== 'cancelled' && (
+                  <button
+                    onClick={() => handleDeletePayment(payment._id)}
+                    className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm"
+                  >
+                    <FiTrash2 className="inline mr-1" /> Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Payment Modal */}
