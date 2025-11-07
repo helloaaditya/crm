@@ -639,10 +639,14 @@ export const getPaymentReminders = asyncHandler(async (req, res) => {
       }
       remindersByDate[dateKey].invoices.push({
         invoiceNumber: invoice.invoiceNumber,
+        quotationNumber: invoice.quotationNumber,
+        invoiceType: invoice.invoiceType,
         customer: invoice.customer,
+        project: invoice.project,
         totalAmount: invoice.totalAmount,
         paidAmount: invoice.paidAmount,
         balanceAmount: invoice.balanceAmount,
+        paymentStatus: invoice.paymentStatus,
         dueDate: invoice.dueDate,
         isOverdue: invoice.dueDate < new Date()
       });

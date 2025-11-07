@@ -14,6 +14,7 @@ const Dashboard = () => {
   
   // Daily revenue trends state
   const [dailyRevenueData, setDailyRevenueData] = useState([])
+  const [revenueLoading, setRevenueLoading] = useState(false)
   const [revenueStartDate, setRevenueStartDate] = useState(() => {
     const date = new Date()
     date.setDate(date.getDate() - 30)
@@ -26,6 +27,7 @@ const Dashboard = () => {
   
   // Payment reminders state
   const [paymentReminders, setPaymentReminders] = useState([])
+  const [remindersLoading, setRemindersLoading] = useState(false)
   const [reminderStartDate, setReminderStartDate] = useState(() => {
     return new Date().toISOString().split('T')[0]
   })
@@ -37,6 +39,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData()
+    // Load revenue trends and reminders independently (non-blocking)
     fetchDailyRevenueTrends()
     fetchPaymentReminders()
   }, [])
@@ -91,39 +94,56 @@ const Dashboard = () => {
 
   const fetchDailyRevenueTrends = async () => {
     try {
+      setRevenueLoading(true)
       const response = await API.dashboard.getDailyRevenueTrends({
         startDate: revenueStartDate,
         endDate: revenueEndDate
       })
       
-      const data = response.data.data || []
-      const formatted = data.map(item => ({
+      // Backend returns: { success: true, data: { trends: [...], summary: {...} } }
+      const trends = response.data?.data?.trends || []
+      const summary = response.data?.data?.summary || {}
+      
+      const formatted = Array.isArray(trends) ? trends.map(item => ({
         date: format(new Date(item.date), 'dd MMM'),
         received: item.received || 0,
         sent: item.sent || 0,
         net: item.net || 0
-      }))
+      })) : []
       
       setDailyRevenueData(formatted)
-      setRevenueTotals(response.data.totals || { received: 0, sent: 0, net: 0 })
+      setRevenueTotals({
+        received: summary.totalReceived || 0,
+        sent: summary.totalSent || 0,
+        net: summary.netRevenue || 0
+      })
     } catch (error) {
       console.error('Error fetching daily revenue trends:', error)
       toast.error('Failed to load revenue trends')
+      setDailyRevenueData([])
+      setRevenueTotals({ received: 0, sent: 0, net: 0 })
+    } finally {
+      setRevenueLoading(false)
     }
   }
 
   const fetchPaymentReminders = async () => {
     try {
+      setRemindersLoading(true)
       const response = await API.dashboard.getPaymentReminders({
         startDate: reminderStartDate,
         endDate: reminderEndDate
       })
       
-      const data = response.data.data || []
-      setPaymentReminders(data)
+      // Backend returns: { success: true, data: { reminders: [...], summary: {...} } }
+      const reminders = response.data?.data?.reminders || []
+      setPaymentReminders(Array.isArray(reminders) ? reminders : [])
     } catch (error) {
       console.error('Error fetching payment reminders:', error)
       toast.error('Failed to load payment reminders')
+      setPaymentReminders([])
+    } finally {
+      setRemindersLoading(false)
     }
   }
 
@@ -291,45 +311,55 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={dailyRevenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" fontSize={10} />
-              <YAxis fontSize={10} />
-              <Tooltip 
-                formatter={(value, name) => {
-                  const formatted = `₹${(value / 1000).toFixed(1)}K`
-                  const label = name === 'received' ? 'Received' : name === 'sent' ? 'Paid' : 'Net'
-                  return [formatted, label]
-                }}
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="received" 
-                stroke="#10b981" 
-                strokeWidth={2} 
-                name="Received Money"
-                dot={{ r: 3 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="sent" 
-                stroke="#ef4444" 
-                strokeWidth={2} 
-                name="Paid to Vendors"
-                dot={{ r: 3 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="net" 
-                stroke="#3b82f6" 
-                strokeWidth={2} 
-                name="Net Amount"
-                strokeDasharray="5 5"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {revenueLoading ? (
+            <div className="flex items-center justify-center h-[250px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : dailyRevenueData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={dailyRevenueData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" fontSize={10} />
+                <YAxis fontSize={10} />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    const formatted = `₹${(value / 1000).toFixed(1)}K`
+                    const label = name === 'received' ? 'Received' : name === 'sent' ? 'Paid' : 'Net'
+                    return [formatted, label]
+                  }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="received" 
+                  stroke="#10b981" 
+                  strokeWidth={2} 
+                  name="Received Money"
+                  dot={{ r: 3 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="sent" 
+                  stroke="#ef4444" 
+                  strokeWidth={2} 
+                  name="Paid to Vendors"
+                  dot={{ r: 3 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="net" 
+                  stroke="#3b82f6" 
+                  strokeWidth={2} 
+                  name="Net Amount"
+                  strokeDasharray="5 5"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-gray-500">
+              <p>No data available for selected date range</p>
+            </div>
+          )}
         </div>
 
         {/* Project Distribution */}
@@ -377,7 +407,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {paymentReminders.length > 0 ? (
+        {remindersLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : paymentReminders.length > 0 ? (
           <div className="space-y-4">
             {paymentReminders.map((reminder, index) => (
               <div key={index} className="border border-gray-200 rounded-lg p-4">
