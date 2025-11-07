@@ -10,7 +10,8 @@ import {
   updateInvoice,
   deleteInvoice,
   generateInvoicePDFFile,
-  sendInvoiceViaEmail
+  sendInvoiceViaEmail,
+  convertQuotationToInvoice
 } from '../controllers/invoicePaymentController.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,5 +39,6 @@ router.get('/:id/download', (req, res) => {
 router.put('/:id', checkPermission('canEdit'), updateInvoice);
 router.delete('/:id', checkPermission('canDelete'), deleteInvoice);
 router.post('/:id/send-email', sendInvoiceViaEmail);
+router.post('/:id/convert-to-invoice', checkPermission('canCreate'), convertQuotationToInvoice);
 
 export default router;

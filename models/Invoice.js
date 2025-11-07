@@ -3,7 +3,11 @@ import mongoose from 'mongoose';
 const invoiceSchema = new mongoose.Schema({
   invoiceNumber: {
     type: String,
-    unique: true
+    sparse: true // Allow multiple null values for quotations
+  },
+  quotationNumber: {
+    type: String,
+    sparse: true // Allow multiple null values for invoices
   },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
@@ -20,6 +24,20 @@ const invoiceSchema = new mongoose.Schema({
     type: String,
     enum: ['quotation', 'proforma', 'tax_invoice', 'final', 'dc'],
     required: true
+  },
+  
+  // Quotation to Invoice Conversion
+  isConvertedToInvoice: {
+    type: Boolean,
+    default: false
+  },
+  convertedInvoiceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice'
+  },
+  sourceQuotationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice'
   },
   
   // Bill Type (Service Bill or Sales Bill)
@@ -123,50 +141,78 @@ const invoiceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate invoice number before validation
+// Generate invoice or quotation number before validation
 invoiceSchema.pre('validate', async function(next) {
-  if (this.isNew && !this.invoiceNumber) {
+  if (this.isNew) {
     try {
       const year = new Date().getFullYear().toString().slice(-2);
       const month = String(new Date().getMonth() + 1).padStart(2, '0');
-      const prefix = `INV${year}${month}`;
       
-      // Find ALL invoices for this month with EXACT format: INV + YY + MM + 4 digits
-      const pattern = new RegExp(`^${prefix}\\d{4}$`);
-      
-      const invoices = await mongoose.model('Invoice')
-        .find({ invoiceNumber: { $regex: pattern } })
-        .select('invoiceNumber')
-        .lean();
-      
-      let nextNumber = 1;
-      
-      if (invoices && invoices.length > 0) {
-        // Extract ONLY the last 4 digits from properly formatted invoices
-        const numbers = invoices.map(inv => {
-          // Calculate expected length: INV(3) + YY(2) + MM(2) + 4digits(4) = 11 chars
-          const expectedLength = prefix.length + 4; // "INV2511" + "0001" = 11
-          
-          // Only process if invoice number has exact expected length
-          if (inv.invoiceNumber.length === expectedLength) {
-            const numPart = inv.invoiceNumber.slice(-4); // Last 4 characters
-            const parsed = parseInt(numPart, 10);
-            // Only return valid 4-digit numbers (1-9999)
-            return (!isNaN(parsed) && parsed >= 1 && parsed <= 9999) ? parsed : 0;
-          }
-          return 0;
-        }).filter(num => num > 0);
+      // Generate QUOTATION number for quotations
+      if (this.invoiceType === 'quotation' && !this.quotationNumber) {
+        const prefix = `QUO${year}${month}`;
+        const pattern = new RegExp(`^${prefix}\\d{4}$`);
         
-        if (numbers.length > 0) {
-          const maxNumber = Math.max(...numbers);
-          // Ensure we don't exceed 9999, reset to 1 if needed
-          nextNumber = maxNumber >= 9999 ? 1 : maxNumber + 1;
+        const quotations = await mongoose.model('Invoice')
+          .find({ quotationNumber: { $regex: pattern } })
+          .select('quotationNumber')
+          .lean();
+        
+        let nextNumber = 1;
+        
+        if (quotations && quotations.length > 0) {
+          const numbers = quotations.map(quo => {
+            const expectedLength = prefix.length + 4;
+            if (quo.quotationNumber && quo.quotationNumber.length === expectedLength) {
+              const numPart = quo.quotationNumber.slice(-4);
+              const parsed = parseInt(numPart, 10);
+              return (!isNaN(parsed) && parsed >= 1 && parsed <= 9999) ? parsed : 0;
+            }
+            return 0;
+          }).filter(num => num > 0);
+          
+          if (numbers.length > 0) {
+            const maxNumber = Math.max(...numbers);
+            nextNumber = maxNumber >= 9999 ? 1 : maxNumber + 1;
+          }
         }
+        
+        const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
+        this.quotationNumber = `${prefix}${sequenceNumber}`;
       }
       
-      // Ensure nextNumber is always 4 digits (0001-9999)
-      const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
-      this.invoiceNumber = `${prefix}${sequenceNumber}`;
+      // Generate INVOICE number for invoices (not quotations)
+      if (this.invoiceType !== 'quotation' && !this.invoiceNumber) {
+        const prefix = `INV${year}${month}`;
+        const pattern = new RegExp(`^${prefix}\\d{4}$`);
+        
+        const invoices = await mongoose.model('Invoice')
+          .find({ invoiceNumber: { $regex: pattern } })
+          .select('invoiceNumber')
+          .lean();
+        
+        let nextNumber = 1;
+        
+        if (invoices && invoices.length > 0) {
+          const numbers = invoices.map(inv => {
+            const expectedLength = prefix.length + 4;
+            if (inv.invoiceNumber && inv.invoiceNumber.length === expectedLength) {
+              const numPart = inv.invoiceNumber.slice(-4);
+              const parsed = parseInt(numPart, 10);
+              return (!isNaN(parsed) && parsed >= 1 && parsed <= 9999) ? parsed : 0;
+            }
+            return 0;
+          }).filter(num => num > 0);
+          
+          if (numbers.length > 0) {
+            const maxNumber = Math.max(...numbers);
+            nextNumber = maxNumber >= 9999 ? 1 : maxNumber + 1;
+          }
+        }
+        
+        const sequenceNumber = String(nextNumber).padStart(4, '0').slice(-4);
+        this.invoiceNumber = `${prefix}${sequenceNumber}`;
+      }
       
     } catch (error) {
       return next(error);
