@@ -101,23 +101,17 @@ const LiveTracking = () => {
       const response = await API.locationTracking.getActiveLocations();
       const locations = response.data.data || [];
       
-      // Backend automatically cleans up stale sessions (> 3 min old)
-      // Frontend also filters for extra safety (> 3 min old)
-      const now = new Date();
-      const threeMinutesAgo = new Date(now.getTime() - 3 * 60 * 1000);
+      // Backend automatically cleans up truly stale sessions (> 10 min without updates)
+      // Frontend shows all active locations from backend (trust the isActive flag)
+      // This accounts for:
+      // - 30s update intervals from tracking app
+      // - 2min heartbeat forced updates
+      // - Network delays and GPS acquisition time
+      // - App backgrounding/throttling
+      setActiveLocations(locations);
+      setLastUpdateTime(new Date()); // Update the last fetch time
       
-      const activeFiltered = locations.filter(loc => {
-        const lastUpdate = new Date(loc.createdAt);
-        return lastUpdate > threeMinutesAgo;
-      });
-      
-      setActiveLocations(activeFiltered);
-      setLastUpdateTime(now); // Update the last fetch time
-      
-      // Log if any locations were filtered out due to being stale
-      if (locations.length !== activeFiltered.length) {
-        console.log(`🧹 Filtered out ${locations.length - activeFiltered.length} stale locations (logged out employees)`);
-      }
+      console.log(`📍 Active locations: ${locations.length} employees currently tracking`);
     } catch (error) {
       console.error('Failed to fetch active locations:', error);
     }
@@ -292,7 +286,7 @@ const LiveTracking = () => {
           </div>
           <div className="ml-3">
             <p className="text-sm text-blue-800">
-              <strong>Real-time Tracking Active:</strong> Updates every 5 seconds. Employees who log out are automatically removed within 3 minutes.
+              <strong>Real-time Tracking Active:</strong> Dashboard updates every 5 seconds. Employee locations update every 30 seconds. Sessions auto-cleanup after 10 minutes of inactivity.
             </p>
           </div>
         </div>
@@ -583,7 +577,7 @@ const LiveTracking = () => {
             <div>
               <h2 className="text-lg font-semibold text-gray-800">🟢 Currently Tracked Employees</h2>
               <p className="text-xs text-gray-500 mt-1">
-                Real-time tracking • Auto-refresh every 5s • Logged out employees removed automatically
+                Real-time tracking • Updates every 30s • Logged out employees removed within 10 minutes
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -614,7 +608,14 @@ const LiveTracking = () => {
                     </p>
                     <p className="flex justify-between">
                       <span className="text-gray-600">Last Update:</span>
-                      <span className="font-medium">{new Date(loc.createdAt).toLocaleTimeString()}</span>
+                      <span className="font-medium">
+                        {new Date(loc.createdAt).toLocaleTimeString()}
+                        <span className={`ml-1 inline-block w-2 h-2 rounded-full ${
+                          (new Date() - new Date(loc.createdAt)) / 1000 < 60 ? 'bg-green-500' :
+                          (new Date() - new Date(loc.createdAt)) / 1000 < 180 ? 'bg-yellow-500' :
+                          'bg-orange-500'
+                        }`}></span>
+                      </span>
                     </p>
                     {loc.batteryLevel && (
                       <p className="flex justify-between">
@@ -622,6 +623,10 @@ const LiveTracking = () => {
                         <span className="font-medium">{loc.batteryLevel}%</span>
                       </p>
                     )}
+                    <p className="flex justify-between text-gray-500">
+                      <span>Update age:</span>
+                      <span>{Math.floor((new Date() - new Date(loc.createdAt)) / 1000)}s ago</span>
+                    </p>
                   </div>
                 </div>
               ))}
@@ -636,10 +641,10 @@ const LiveTracking = () => {
           <FiMapPin className="mx-auto text-gray-400 mb-4" size={64} />
           <h3 className="text-xl font-semibold text-gray-800 mb-2">No Active Tracking</h3>
           <p className="text-gray-600">
-            No employees are currently being tracked. Employees will appear here once they check in.
+            No employees are currently being tracked. Employees will appear here once they start location tracking.
           </p>
           <p className="text-sm text-gray-500 mt-2">
-            Note: Logged out employees are automatically removed from this view.
+            Note: Sessions are auto-removed after 10 minutes of inactivity or when employee logs out.
           </p>
         </div>
       )}

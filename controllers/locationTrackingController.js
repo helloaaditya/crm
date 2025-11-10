@@ -267,12 +267,17 @@ export const cleanupDuplicateSessions = asyncHandler(async (req, res) => {
 export const getActiveLocations = asyncHandler(async (req, res) => {
   console.log('🗺️  FETCHING ACTIVE LOCATIONS');
   
-  // First, cleanup stale sessions (no updates in last 3 minutes = logged out)
-  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+  // Cleanup stale sessions - only mark as inactive if NO updates in last 10 minutes
+  // This is more forgiving and accounts for:
+  // - Network delays (30s update interval + buffer)
+  // - GPS acquisition delays
+  // - App backgrounding/throttling
+  // - Heartbeat forces update at 2min, so 10min is very safe
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
   const staleCleanup = await LocationTracking.updateMany(
     {
       isActive: true,
-      createdAt: { $lt: threeMinutesAgo }
+      createdAt: { $lt: tenMinutesAgo }
     },
     {
       $set: { isActive: false }
@@ -280,10 +285,10 @@ export const getActiveLocations = asyncHandler(async (req, res) => {
   );
   
   if (staleCleanup.modifiedCount > 0) {
-    console.log(`🧹 Auto-cleanup: Marked ${staleCleanup.modifiedCount} stale sessions as inactive`);
+    console.log(`🧹 Auto-cleanup: Marked ${staleCleanup.modifiedCount} stale sessions (>10min old) as inactive`);
   }
   
-  // First, check total active records
+  // Check total active records
   const totalActive = await LocationTracking.countDocuments({ isActive: true });
   console.log('📊 Total active location records:', totalActive);
   
