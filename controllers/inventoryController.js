@@ -1,6 +1,8 @@
 import Material from '../models/Material.js';
 import Vendor from '../models/Vendor.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import csv from 'csv-parser';
+import fs from 'fs';
 
 // =============== MATERIALS ===============
 
@@ -263,8 +265,6 @@ export const importMaterials = asyncHandler(async (req, res) => {
     });
   }
 
-  const csv = require('csv-parser');
-  const fs = require('fs');
   const results = [];
   const errors = [];
   let successCount = 0;
