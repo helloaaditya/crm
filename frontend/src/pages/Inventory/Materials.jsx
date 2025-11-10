@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiArrowUp, FiArrowDown, FiAlertCircle, FiClock, FiRotateCcw, FiDownload, FiFilter, FiCalendar, FiTrendingUp, FiTrendingDown, FiPackage } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiArrowUp, FiArrowDown, FiAlertCircle, FiClock, FiRotateCcw, FiDownload, FiFilter, FiCalendar, FiTrendingUp, FiTrendingDown, FiPackage, FiUpload } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import MaterialModal from '../../components/Modals/MaterialModal'
@@ -7,6 +7,7 @@ import MaterialHistoryModal from '../../components/Modals/MaterialHistoryModal'
 import ReturnStockModal from '../../components/Modals/ReturnStockModal'
 import StockInwardModal from '../../components/Modals/StockInwardModal'
 import StockOutwardModal from '../../components/Modals/StockOutwardModal'
+import ImportMaterialsModal from '../../components/Modals/ImportMaterialsModal'
 
 const Materials = () => {
   const [materials, setMaterials] = useState([])
@@ -35,6 +36,7 @@ const Materials = () => {
   const [inwardMaterial, setInwardMaterial] = useState(null)
   const [showOutwardModal, setShowOutwardModal] = useState(false)
   const [outwardMaterial, setOutwardMaterial] = useState(null)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   useEffect(() => {
     fetchMaterials()
@@ -213,6 +215,13 @@ const Materials = () => {
           >
             <FiDownload className="mr-2" />
             Export CSV
+          </button>
+          <button 
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm sm:text-base"
+          >
+            <FiUpload className="mr-2" />
+            Import Bulk
           </button>
           <button 
             onClick={handleAdd}
@@ -600,6 +609,16 @@ const Materials = () => {
         onClose={() => setShowOutwardModal(false)}
         onSuccess={handleOutwardSuccess}
         material={outwardMaterial}
+      />
+
+      {/* Import Materials Modal */}
+      <ImportMaterialsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => {
+          fetchMaterials()
+          fetchStockSummary()
+        }}
       />
     </div>
   )

@@ -1,5 +1,6 @@
 import express from 'express';
 import { protect, moduleAccess, checkPermission } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 import {
   getMaterials,
   getMaterial,
@@ -13,6 +14,7 @@ import {
   getMaterialHistory,
   autoRestockFromInvoice,
   bulkMaterialOperations,
+  importMaterials,
   getVendors,
   getVendor,
   createVendor,
@@ -31,6 +33,7 @@ router.use(moduleAccess('inventory', 'all'));
 router.get('/materials/low-stock', getLowStockMaterials);
 router.get('/materials', getMaterials);
 router.post('/materials', checkPermission('canCreate'), createMaterial);
+router.post('/materials/import', checkPermission('canCreate'), upload.single('file'), importMaterials);
 router.get('/materials/:id', getMaterial);
 router.get('/materials/:id/history', getMaterialHistory);
 router.put('/materials/:id', checkPermission('canEdit'), updateMaterial);

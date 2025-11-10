@@ -252,6 +252,145 @@ export const getLowStockMaterials = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Import materials in bulk from CSV/Excel
+// @route   POST /api/inventory/materials/import
+// @access  Private
+export const importMaterials = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'No file uploaded' 
+    });
+  }
+
+  const csv = require('csv-parser');
+  const fs = require('fs');
+  const results = [];
+  const errors = [];
+  let successCount = 0;
+  let errorCount = 0;
+
+  // Parse CSV file
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on('data', (data) => results.push(data))
+    .on('end', async () => {
+      // Process each row
+      for (let i = 0; i < results.length; i++) {
+        const row = results[i];
+        const rowNumber = i + 2; // +2 because row 1 is header and array is 0-indexed
+
+        try {
+          // Validate required fields
+          if (!row.Name || !row.Category || !row.Unit) {
+            errors.push({
+              row: rowNumber,
+              message: 'Missing required fields: Name, Category, or Unit'
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Validate category
+          const validCategories = ['waterproofing', 'flooring', 'painting', 'civil', 'tools', 'machinery', 'other'];
+          if (!validCategories.includes(row.Category.toLowerCase())) {
+            errors.push({
+              row: rowNumber,
+              message: `Invalid category. Must be one of: ${validCategories.join(', ')}`
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Find vendor by name if provided
+          let vendorId = null;
+          if (row.VendorName) {
+            const vendor = await Vendor.findOne({ 
+              name: { $regex: new RegExp(`^${row.VendorName}$`, 'i') } 
+            });
+            if (vendor) {
+              vendorId = vendor._id;
+            }
+          }
+
+          // Create material object
+          const materialData = {
+            name: row.Name.trim(),
+            category: row.Category.toLowerCase().trim(),
+            brand: row.Brand?.trim() || '',
+            product: row.Product?.trim() || '',
+            unit: row.Unit.trim(),
+            quantity: parseFloat(row.Quantity) || 0,
+            minStockLevel: parseFloat(row.MinStockLevel) || 10,
+            saleCost: parseFloat(row.SaleCost) || 0,
+            mrp: parseFloat(row.MRP) || 0,
+            description: row.Description?.trim() || '',
+            vendor: vendorId,
+            createdBy: req.user._id
+          };
+
+          // Validate numeric fields
+          if (isNaN(materialData.quantity) || isNaN(materialData.saleCost)) {
+            errors.push({
+              row: rowNumber,
+              message: 'Quantity and SaleCost must be valid numbers'
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Check if material already exists (by name and brand)
+          const existingMaterial = await Material.findOne({
+            name: { $regex: new RegExp(`^${materialData.name}$`, 'i') },
+            brand: materialData.brand ? { $regex: new RegExp(`^${materialData.brand}$`, 'i') } : ''
+          });
+
+          if (existingMaterial) {
+            errors.push({
+              row: rowNumber,
+              message: `Material already exists: ${materialData.name} ${materialData.brand ? '(' + materialData.brand + ')' : ''}`
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Create material
+          await Material.create(materialData);
+          successCount++;
+
+        } catch (error) {
+          errors.push({
+            row: rowNumber,
+            message: error.message || 'Failed to create material'
+          });
+          errorCount++;
+        }
+      }
+
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
+
+      // Send response
+      res.json({
+        success: true,
+        data: {
+          successCount,
+          errorCount,
+          totalRows: results.length,
+          errors: errors.slice(0, 50) // Limit to first 50 errors to avoid huge response
+        },
+        message: `Import completed: ${successCount} successful, ${errorCount} failed`
+      });
+    })
+    .on('error', (error) => {
+      // Clean up uploaded file on error
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      throw new Error('Failed to parse CSV file: ' + error.message);
+    });
+});
+
 // =============== VENDORS ===============
 
 // @desc    Get all vendors

@@ -78,6 +78,9 @@ export const inventoryAPI = {
   getLowStock: () => api.get('/inventory/materials/low-stock'),
   autoRestock: (data) => api.post('/inventory/materials/auto-restock', data),
   bulkOperations: (data) => api.post('/inventory/materials/bulk-operations', data),
+  importMaterials: (formData) => api.post('/inventory/materials/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   
   // Vendors
   getVendors: (params) => api.get('/inventory/vendors', { params }),
