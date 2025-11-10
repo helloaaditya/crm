@@ -294,7 +294,10 @@ export const locationTrackingAPI = {
   getMyStatus: () => api.get('/location-tracking/my-status'),
   getActiveLocations: () => api.get('/location-tracking/active'),
   getHistory: (employeeId, params) => api.get(`/location-tracking/history/${employeeId}`, { params }),
-  getStats: () => api.get('/location-tracking/stats')
+  getStats: () => api.get('/location-tracking/stats'),
+  getSessionAnalytics: (sessionId) => api.get(`/location-tracking/session-analytics/${sessionId}`),
+  cleanupDuplicates: () => api.post('/location-tracking/cleanup'),
+  adminCleanup: () => api.post('/location-tracking/admin-cleanup')
 };
 
 // Export all APIs

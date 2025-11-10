@@ -8,7 +8,9 @@ import {
   getLocationHistory,
   getMyTrackingStatus,
   getTrackingStats,
-  getSessionAnalytics
+  getSessionAnalytics,
+  cleanupDuplicateSessions,
+  adminCleanupDuplicates
 } from '../controllers/locationTrackingController.js';
 
 const router = express.Router();
@@ -21,12 +23,14 @@ router.post('/start', startTracking);
 router.post('/update', updateLocation);
 router.post('/stop', stopTracking);
 router.get('/my-status', getMyTrackingStatus);
+router.post('/cleanup', cleanupDuplicateSessions);
 
 // Admin routes - for viewing employee locations
 router.get('/active', authorize('admin', 'main_admin'), getActiveLocations);
 router.get('/history/:employeeId', authorize('admin', 'main_admin'), getLocationHistory);
 router.get('/stats', authorize('admin', 'main_admin'), getTrackingStats);
 router.get('/session-analytics/:sessionId', authorize('admin', 'main_admin'), getSessionAnalytics);
+router.post('/admin-cleanup', authorize('admin', 'main_admin'), adminCleanupDuplicates);
 
 export default router;
 

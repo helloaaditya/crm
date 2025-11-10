@@ -239,6 +239,14 @@ const useLocationTracking = (shouldTrack = false) => {
 
       console.log('🚀 Starting location tracking with session:', newSessionId);
 
+      // Cleanup any duplicate sessions first
+      try {
+        const cleanupResponse = await locationTrackingAPI.cleanupDuplicates();
+        console.log('🧹 Cleanup result:', cleanupResponse.data);
+      } catch (error) {
+        console.log('Cleanup failed (non-critical):', error.message);
+      }
+
       // Request wake lock to keep device awake
       await requestWakeLock();
 

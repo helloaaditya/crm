@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, FiUsers } from 'react-icons/fi';
+import { FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, FiUsers, FiTrash2 } from 'react-icons/fi';
 import API from '../api';
 import { toast } from 'react-toastify';
 
@@ -175,6 +175,29 @@ const LiveTracking = () => {
     }
   };
 
+  // Cleanup all duplicate sessions globally (admin function)
+  const handleCleanupDuplicates = async () => {
+    if (!window.confirm('This will cleanup all duplicate sessions for all employees. Continue?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await API.locationTracking.adminCleanup();
+      toast.success(response.data.message || 'Cleaned up duplicate sessions');
+      console.log('✅ Cleanup result:', response.data);
+      
+      // Refresh data
+      fetchActiveLocations();
+      fetchStats();
+    } catch (error) {
+      console.error('Cleanup error:', error);
+      toast.error('Failed to cleanup sessions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Initial fetch
   useEffect(() => {
     fetchActiveLocations();
@@ -220,6 +243,14 @@ const LiveTracking = () => {
           <p className="text-sm sm:text-base text-gray-600 mt-1">Real-time location monitoring & route history</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={handleCleanupDuplicates}
+            className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            title="Cleanup duplicate sessions"
+          >
+            <FiTrash2 className="mr-2" />
+            Cleanup
+          </button>
           <button
             onClick={handleRefresh}
             className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"

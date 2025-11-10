@@ -29,21 +29,42 @@ export const startTracking = asyncHandler(async (req, res) => {
   console.log('✅ Employee found:', employee.employeeId, employee.name);
   
   // **PREVENT DUPLICATE SESSIONS**: Check for existing active session for this employee
-  const existingActiveSession = await LocationTracking.findOne({
+  const existingActiveSessions = await LocationTracking.find({
     employee: employee._id,
     isActive: true
-  }).sort({ createdAt: -1 });
+  });
   
-  if (existingActiveSession) {
-    console.log('⚠️ Active session already exists, stopping it first');
-    // Stop the existing session
-    await LocationTracking.updateMany(
+  if (existingActiveSessions.length > 0) {
+    console.log(`⚠️ Found ${existingActiveSessions.length} active sessions for employee, stopping all...`);
+    console.log('Active sessions:', existingActiveSessions.map(s => s.sessionId));
+    
+    // Stop ALL existing sessions for this employee
+    const result = await LocationTracking.updateMany(
       { 
         employee: employee._id,
         isActive: true
       },
-      { isActive: false }
+      { 
+        $set: { isActive: false }
+      }
     );
+    
+    console.log(`✅ Stopped ${result.modifiedCount} old sessions`);
+  }
+  
+  // Also check if this specific sessionId already exists
+  const existingSessionId = await LocationTracking.findOne({
+    sessionId: sessionId
+  });
+  
+  if (existingSessionId) {
+    console.log('⚠️ This sessionId already exists! This is a duplicate request.');
+    // Return the existing session instead of creating duplicate
+    return res.status(200).json({
+      success: true,
+      message: 'Tracking session already active',
+      data: existingSessionId
+    });
   }
   
   // Create initial location record with new session
@@ -163,10 +184,71 @@ export const stopTracking = asyncHandler(async (req, res) => {
     { isActive: false }
   );
   
+  console.log(`✅ Stopped ${result.modifiedCount} location records for session: ${sessionId}`);
+  
   res.json({
     success: true,
     message: 'Tracking stopped successfully',
     data: { updatedCount: result.modifiedCount }
+  });
+});
+
+// @desc    Cleanup duplicate sessions for an employee
+// @route   POST /api/location-tracking/cleanup
+// @access  Private
+export const cleanupDuplicateSessions = asyncHandler(async (req, res) => {
+  // Find employee record
+  const employee = await Employee.findOne({ userId: req.user._id });
+  
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+  
+  // Find all active sessions for this employee
+  const activeSessions = await LocationTracking.find({
+    employee: employee._id,
+    isActive: true
+  }).distinct('sessionId');
+  
+  console.log(`🧹 Cleanup: Found ${activeSessions.length} active sessions for employee ${employee.name}`);
+  
+  if (activeSessions.length > 1) {
+    // Keep only the latest session, mark others as inactive
+    const latestSession = await LocationTracking.findOne({
+      employee: employee._id,
+      isActive: true
+    }).sort({ createdAt: -1 });
+    
+    const result = await LocationTracking.updateMany(
+      { 
+        employee: employee._id,
+        isActive: true,
+        sessionId: { $ne: latestSession.sessionId }
+      },
+      { 
+        $set: { isActive: false }
+      }
+    );
+    
+    console.log(`✅ Cleaned up ${result.modifiedCount} duplicate sessions`);
+    
+    return res.json({
+      success: true,
+      message: `Cleaned up ${result.modifiedCount} duplicate sessions`,
+      data: {
+        cleaned: result.modifiedCount,
+        activeSession: latestSession.sessionId
+      }
+    });
+  }
+  
+  res.json({
+    success: true,
+    message: 'No duplicate sessions found',
+    data: {
+      cleaned: 0,
+      activeSession: activeSessions[0] || null
+    }
   });
 });
 
@@ -180,7 +262,8 @@ export const getActiveLocations = asyncHandler(async (req, res) => {
   const totalActive = await LocationTracking.countDocuments({ isActive: true });
   console.log('📊 Total active location records:', totalActive);
   
-  // Get the latest location for each active session
+  // Get the latest location for each EMPLOYEE (not session) to avoid duplicates
+  // This ensures we only show ONE marker per employee on the map
   const activeLocations = await LocationTracking.aggregate([
     {
       $match: { isActive: true }
@@ -190,7 +273,7 @@ export const getActiveLocations = asyncHandler(async (req, res) => {
     },
     {
       $group: {
-        _id: '$sessionId',
+        _id: '$employee', // GROUP BY EMPLOYEE, not sessionId
         latestLocation: { $first: '$$ROOT' }
       }
     },
@@ -442,6 +525,71 @@ export const getTrackingStats = asyncHandler(async (req, res) => {
         activeSessionsCount: 0
       },
       currentlyActive: currentlyActive.length
+    }
+  });
+});
+
+// @desc    Admin cleanup all duplicate sessions globally
+// @route   POST /api/location-tracking/admin-cleanup
+// @access  Private (Admin)
+export const adminCleanupDuplicates = asyncHandler(async (req, res) => {
+  console.log('🧹 Admin global cleanup starting...');
+  
+  // Get all employees with active sessions
+  const employeesWithActive = await LocationTracking.aggregate([
+    {
+      $match: { isActive: true }
+    },
+    {
+      $group: {
+        _id: '$employee',
+        sessionCount: { $sum: 1 },
+        sessions: { $push: { sessionId: '$sessionId', createdAt: '$createdAt' } }
+      }
+    },
+    {
+      $match: { sessionCount: { $gt: 1 } } // Only employees with multiple active sessions
+    }
+  ]);
+  
+  console.log(`Found ${employeesWithActive.length} employees with duplicate active sessions`);
+  
+  let totalCleaned = 0;
+  
+  for (const emp of employeesWithActive) {
+    // Sort sessions by createdAt descending to find latest
+    const sortedSessions = emp.sessions.sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    
+    const latestSessionId = sortedSessions[0].sessionId;
+    const oldSessionIds = sortedSessions.slice(1).map(s => s.sessionId);
+    
+    console.log(`Employee ${emp._id}: Keeping ${latestSessionId}, removing ${oldSessionIds.length} old sessions`);
+    
+    // Mark old sessions as inactive
+    const result = await LocationTracking.updateMany(
+      {
+        employee: emp._id,
+        sessionId: { $in: oldSessionIds },
+        isActive: true
+      },
+      {
+        $set: { isActive: false }
+      }
+    );
+    
+    totalCleaned += result.modifiedCount;
+  }
+  
+  console.log(`✅ Global cleanup complete: ${totalCleaned} duplicate sessions cleaned`);
+  
+  res.json({
+    success: true,
+    message: `Cleaned up ${totalCleaned} duplicate sessions from ${employeesWithActive.length} employees`,
+    data: {
+      employeesAffected: employeesWithActive.length,
+      sessionsCleaned: totalCleaned
     }
   });
 });
