@@ -148,7 +148,16 @@ app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/company-documents', companyDocumentRoutes);
 
 // Keep-alive endpoint (super lightweight, no DB checks)
+// Support both /ping and /api/ping for flexibility
 app.get('/ping', (req, res) => {
+  res.status(200).json({ 
+    status: 'alive', 
+    timestamp: new Date().toISOString(),
+    message: '🏓 Pong!'
+  });
+});
+
+app.get('/api/ping', (req, res) => {
   res.status(200).json({ 
     status: 'alive', 
     timestamp: new Date().toISOString(),
