@@ -44,6 +44,16 @@ const movementPointIcon = new L.Icon({
   shadowSize: [25, 25]
 });
 
+// Custom tiny icon for all location points (smaller blue markers)
+const tinyPointIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [10, 16],
+  iconAnchor: [5, 16],
+  popupAnchor: [1, -12],
+  shadowSize: [16, 16]
+});
+
 // Component to auto-fit map bounds
 function MapBounds({ locations }) {
   const map = useMap();
@@ -376,7 +386,7 @@ const LiveTracking = () => {
                 📊 <strong>{historicalRoute.length} location points</strong> recorded on {selectedDate}
               </p>
               <p className="text-xs text-blue-600 mt-1">
-                Blue route line on map below with markers for stops and waypoints
+                Blue route line on map with all location points displayed • Green = Start • Red = Stops • Blue = Movement
               </p>
             </div>
             
@@ -387,7 +397,7 @@ const LiveTracking = () => {
                   ⏸️ <strong>{historicalRoute.filter(loc => loc.isStopPoint).length} stop points</strong> detected
                 </p>
                 <p className="text-xs text-red-600 mt-1">
-                  Red markers show locations where employee stayed for more than 30 seconds
+                  Larger red markers show stops • Tiny blue dots show all movement points
                 </p>
               </div>
             )}
@@ -512,18 +522,18 @@ const LiveTracking = () => {
                 </Marker>
               ))}
               
-              {/* Movement waypoints (small blue markers every few points) */}
+              {/* All location points (tiny blue markers for all points) */}
               {historicalRoute
-                .filter((loc, idx) => !loc.isStopPoint && idx % 5 === 0 && idx !== 0 && idx !== historicalRoute.length - 1)
+                .filter((loc, idx) => !loc.isStopPoint && idx !== 0 && idx !== historicalRoute.length - 1)
                 .map((loc, idx) => (
                   <Marker
-                    key={`waypoint-${idx}`}
+                    key={`point-${idx}`}
                     position={[loc.latitude, loc.longitude]}
-                    icon={movementPointIcon}
+                    icon={tinyPointIcon}
                   >
                     <Popup>
                       <div className="p-2">
-                        <h3 className="font-semibold text-blue-600">📍 Waypoint</h3>
+                        <h3 className="font-semibold text-blue-600">📍 Location Point</h3>
                         <p className="text-xs text-gray-600 mt-1">
                           {new Date(loc.timestamp).toLocaleTimeString()}
                         </p>
@@ -531,6 +541,14 @@ const LiveTracking = () => {
                           <p className="text-xs text-gray-700 mt-1">
                             Speed: {(loc.speed * 3.6).toFixed(1)} km/h
                           </p>
+                        )}
+                        {loc.accuracy && (
+                          <p className="text-xs text-gray-700 mt-1">
+                            Accuracy: {Math.round(loc.accuracy)}m
+                          </p>
+                        )}
+                        {loc.address && (
+                          <p className="text-xs text-gray-500 mt-1">{loc.address}</p>
                         )}
                       </div>
                     </Popup>
