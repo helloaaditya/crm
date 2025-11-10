@@ -65,7 +65,7 @@ const Sidebar = () => {
 
     
     // Company Documents - accessible to all modules
-    { name: 'Documents', icon: FiFolder, path: '/company-documents', module: 'all' },
+    { name: 'Documents', icon: FiFolder, path: '/company-documents', module: 'all', adminOnly:true },
     // { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
     
     // Common
