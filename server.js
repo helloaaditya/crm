@@ -293,7 +293,26 @@ const connectDB = async () => {
     console.error('   1. MongoDB server is running');
     console.error('   2. MONGODB_URI is correctly set in .env file');
     console.error('   3. Network connectivity to MongoDB server');
-    process.exit(1);
+    
+    // In production, retry connection instead of crashing immediately
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔄 Retrying MongoDB connection in 10 seconds...');
+      setTimeout(async () => {
+        try {
+          await mongoose.connect(process.env.MONGODB_URI, {
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000
+          });
+          console.log('✅ MongoDB Reconnected Successfully');
+        } catch (retryError) {
+          console.error('❌ MongoDB Retry Failed:', retryError.message);
+          process.exit(1);
+        }
+      }, 10000);
+    } else {
+      process.exit(1);
+    }
   }
 };
 
@@ -301,14 +320,30 @@ const connectDB = async () => {
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
-  await connectDB();
-  
-  // Initialize cron jobs after DB connection
-  initializeCronJobs();
-  
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  });
+  try {
+    await connectDB();
+    
+    // Initialize cron jobs after DB connection
+    initializeCronJobs();
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+      console.log(`🏓 Keep-alive endpoint: /ping and /api/ping`);
+      console.log(`🔍 Health check: /health`);
+    });
+  } catch (error) {
+    console.error('❌ Server startup error:', error.message);
+    // In production, try to start server even if some services fail
+    if (process.env.NODE_ENV === 'production') {
+      console.log('⚠️  Starting server in degraded mode...');
+      app.listen(PORT, () => {
+        console.log(`⚠️  Server running in DEGRADED mode on port ${PORT}`);
+        console.log(`🏓 Keep-alive endpoint: /ping and /api/ping`);
+      });
+    } else {
+      process.exit(1);
+    }
+  }
 };
 
 startServer();
@@ -316,8 +351,10 @@ startServer();
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   console.error('❌ Unhandled Rejection:', err.message);
-  stopCronJobs();
-  process.exit(1);
+  console.error('Stack:', err.stack);
+  // Don't exit immediately - log and continue (production resilience)
+  // stopCronJobs();
+  // process.exit(1);
 });
 
 // Graceful shutdown
