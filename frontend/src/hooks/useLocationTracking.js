@@ -1,22 +1,41 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import API from '../api';
+import { locationTrackingAPI } from '../api';
 import { toast } from 'react-toastify';
 
-const useLocationTracking = () => {
+/**
+ * Custom hook for automatic location tracking
+ * Tracks employee location in real-time and works in background
+ */
+const useLocationTracking = (shouldTrack = false) => {
   const [isTracking, setIsTracking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [error, setError] = useState(null);
   const [sessionId, setSessionId] = useState(null);
-  
-  const watchIdRef = useRef(null);
-  const intervalIdRef = useRef(null);
-  const lastLocationRef = useRef(null);
-  
+  const [error, setError] = useState(null);
+  const [locationHistory, setLocationHistory] = useState([]);
+  const watchId = useRef(null);
+  const updateInterval = useRef(null);
+  const lastLocation = useRef(null);
+
   // Generate unique session ID
   const generateSessionId = () => {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   };
-  
+
+  // Calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in meters
+  };
+
   // Get battery level (if supported)
   const getBatteryLevel = async () => {
     try {
@@ -29,210 +48,266 @@ const useLocationTracking = () => {
     }
     return null;
   };
-  
-  // Send location to backend
-  const sendLocationUpdate = useCallback(async (position, isFirst = false, currentSessionId = null) => {
-    const { latitude, longitude, accuracy, speed, heading } = position.coords;
-    
-    // Use provided sessionId or generate new one
-    const activeSessionId = currentSessionId || sessionId || generateSessionId();
-    
-    console.log('📡 Sending location update:', { 
-      isFirst, 
-      latitude, 
-      longitude, 
-      accuracy,
-      sessionId: activeSessionId
-    });
-    
-    const batteryLevel = await getBatteryLevel();
-    
-    const locationData = {
-      sessionId: activeSessionId,
-      latitude,
-      longitude,
-      accuracy,
-      speed: speed || null,
-      heading: heading || null,
-      batteryLevel,
-      address: '' // Can be filled by reverse geocoding if needed
-    };
-    
-    lastLocationRef.current = locationData;
-    setCurrentLocation(locationData);
-    
+
+  // Reverse geocode coordinates to address
+  const reverseGeocode = async (latitude, longitude) => {
     try {
-      if (isFirst) {
-        console.log('🚀 Starting new tracking session...');
-        console.log('📤 Sending to /api/location-tracking/start:', locationData);
-        const response = await API.locationTracking.startTracking(locationData);
-        console.log('✅ Tracking started successfully:', response.data);
-        toast.success('Location tracking started', { duration: 2000 });
-      } else {
-        console.log('📍 Updating existing session...');
-        console.log('📤 Sending to /api/location-tracking/update:', locationData);
-        await API.locationTracking.updateLocation(locationData);
-        console.log('✅ Location updated successfully:', { latitude, longitude, accuracy });
-      }
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      return data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     } catch (error) {
-      console.error('❌ Failed to send location:', error);
-      console.error('Error response:', error.response);
-      console.error('Error status:', error.response?.status);
-      console.error('Error data:', error.response?.data);
-      console.error('Error message:', error.message);
-      setError(error.message);
-      
-      // Show detailed error to user
-      const errorMsg = error.response?.data?.message || error.message || 'Unknown error';
-      toast.error(`Tracking error: ${errorMsg}`, { duration: 5000 });
+      console.error('Reverse geocoding failed:', error);
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
-  }, [sessionId]);
-  
-  // Start tracking
-  const startTracking = useCallback(() => {
-    console.log('🎯 startTracking() called');
-    
-    if (!('geolocation' in navigator)) {
-      const errorMsg = 'Geolocation is not supported by your browser';
-      setError(errorMsg);
-      toast.error(errorMsg);
-      console.error('❌ Geolocation not supported');
-      return;
-    }
-    
-    // Generate new session ID
-    const newSessionId = generateSessionId();
-    console.log('🆔 Generated session ID:', newSessionId);
-    setSessionId(newSessionId);
-    setIsTracking(true);
-    setError(null);
-    
-    console.log('📍 Requesting initial GPS position...');
-    
-    // Get initial location
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log('✅ Initial GPS position acquired:', {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        });
-        sendLocationUpdate(position, true, newSessionId);
-      },
-      (error) => {
-        console.error('❌ Geolocation error:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        setError(error.message);
-        toast.error(`Location error: ${error.message}`);
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    );
-    
-    // Start watching position for continuous updates
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        // Update location state but don't send to server on every watch update
-        const { latitude, longitude, accuracy } = position.coords;
-        setCurrentLocation(prev => ({
-          ...prev,
+  };
+
+  // Send location to server
+  const sendLocationToServer = useCallback(
+    async (position, isFirst = false) => {
+      try {
+        const { latitude, longitude, accuracy, speed, heading } = position.coords;
+
+        // Skip if location hasn't changed significantly (less than 10 meters)
+        if (lastLocation.current && !isFirst) {
+          const distance = calculateDistance(
+            lastLocation.current.latitude,
+            lastLocation.current.longitude,
+            latitude,
+            longitude
+          );
+
+          if (distance < 10) {
+            console.log('📍 Location change too small, skipping update');
+            return;
+          }
+        }
+
+        const batteryLevel = await getBatteryLevel();
+        const address = await reverseGeocode(latitude, longitude);
+
+        const locationData = {
+          sessionId: sessionId || generateSessionId(),
           latitude,
           longitude,
-          accuracy
-        }));
-      },
-      (error) => {
-        console.error('Watch position error:', error);
+          accuracy,
+          speed: speed || 0,
+          heading: heading || 0,
+          batteryLevel,
+          address,
+        };
+
+        console.log('📤 Sending location to server:', locationData);
+
+        // Send to server
+        if (isFirst) {
+          const response = await locationTrackingAPI.startTracking(locationData);
+          console.log('✅ Tracking started:', response.data);
+        } else {
+          const response = await locationTrackingAPI.updateLocation(locationData);
+          console.log('✅ Location updated:', response.data);
+        }
+
+        // Update local state
+        lastLocation.current = { latitude, longitude, timestamp: Date.now() };
+        setCurrentLocation({
+          latitude,
+          longitude,
+          accuracy,
+          speed,
+          heading,
+          batteryLevel,
+          address,
+          timestamp: new Date(),
+        });
+
+        // Add to history
+        setLocationHistory((prev) => [
+          ...prev,
+          {
+            latitude,
+            longitude,
+            timestamp: new Date(),
+            address,
+          },
+        ]);
+      } catch (error) {
+        console.error('❌ Failed to send location:', error);
         setError(error.message);
-      },
-      {
+      }
+    },
+    [sessionId]
+  );
+
+  // Success callback for geolocation
+  const handleLocationSuccess = useCallback(
+    (position) => {
+      console.log('📍 Location obtained:', position.coords);
+      sendLocationToServer(position, !lastLocation.current);
+    },
+    [sendLocationToServer]
+  );
+
+  // Error callback for geolocation
+  const handleLocationError = (error) => {
+    console.error('❌ Location error:', error);
+    let errorMessage = 'Failed to get location';
+
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        errorMessage = 'Location permission denied';
+        break;
+      case error.POSITION_UNAVAILABLE:
+        errorMessage = 'Location information unavailable';
+        break;
+      case error.TIMEOUT:
+        errorMessage = 'Location request timed out';
+        break;
+      default:
+        errorMessage = 'Unknown location error';
+    }
+
+    setError(errorMessage);
+    toast.error(errorMessage);
+  };
+
+  // Start tracking
+  const startTracking = useCallback(async () => {
+    if (!('geolocation' in navigator)) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    try {
+      // Request permission and get initial location
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+
+      if (permission.state === 'denied') {
+        toast.error('Location permission denied. Please enable it in browser settings.');
+        return;
+      }
+
+      // Generate new session ID
+      const newSessionId = generateSessionId();
+      setSessionId(newSessionId);
+      setIsTracking(true);
+      setError(null);
+      setLocationHistory([]);
+      lastLocation.current = null;
+
+      console.log('🚀 Starting location tracking with session:', newSessionId);
+
+      // Start watching position (background tracking)
+      const options = {
         enableHighAccuracy: true,
         timeout: 30000,
-        maximumAge: 0
-      }
-    );
-    
-    // Set interval to send location updates every 30 seconds (more frequent)
-    intervalIdRef.current = setInterval(() => {
-      console.log('⏰ Interval timer fired - sending location update');
-      if (lastLocationRef.current) {
+        maximumAge: 0,
+      };
+
+      watchId.current = navigator.geolocation.watchPosition(
+        handleLocationSuccess,
+        handleLocationError,
+        options
+      );
+
+      // Also update every 30 seconds even if position didn't change much
+      // This ensures we have frequent updates for path tracking
+      updateInterval.current = setInterval(() => {
         navigator.geolocation.getCurrentPosition(
-          (position) => {
-            sendLocationUpdate(position, false, newSessionId);
-          },
-          (error) => {
-            console.error('❌ Interval location update error:', error);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
+          (position) => sendLocationToServer(position, false),
+          handleLocationError,
+          options
         );
-      } else {
-        console.warn('⚠️ No lastLocationRef available');
-      }
-    }, 30000); // 30 seconds for more accurate tracking
-    
-    console.log('🚀 Location tracking started with session:', newSessionId);
-  }, [sendLocationUpdate]);
-  
+      }, 30000); // 30 seconds
+
+      toast.success('Location tracking started');
+    } catch (error) {
+      console.error('❌ Failed to start tracking:', error);
+      toast.error('Failed to start location tracking');
+      setError(error.message);
+    }
+  }, [handleLocationSuccess, sendLocationToServer]);
+
   // Stop tracking
   const stopTracking = useCallback(async () => {
-    // Clear watch and interval
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-    
-    if (intervalIdRef.current !== null) {
-      clearInterval(intervalIdRef.current);
-      intervalIdRef.current = null;
-    }
-    
-    // Send stop signal to backend
-    if (sessionId) {
-      try {
-        await API.locationTracking.stopTracking({ sessionId });
-        console.log('🛑 Tracking stopped for session:', sessionId);
-        toast.success('Location tracking stopped');
-      } catch (error) {
-        console.error('Failed to stop tracking:', error);
+    try {
+      // Clear watch and interval
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
       }
+
+      if (updateInterval.current) {
+        clearInterval(updateInterval.current);
+        updateInterval.current = null;
+      }
+
+      // Notify server
+      if (sessionId) {
+        await locationTrackingAPI.stopTracking({ sessionId });
+        console.log('🛑 Tracking stopped');
+      }
+
+      setIsTracking(false);
+      setSessionId(null);
+      lastLocation.current = null;
+
+      toast.info('Location tracking stopped');
+    } catch (error) {
+      console.error('❌ Failed to stop tracking:', error);
+      toast.error('Failed to stop tracking properly');
     }
-    
-    setIsTracking(false);
-    setSessionId(null);
-    setCurrentLocation(null);
-    lastLocationRef.current = null;
   }, [sessionId]);
-  
+
+  // Auto-start tracking when shouldTrack becomes true
+  useEffect(() => {
+    if (shouldTrack && !isTracking) {
+      startTracking();
+    } else if (!shouldTrack && isTracking) {
+      stopTracking();
+    }
+  }, [shouldTrack, isTracking, startTracking, stopTracking]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
       }
-      if (intervalIdRef.current !== null) {
-        clearInterval(intervalIdRef.current);
+      if (updateInterval.current) {
+        clearInterval(updateInterval.current);
       }
     };
   }, []);
-  
+
+  // Check tracking status on mount
+  useEffect(() => {
+    const checkTrackingStatus = async () => {
+      try {
+        const response = await locationTrackingAPI.getMyStatus();
+        if (response.data.isTracking) {
+          // Tracking is active in backend but not in frontend - resume
+          console.log('📍 Resuming active tracking session');
+          // Could optionally resume the session here
+        }
+      } catch (error) {
+        console.log('Could not check tracking status:', error);
+      }
+    };
+
+    checkTrackingStatus();
+  }, []);
+
   return {
     isTracking,
     currentLocation,
+    locationHistory,
     error,
     sessionId,
     startTracking,
-    stopTracking
+    stopTracking,
   };
 };
 
 export default useLocationTracking;
-
