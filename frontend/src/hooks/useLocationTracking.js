@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 /**
  * Custom hook for automatic location tracking
  * Tracks employee location in real-time and works in background
+ * Uses multiple strategies to ensure continuous tracking even when app is backgrounded
  */
 const useLocationTracking = (shouldTrack = false) => {
   const [isTracking, setIsTracking] = useState(false);
@@ -14,7 +15,10 @@ const useLocationTracking = (shouldTrack = false) => {
   const [locationHistory, setLocationHistory] = useState([]);
   const watchId = useRef(null);
   const updateInterval = useRef(null);
+  const heartbeatInterval = useRef(null);
+  const wakeLock = useRef(null);
   const lastLocation = useRef(null);
+  const lastUpdateTime = useRef(Date.now());
 
   // Generate unique session ID
   const generateSessionId = () => {
@@ -111,6 +115,8 @@ const useLocationTracking = (shouldTrack = false) => {
 
         // Update local state
         lastLocation.current = { latitude, longitude, timestamp: Date.now() };
+        lastUpdateTime.current = Date.now(); // Track last successful update time
+        
         setCurrentLocation({
           latitude,
           longitude,
@@ -172,6 +178,36 @@ const useLocationTracking = (shouldTrack = false) => {
     toast.error(errorMessage);
   };
 
+  // Request wake lock to prevent device sleep
+  const requestWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock.current = await navigator.wakeLock.request('screen');
+        console.log('🔒 Wake lock acquired - device will stay awake');
+        
+        // Re-acquire wake lock if it's released
+        wakeLock.current.addEventListener('release', () => {
+          console.log('⚠️ Wake lock released, will re-acquire on next interaction');
+        });
+      }
+    } catch (error) {
+      console.log('Wake lock not available or failed:', error.message);
+    }
+  };
+
+  // Release wake lock
+  const releaseWakeLock = async () => {
+    try {
+      if (wakeLock.current) {
+        await wakeLock.current.release();
+        wakeLock.current = null;
+        console.log('🔓 Wake lock released');
+      }
+    } catch (error) {
+      console.log('Failed to release wake lock:', error);
+    }
+  };
+
   // Start tracking
   const startTracking = useCallback(async () => {
     if (!('geolocation' in navigator)) {
@@ -195,6 +231,7 @@ const useLocationTracking = (shouldTrack = false) => {
       setError(null);
       setLocationHistory([]);
       lastLocation.current = null;
+      lastUpdateTime.current = Date.now();
 
       // Store tracking state in localStorage to persist across page reloads
       localStorage.setItem('location_tracking_active', 'true');
@@ -202,7 +239,10 @@ const useLocationTracking = (shouldTrack = false) => {
 
       console.log('🚀 Starting location tracking with session:', newSessionId);
 
-      // Start watching position (background tracking)
+      // Request wake lock to keep device awake
+      await requestWakeLock();
+
+      // Start watching position (continuous background tracking)
       const options = {
         enableHighAccuracy: true,
         timeout: 30000,
@@ -215,9 +255,10 @@ const useLocationTracking = (shouldTrack = false) => {
         options
       );
 
-      // Also update every 30 seconds even if position didn't change much
-      // This ensures we have frequent updates for path tracking
+      // Primary update interval - every 30 seconds
+      // This ensures consistent updates even if watchPosition is throttled
       updateInterval.current = setInterval(() => {
+        console.log('⏰ Interval update trigger');
         navigator.geolocation.getCurrentPosition(
           (position) => sendLocationToServer(position, false),
           handleLocationError,
@@ -225,7 +266,29 @@ const useLocationTracking = (shouldTrack = false) => {
         );
       }, 30000); // 30 seconds
 
-      toast.success('Location tracking started');
+      // Heartbeat interval - keeps connection alive and prevents browser throttling
+      // This runs more frequently to signal that tracking is still active
+      heartbeatInterval.current = setInterval(() => {
+        const timeSinceLastUpdate = Date.now() - lastUpdateTime.current;
+        console.log(`💓 Heartbeat - Last update: ${Math.round(timeSinceLastUpdate / 1000)}s ago`);
+        
+        // If no update in last 2 minutes, force an update
+        if (timeSinceLastUpdate > 120000) {
+          console.log('⚠️ No update in 2 minutes, forcing location update...');
+          navigator.geolocation.getCurrentPosition(
+            (position) => sendLocationToServer(position, false),
+            handleLocationError,
+            options
+          );
+        }
+      }, 60000); // Check every 1 minute
+
+      toast.success('Location tracking started - continuous tracking active');
+      console.log('✅ All tracking mechanisms started:');
+      console.log('  - watchPosition (continuous)');
+      console.log('  - 30s update interval');
+      console.log('  - 60s heartbeat monitor');
+      console.log('  - Wake lock requested');
     } catch (error) {
       console.error('❌ Failed to start tracking:', error);
       toast.error('Failed to start location tracking');
@@ -236,21 +299,34 @@ const useLocationTracking = (shouldTrack = false) => {
   // Stop tracking
   const stopTracking = useCallback(async () => {
     try {
-      // Clear watch and interval
+      console.log('🛑 Stopping all tracking mechanisms...');
+      
+      // Clear watch and intervals
       if (watchId.current !== null) {
         navigator.geolocation.clearWatch(watchId.current);
         watchId.current = null;
+        console.log('  ✓ watchPosition stopped');
       }
 
       if (updateInterval.current) {
         clearInterval(updateInterval.current);
         updateInterval.current = null;
+        console.log('  ✓ Update interval cleared');
       }
+
+      if (heartbeatInterval.current) {
+        clearInterval(heartbeatInterval.current);
+        heartbeatInterval.current = null;
+        console.log('  ✓ Heartbeat monitor stopped');
+      }
+
+      // Release wake lock
+      await releaseWakeLock();
 
       // Notify server
       if (sessionId) {
         await locationTrackingAPI.stopTracking({ sessionId });
-        console.log('🛑 Tracking stopped');
+        console.log('  ✓ Server notified');
       }
 
       setIsTracking(false);
@@ -262,6 +338,7 @@ const useLocationTracking = (shouldTrack = false) => {
       localStorage.removeItem('location_tracking_session');
 
       toast.info('Location tracking stopped');
+      console.log('✅ All tracking stopped successfully');
     } catch (error) {
       console.error('❌ Failed to stop tracking:', error);
       toast.error('Failed to stop tracking properly');
@@ -277,6 +354,27 @@ const useLocationTracking = (shouldTrack = false) => {
     // Don't auto-stop if shouldTrack is just the default false - let manual control work
   }, [shouldTrack, isTracking, startTracking]);
 
+  // Handle page visibility changes (background/foreground)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.hidden) {
+        console.log('📱 Page hidden - tracking continues in background');
+      } else {
+        console.log('📱 Page visible - re-acquiring wake lock if needed');
+        // Re-acquire wake lock when page becomes visible again
+        if (isTracking && !wakeLock.current) {
+          await requestWakeLock();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isTracking]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -285,6 +383,12 @@ const useLocationTracking = (shouldTrack = false) => {
       }
       if (updateInterval.current) {
         clearInterval(updateInterval.current);
+      }
+      if (heartbeatInterval.current) {
+        clearInterval(heartbeatInterval.current);
+      }
+      if (wakeLock.current) {
+        wakeLock.current.release().catch(() => {});
       }
     };
   }, []);
