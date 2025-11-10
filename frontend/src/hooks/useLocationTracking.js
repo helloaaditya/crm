@@ -196,6 +196,10 @@ const useLocationTracking = (shouldTrack = false) => {
       setLocationHistory([]);
       lastLocation.current = null;
 
+      // Store tracking state in localStorage to persist across page reloads
+      localStorage.setItem('location_tracking_active', 'true');
+      localStorage.setItem('location_tracking_session', newSessionId);
+
       console.log('🚀 Starting location tracking with session:', newSessionId);
 
       // Start watching position (background tracking)
@@ -253,6 +257,10 @@ const useLocationTracking = (shouldTrack = false) => {
       setSessionId(null);
       lastLocation.current = null;
 
+      // Clear localStorage
+      localStorage.removeItem('location_tracking_active');
+      localStorage.removeItem('location_tracking_session');
+
       toast.info('Location tracking stopped');
     } catch (error) {
       console.error('❌ Failed to stop tracking:', error);
@@ -260,14 +268,14 @@ const useLocationTracking = (shouldTrack = false) => {
     }
   }, [sessionId]);
 
-  // Auto-start tracking when shouldTrack becomes true
+  // Auto-start tracking when shouldTrack becomes true (only if shouldTrack is explicitly provided)
   useEffect(() => {
-    if (shouldTrack && !isTracking) {
+    // Only auto-manage tracking if shouldTrack is explicitly set (not using default false)
+    if (shouldTrack === true && !isTracking) {
       startTracking();
-    } else if (!shouldTrack && isTracking) {
-      stopTracking();
     }
-  }, [shouldTrack, isTracking, startTracking, stopTracking]);
+    // Don't auto-stop if shouldTrack is just the default false - let manual control work
+  }, [shouldTrack, isTracking, startTracking]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -281,18 +289,35 @@ const useLocationTracking = (shouldTrack = false) => {
     };
   }, []);
 
-  // Check tracking status on mount
+  // Check tracking status on mount and restore from localStorage if needed
   useEffect(() => {
     const checkTrackingStatus = async () => {
       try {
-        const response = await locationTrackingAPI.getMyStatus();
-        if (response.data.isTracking) {
-          // Tracking is active in backend but not in frontend - resume
-          console.log('📍 Resuming active tracking session');
-          // Could optionally resume the session here
+        // Check localStorage for active tracking
+        const wasTracking = localStorage.getItem('location_tracking_active') === 'true';
+        const savedSessionId = localStorage.getItem('location_tracking_session');
+
+        if (wasTracking && savedSessionId) {
+          console.log('📍 Found active tracking session in localStorage, checking backend...');
+          
+          // Verify with backend
+          const response = await locationTrackingAPI.getMyStatus();
+          if (response.data.isTracking) {
+            console.log('✅ Backend confirms active tracking, resuming...');
+            // Resume the tracking with saved session
+            setSessionId(savedSessionId);
+            setIsTracking(true);
+            // Note: Geolocation watch will restart on next component interaction
+            // or you could restart it here if needed
+          } else {
+            console.log('⚠️ Backend shows no active tracking, clearing localStorage');
+            localStorage.removeItem('location_tracking_active');
+            localStorage.removeItem('location_tracking_session');
+          }
         }
       } catch (error) {
         console.log('Could not check tracking status:', error);
+        // If there's an error, don't clear localStorage - might be network issue
       }
     };
 
