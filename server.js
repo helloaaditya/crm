@@ -147,6 +147,15 @@ app.use('/api/vendor-payments', vendorPaymentRoutes);
 app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/company-documents', companyDocumentRoutes);
 
+// Keep-alive endpoint (super lightweight, no DB checks)
+app.get('/ping', (req, res) => {
+  res.status(200).json({ 
+    status: 'alive', 
+    timestamp: new Date().toISOString(),
+    message: '🏓 Pong!'
+  });
+});
+
 // Health check endpoints
 app.get('/health', async (req, res) => {
   try {

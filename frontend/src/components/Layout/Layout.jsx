@@ -3,8 +3,12 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import { initializePushNotifications } from '../../utils/pushNotifications'
+import { useKeepAlive } from '../../hooks/useKeepAlive'
 
 const Layout = () => {
+  // Keep server alive (prevent Render.com free tier from sleeping)
+  useKeepAlive();
+
   useEffect(() => {
     // Initialize push notifications on mount
     initializePushNotifications();
