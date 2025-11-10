@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, FiUsers, FiTrash2 } from 'react-icons/fi';
+import { FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, FiUsers } from 'react-icons/fi';
 import API from '../api';
 import { toast } from 'react-toastify';
 
@@ -74,6 +74,7 @@ const LiveTracking = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [stats, setStats] = useState({
     currentlyActive: 0,
     today: {
@@ -88,7 +89,25 @@ const LiveTracking = () => {
   const fetchActiveLocations = async () => {
     try {
       const response = await API.locationTracking.getActiveLocations();
-      setActiveLocations(response.data.data || []);
+      const locations = response.data.data || [];
+      
+      // Backend automatically cleans up stale sessions (> 3 min old)
+      // Frontend also filters for extra safety (> 3 min old)
+      const now = new Date();
+      const threeMinutesAgo = new Date(now.getTime() - 3 * 60 * 1000);
+      
+      const activeFiltered = locations.filter(loc => {
+        const lastUpdate = new Date(loc.createdAt);
+        return lastUpdate > threeMinutesAgo;
+      });
+      
+      setActiveLocations(activeFiltered);
+      setLastUpdateTime(now); // Update the last fetch time
+      
+      // Log if any locations were filtered out due to being stale
+      if (locations.length !== activeFiltered.length) {
+        console.log(`🧹 Filtered out ${locations.length - activeFiltered.length} stale locations (logged out employees)`);
+      }
     } catch (error) {
       console.error('Failed to fetch active locations:', error);
     }
@@ -121,24 +140,20 @@ const LiveTracking = () => {
       const response = await API.locationTracking.getHistory(employeeId, { date });
       const sessions = response.data.data || [];
       
-      // If there are multiple sessions, take the first one (latest session of the day)
-      if (sessions.length > 0) {
-        const session = sessions[0];
-        setHistoricalRoute(session);
-        
-        if (session.locations && session.locations.length > 0) {
-          const distanceInfo = session.totalDistance ? ` | ${session.totalDistance} km` : '';
-          const majorStopsInfo = session.majorStops && session.majorStops.length > 0 
-            ? ` | ${session.majorStops.length} major stops` 
-            : '';
-          toast.success(`Loaded ${session.locations.length} location points${distanceInfo}${majorStopsInfo}`);
-        } else {
-          toast.info(`No tracking data found for ${date}`);
-          setHistoricalRoute({ locations: [] });
+      // If there are multiple sessions, combine their locations
+      let allLocations = [];
+      sessions.forEach(session => {
+        if (session.locations && Array.isArray(session.locations)) {
+          allLocations = [...allLocations, ...session.locations];
         }
-      } else {
+      });
+      
+      setHistoricalRoute(allLocations);
+      
+      if (allLocations.length === 0) {
         toast.info(`No tracking data found for ${date}`);
-        setHistoricalRoute({ locations: [] });
+      } else {
+        toast.success(`Loaded ${allLocations.length} location points`);
       }
     } catch (error) {
       console.error('Failed to fetch historical route:', error);
@@ -175,29 +190,6 @@ const LiveTracking = () => {
     }
   };
 
-  // Cleanup all duplicate sessions globally (admin function)
-  const handleCleanupDuplicates = async () => {
-    if (!window.confirm('This will cleanup all duplicate sessions for all employees. Continue?')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await API.locationTracking.adminCleanup();
-      toast.success(response.data.message || 'Cleaned up duplicate sessions');
-      console.log('✅ Cleanup result:', response.data);
-      
-      // Refresh data
-      fetchActiveLocations();
-      fetchStats();
-    } catch (error) {
-      console.error('Cleanup error:', error);
-      toast.error('Failed to cleanup sessions');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Initial fetch
   useEffect(() => {
     fetchActiveLocations();
@@ -205,13 +197,13 @@ const LiveTracking = () => {
     fetchStats();
   }, []);
 
-  // Auto-refresh every 10 seconds for more real-time updates
+  // Auto-refresh every 5 seconds for real-time updates
   useEffect(() => {
     if (autoRefresh) {
       intervalRef.current = setInterval(() => {
         fetchActiveLocations();
         fetchStats();
-      }, 10000); // 10 seconds for better real-time tracking
+      }, 5000); // 5 seconds for real-time tracking
     }
 
     return () => {
@@ -221,10 +213,22 @@ const LiveTracking = () => {
     };
   }, [autoRefresh]);
 
+  // Update the "Updated Xs ago" text every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // Force a re-render to update the time display
+      if (lastUpdateTime) {
+        setLastUpdateTime(new Date(lastUpdateTime));
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [lastUpdateTime]);
+
   // Get map center - default to first active location or India center
   const getMapCenter = () => {
-    if (historicalRoute && historicalRoute.locations && historicalRoute.locations.length > 0) {
-      return [historicalRoute.locations[0].latitude, historicalRoute.locations[0].longitude];
+    if (historicalRoute.length > 0) {
+      return [historicalRoute[0].latitude, historicalRoute[0].longitude];
     }
     if (activeLocations.length > 0) {
       return [
@@ -240,17 +244,16 @@ const LiveTracking = () => {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Live Employee Tracking</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Real-time location monitoring & route history</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            Real-time location monitoring & route history
+            {lastUpdateTime && (
+              <span className="ml-2 text-xs text-green-600">
+                • Updated {Math.floor((new Date() - lastUpdateTime) / 1000)}s ago
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleCleanupDuplicates}
-            className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-            title="Cleanup duplicate sessions"
-          >
-            <FiTrash2 className="mr-2" />
-            Cleanup
-          </button>
           <button
             onClick={handleRefresh}
             className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
@@ -264,8 +267,24 @@ const LiveTracking = () => {
               autoRefresh ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'
             }`}
           >
-            {autoRefresh ? '🔄 Auto' : '⏸️ Manual'}
+            {autoRefresh ? '🔄 Auto (5s)' : '⏸️ Manual'}
           </button>
+        </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-blue-800">
+              <strong>Real-time Tracking Active:</strong> Updates every 5 seconds. Employees who log out are automatically removed within 3 minutes.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -350,86 +369,47 @@ const LiveTracking = () => {
             />
           </div>
         </div>
-        {historicalRoute && historicalRoute.locations && historicalRoute.locations.length > 0 && (
-          <div className="mt-4 space-y-3">
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-lg">
-              <p className="text-sm text-blue-900 font-semibold">
-                📊 <strong>{historicalRoute.locations.length} location points</strong> recorded on {selectedDate}
+        {historicalRoute.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+              <p className="text-sm text-blue-800">
+                📊 <strong>{historicalRoute.length} location points</strong> recorded on {selectedDate}
               </p>
-              <p className="text-xs text-blue-700 mt-1">
+              <p className="text-xs text-blue-600 mt-1">
                 Blue route line on map below with markers for stops and waypoints
               </p>
             </div>
             
-            {/* Detailed Analytics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-xs text-green-600 font-medium">📏 Total Distance</p>
-                <p className="text-2xl font-bold text-green-700 mt-1">
-                  {historicalRoute.totalDistance || '0'} km
+            {/* Stop statistics */}
+            {historicalRoute.filter(loc => loc.isStopPoint).length > 0 && (
+              <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                <p className="text-sm text-red-800">
+                  ⏸️ <strong>{historicalRoute.filter(loc => loc.isStopPoint).length} stop points</strong> detected
                 </p>
-              </div>
-              
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-600 font-medium">⏱️ Duration</p>
-                <p className="text-2xl font-bold text-blue-700 mt-1">
-                  {historicalRoute.duration || '0'} min
+                <p className="text-xs text-red-600 mt-1">
+                  Red markers show locations where employee stayed for more than 30 seconds
                 </p>
-              </div>
-              
-              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <p className="text-xs text-purple-600 font-medium">🚗 Avg Speed</p>
-                <p className="text-2xl font-bold text-purple-700 mt-1">
-                  {historicalRoute.avgSpeed || '0'} km/h
-                </p>
-              </div>
-              
-              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <p className="text-xs text-orange-600 font-medium">⏸️ Stop Points</p>
-                <p className="text-2xl font-bold text-orange-700 mt-1">
-                  {historicalRoute.stopPoints || 0}
-                </p>
-              </div>
-            </div>
-            
-            {/* Major Stops */}
-            {historicalRoute.majorStops && historicalRoute.majorStops.length > 0 && (
-              <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-                <p className="text-sm text-red-900 font-semibold mb-3">
-                  🛑 Major Stops ({historicalRoute.majorStops.length}):
-                </p>
-                <div className="space-y-2">
-                  {historicalRoute.majorStops.map((stop, index) => (
-                    <div key={index} className="bg-white p-3 rounded shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{stop.address || 'Unknown location'}</p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {new Date(stop.timestamp).toLocaleTimeString()}
-                          </p>
-                        </div>
-                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
-                          {stop.duration} min
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
             
-            {/* Journey Timeline */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-xs text-green-600 font-medium">🚀 Check-In</p>
-                <p className="text-sm font-bold text-gray-800 mt-1">
-                  {new Date(historicalRoute.locations[0].timestamp).toLocaleTimeString()}
+            {/* Journey summary */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="p-2 bg-green-50 rounded border border-green-200">
+                <p className="text-green-600 font-medium">🚀 Start</p>
+                <p className="text-gray-700 mt-1">
+                  {new Date(historicalRoute[0].timestamp).toLocaleTimeString()}
                 </p>
               </div>
-              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                <p className="text-xs text-red-600 font-medium">🏁 Check-Out</p>
-                <p className="text-sm font-bold text-gray-800 mt-1">
-                  {new Date(historicalRoute.locations[historicalRoute.locations.length - 1].timestamp).toLocaleTimeString()}
+              <div className="p-2 bg-red-50 rounded border border-red-200">
+                <p className="text-red-600 font-medium">🏁 End</p>
+                <p className="text-gray-700 mt-1">
+                  {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+              <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                <p className="text-blue-600 font-medium">⏱️ Duration</p>
+                <p className="text-gray-700 mt-1">
+                  {Math.round((new Date(historicalRoute[historicalRoute.length - 1].timestamp) - new Date(historicalRoute[0].timestamp)) / 1000 / 60)} min
                 </p>
               </div>
             </div>
@@ -480,11 +460,11 @@ const LiveTracking = () => {
           ))}
           
           {/* Historical route */}
-          {historicalRoute && historicalRoute.locations && historicalRoute.locations.length > 0 && (
+          {historicalRoute.length > 0 && (
             <>
               {/* Draw smooth polyline for route */}
               <Polyline
-                positions={historicalRoute.locations.map(loc => [loc.latitude, loc.longitude])}
+                positions={historicalRoute.map(loc => [loc.latitude, loc.longitude])}
                 color="#2563eb"
                 weight={4}
                 opacity={0.8}
@@ -493,21 +473,21 @@ const LiveTracking = () => {
               
               {/* Start marker (green) */}
               <Marker
-                position={[historicalRoute.locations[0].latitude, historicalRoute.locations[0].longitude]}
+                position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
                 icon={activeEmployeeIcon}
               >
                 <Popup>
                   <div className="p-2">
                     <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
                     <p className="text-xs text-gray-600 mt-1">
-                      {new Date(historicalRoute.locations[0].timestamp).toLocaleString()}
+                      {new Date(historicalRoute[0].timestamp).toLocaleString()}
                     </p>
                   </div>
                 </Popup>
               </Marker>
               
               {/* Stop points (red markers) */}
-              {historicalRoute.locations.filter(loc => loc.isStopPoint).map((loc, idx) => (
+              {historicalRoute.filter(loc => loc.isStopPoint).map((loc, idx) => (
                 <Marker
                   key={`stop-${idx}`}
                   position={[loc.latitude, loc.longitude]}
@@ -533,8 +513,8 @@ const LiveTracking = () => {
               ))}
               
               {/* Movement waypoints (small blue markers every few points) */}
-              {historicalRoute.locations
-                .filter((loc, idx) => !loc.isStopPoint && idx % 5 === 0 && idx !== 0 && idx !== historicalRoute.locations.length - 1)
+              {historicalRoute
+                .filter((loc, idx) => !loc.isStopPoint && idx % 5 === 0 && idx !== 0 && idx !== historicalRoute.length - 1)
                 .map((loc, idx) => (
                   <Marker
                     key={`waypoint-${idx}`}
@@ -560,15 +540,15 @@ const LiveTracking = () => {
               {/* End marker (red flag) */}
               <Marker
                 position={[
-                  historicalRoute.locations[historicalRoute.locations.length - 1].latitude,
-                  historicalRoute.locations[historicalRoute.locations.length - 1].longitude
+                  historicalRoute[historicalRoute.length - 1].latitude,
+                  historicalRoute[historicalRoute.length - 1].longitude
                 ]}
               >
                 <Popup>
                   <div className="p-2">
                     <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
                     <p className="text-xs text-gray-600 mt-1">
-                      {new Date(historicalRoute.locations[historicalRoute.locations.length - 1].timestamp).toLocaleString()}
+                      {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
                     </p>
                   </div>
                 </Popup>
@@ -581,8 +561,19 @@ const LiveTracking = () => {
       {/* Active Employees List */}
       {activeLocations.length > 0 && (
         <div className="mt-6 bg-white rounded-lg shadow">
-          <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold text-gray-800">🟢 Currently Tracked Employees</h2>
+          <div className="p-6 border-b flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">🟢 Currently Tracked Employees</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Real-time tracking • Auto-refresh every 5s • Logged out employees removed automatically
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+                Live
+              </span>
+            </div>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -629,6 +620,9 @@ const LiveTracking = () => {
           <p className="text-gray-600">
             No employees are currently being tracked. Employees will appear here once they check in.
           </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Note: Logged out employees are automatically removed from this view.
+          </p>
         </div>
       )}
     </div>
@@ -636,4 +630,3 @@ const LiveTracking = () => {
 };
 
 export default LiveTracking;
-

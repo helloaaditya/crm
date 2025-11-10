@@ -178,17 +178,26 @@ export const updateLocation = asyncHandler(async (req, res) => {
 export const stopTracking = asyncHandler(async (req, res) => {
   const { sessionId } = req.body;
   
-  // Mark all locations for this session as inactive
+  // Find employee record
+  const employee = await Employee.findOne({ userId: req.user._id });
+  
+  // Mark all locations for this session/employee as inactive
   const result = await LocationTracking.updateMany(
-    { sessionId, user: req.user._id },
+    { 
+      $or: [
+        { sessionId, user: req.user._id },
+        { employee: employee?._id, isActive: true }
+      ]
+    },
     { isActive: false }
   );
   
-  console.log(`✅ Stopped ${result.modifiedCount} location records for session: ${sessionId}`);
+  console.log(`✅ EMPLOYEE LOGGED OUT - Stopped ${result.modifiedCount} location records for session: ${sessionId}`);
+  console.log(`📍 Employee ${req.user.name} is now INACTIVE on live tracking`);
   
   res.json({
     success: true,
-    message: 'Tracking stopped successfully',
+    message: 'Tracking stopped successfully - removed from live tracking',
     data: { updatedCount: result.modifiedCount }
   });
 });
@@ -257,6 +266,22 @@ export const cleanupDuplicateSessions = asyncHandler(async (req, res) => {
 // @access  Private (Admin)
 export const getActiveLocations = asyncHandler(async (req, res) => {
   console.log('🗺️  FETCHING ACTIVE LOCATIONS');
+  
+  // First, cleanup stale sessions (no updates in last 3 minutes = logged out)
+  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+  const staleCleanup = await LocationTracking.updateMany(
+    {
+      isActive: true,
+      createdAt: { $lt: threeMinutesAgo }
+    },
+    {
+      $set: { isActive: false }
+    }
+  );
+  
+  if (staleCleanup.modifiedCount > 0) {
+    console.log(`🧹 Auto-cleanup: Marked ${staleCleanup.modifiedCount} stale sessions as inactive`);
+  }
   
   // First, check total active records
   const totalActive = await LocationTracking.countDocuments({ isActive: true });
