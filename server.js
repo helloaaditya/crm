@@ -41,6 +41,26 @@ import { initializeCronJobs, stopCronJobs } from './utils/cronJobs.js';
 // Load environment variables
 dotenv.config();
 
+// Ensure upload directories exist
+const ensureUploadDirectories = () => {
+  const directories = [
+    'uploads',
+    'uploads/projects',
+    'uploads/invoices',
+    'uploads/documents',
+    'uploads/profiles',
+    'uploads/payslips',
+    'uploads/certificates'
+  ];
+
+  directories.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`✅ Created directory: ${dir}`);
+    }
+  });
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -321,6 +341,9 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
+    // Ensure upload directories exist
+    ensureUploadDirectories();
+    
     await connectDB();
     
     // Initialize cron jobs after DB connection
