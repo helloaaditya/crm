@@ -40,7 +40,6 @@ const Sidebar = () => {
     { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee' },
     { name: 'Leave Management', icon: FiCalendar, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
     { name: 'Employee Planning', icon: FiUsers, path: '/employees/management', module: 'employee' },
-    { name: 'Live Location', icon: FiNavigation, path: '/employees/live-location', module: 'employee', adminOnly: true },
 
     
     // Employee Self-Service (Non-Admin) - Show separately for easy access
@@ -50,7 +49,6 @@ const Sidebar = () => {
     { name: 'My Salary', icon: FiDollarSign, path: '/my-salary', module: 'all', employeeOnly: true },
     { name: 'My Leave', icon: FiCalendar, path: '/my-leave', module: 'all', employeeOnly: true },
     { name: 'My Expenses', icon: FiCreditCard, path: '/my-expenses', module: 'all', employeeOnly: true },
-    { name: 'My Location', icon: FiNavigation, path: '/my-location', module: 'all', employeeOnly: true },
     { name: 'Calendar', icon: FiBell, path: '/calendar-reminders', module: 'all', notificationCount: counts.reminders },
     
     // Accounts Section

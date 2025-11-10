@@ -7,7 +7,8 @@ import {
   getActiveLocations,
   getLocationHistory,
   getMyTrackingStatus,
-  getTrackingStats
+  getTrackingStats,
+  getSessionAnalytics
 } from '../controllers/locationTrackingController.js';
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.get('/my-status', getMyTrackingStatus);
 router.get('/active', authorize('admin', 'main_admin'), getActiveLocations);
 router.get('/history/:employeeId', authorize('admin', 'main_admin'), getLocationHistory);
 router.get('/stats', authorize('admin', 'main_admin'), getTrackingStats);
+router.get('/session-analytics/:sessionId', authorize('admin', 'main_admin'), getSessionAnalytics);
 
 export default router;
 

@@ -121,20 +121,24 @@ const LiveTracking = () => {
       const response = await API.locationTracking.getHistory(employeeId, { date });
       const sessions = response.data.data || [];
       
-      // If there are multiple sessions, combine their locations
-      let allLocations = [];
-      sessions.forEach(session => {
-        if (session.locations && Array.isArray(session.locations)) {
-          allLocations = [...allLocations, ...session.locations];
+      // If there are multiple sessions, take the first one (latest session of the day)
+      if (sessions.length > 0) {
+        const session = sessions[0];
+        setHistoricalRoute(session);
+        
+        if (session.locations && session.locations.length > 0) {
+          const distanceInfo = session.totalDistance ? ` | ${session.totalDistance} km` : '';
+          const majorStopsInfo = session.majorStops && session.majorStops.length > 0 
+            ? ` | ${session.majorStops.length} major stops` 
+            : '';
+          toast.success(`Loaded ${session.locations.length} location points${distanceInfo}${majorStopsInfo}`);
+        } else {
+          toast.info(`No tracking data found for ${date}`);
+          setHistoricalRoute({ locations: [] });
         }
-      });
-      
-      setHistoricalRoute(allLocations);
-      
-      if (allLocations.length === 0) {
-        toast.info(`No tracking data found for ${date}`);
       } else {
-        toast.success(`Loaded ${allLocations.length} location points`);
+        toast.info(`No tracking data found for ${date}`);
+        setHistoricalRoute({ locations: [] });
       }
     } catch (error) {
       console.error('Failed to fetch historical route:', error);
@@ -196,8 +200,8 @@ const LiveTracking = () => {
 
   // Get map center - default to first active location or India center
   const getMapCenter = () => {
-    if (historicalRoute.length > 0) {
-      return [historicalRoute[0].latitude, historicalRoute[0].longitude];
+    if (historicalRoute && historicalRoute.locations && historicalRoute.locations.length > 0) {
+      return [historicalRoute.locations[0].latitude, historicalRoute.locations[0].longitude];
     }
     if (activeLocations.length > 0) {
       return [
@@ -315,47 +319,86 @@ const LiveTracking = () => {
             />
           </div>
         </div>
-        {historicalRoute.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <div className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-              <p className="text-sm text-blue-800">
-                📊 <strong>{historicalRoute.length} location points</strong> recorded on {selectedDate}
+        {historicalRoute && historicalRoute.locations && historicalRoute.locations.length > 0 && (
+          <div className="mt-4 space-y-3">
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-lg">
+              <p className="text-sm text-blue-900 font-semibold">
+                📊 <strong>{historicalRoute.locations.length} location points</strong> recorded on {selectedDate}
               </p>
-              <p className="text-xs text-blue-600 mt-1">
+              <p className="text-xs text-blue-700 mt-1">
                 Blue route line on map below with markers for stops and waypoints
               </p>
             </div>
             
-            {/* Stop statistics */}
-            {historicalRoute.filter(loc => loc.isStopPoint).length > 0 && (
-              <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded">
-                <p className="text-sm text-red-800">
-                  ⏸️ <strong>{historicalRoute.filter(loc => loc.isStopPoint).length} stop points</strong> detected
+            {/* Detailed Analytics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-xs text-green-600 font-medium">📏 Total Distance</p>
+                <p className="text-2xl font-bold text-green-700 mt-1">
+                  {historicalRoute.totalDistance || '0'} km
                 </p>
-                <p className="text-xs text-red-600 mt-1">
-                  Red markers show locations where employee stayed for more than 30 seconds
+              </div>
+              
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-600 font-medium">⏱️ Duration</p>
+                <p className="text-2xl font-bold text-blue-700 mt-1">
+                  {historicalRoute.duration || '0'} min
                 </p>
+              </div>
+              
+              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <p className="text-xs text-purple-600 font-medium">🚗 Avg Speed</p>
+                <p className="text-2xl font-bold text-purple-700 mt-1">
+                  {historicalRoute.avgSpeed || '0'} km/h
+                </p>
+              </div>
+              
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-xs text-orange-600 font-medium">⏸️ Stop Points</p>
+                <p className="text-2xl font-bold text-orange-700 mt-1">
+                  {historicalRoute.stopPoints || 0}
+                </p>
+              </div>
+            </div>
+            
+            {/* Major Stops */}
+            {historicalRoute.majorStops && historicalRoute.majorStops.length > 0 && (
+              <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                <p className="text-sm text-red-900 font-semibold mb-3">
+                  🛑 Major Stops ({historicalRoute.majorStops.length}):
+                </p>
+                <div className="space-y-2">
+                  {historicalRoute.majorStops.map((stop, index) => (
+                    <div key={index} className="bg-white p-3 rounded shadow-sm">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{stop.address || 'Unknown location'}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {new Date(stop.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
+                          {stop.duration} min
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             
-            {/* Journey summary */}
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="p-2 bg-green-50 rounded border border-green-200">
-                <p className="text-green-600 font-medium">🚀 Start</p>
-                <p className="text-gray-700 mt-1">
-                  {new Date(historicalRoute[0].timestamp).toLocaleTimeString()}
+            {/* Journey Timeline */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-xs text-green-600 font-medium">🚀 Check-In</p>
+                <p className="text-sm font-bold text-gray-800 mt-1">
+                  {new Date(historicalRoute.locations[0].timestamp).toLocaleTimeString()}
                 </p>
               </div>
-              <div className="p-2 bg-red-50 rounded border border-red-200">
-                <p className="text-red-600 font-medium">🏁 End</p>
-                <p className="text-gray-700 mt-1">
-                  {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleTimeString()}
-                </p>
-              </div>
-              <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                <p className="text-blue-600 font-medium">⏱️ Duration</p>
-                <p className="text-gray-700 mt-1">
-                  {Math.round((new Date(historicalRoute[historicalRoute.length - 1].timestamp) - new Date(historicalRoute[0].timestamp)) / 1000 / 60)} min
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-xs text-red-600 font-medium">🏁 Check-Out</p>
+                <p className="text-sm font-bold text-gray-800 mt-1">
+                  {new Date(historicalRoute.locations[historicalRoute.locations.length - 1].timestamp).toLocaleTimeString()}
                 </p>
               </div>
             </div>
@@ -406,11 +449,11 @@ const LiveTracking = () => {
           ))}
           
           {/* Historical route */}
-          {historicalRoute.length > 0 && (
+          {historicalRoute && historicalRoute.locations && historicalRoute.locations.length > 0 && (
             <>
               {/* Draw smooth polyline for route */}
               <Polyline
-                positions={historicalRoute.map(loc => [loc.latitude, loc.longitude])}
+                positions={historicalRoute.locations.map(loc => [loc.latitude, loc.longitude])}
                 color="#2563eb"
                 weight={4}
                 opacity={0.8}
@@ -419,21 +462,21 @@ const LiveTracking = () => {
               
               {/* Start marker (green) */}
               <Marker
-                position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
+                position={[historicalRoute.locations[0].latitude, historicalRoute.locations[0].longitude]}
                 icon={activeEmployeeIcon}
               >
                 <Popup>
                   <div className="p-2">
                     <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
                     <p className="text-xs text-gray-600 mt-1">
-                      {new Date(historicalRoute[0].timestamp).toLocaleString()}
+                      {new Date(historicalRoute.locations[0].timestamp).toLocaleString()}
                     </p>
                   </div>
                 </Popup>
               </Marker>
               
               {/* Stop points (red markers) */}
-              {historicalRoute.filter(loc => loc.isStopPoint).map((loc, idx) => (
+              {historicalRoute.locations.filter(loc => loc.isStopPoint).map((loc, idx) => (
                 <Marker
                   key={`stop-${idx}`}
                   position={[loc.latitude, loc.longitude]}
@@ -459,8 +502,8 @@ const LiveTracking = () => {
               ))}
               
               {/* Movement waypoints (small blue markers every few points) */}
-              {historicalRoute
-                .filter((loc, idx) => !loc.isStopPoint && idx % 5 === 0 && idx !== 0 && idx !== historicalRoute.length - 1)
+              {historicalRoute.locations
+                .filter((loc, idx) => !loc.isStopPoint && idx % 5 === 0 && idx !== 0 && idx !== historicalRoute.locations.length - 1)
                 .map((loc, idx) => (
                   <Marker
                     key={`waypoint-${idx}`}
@@ -486,15 +529,15 @@ const LiveTracking = () => {
               {/* End marker (red flag) */}
               <Marker
                 position={[
-                  historicalRoute[historicalRoute.length - 1].latitude,
-                  historicalRoute[historicalRoute.length - 1].longitude
+                  historicalRoute.locations[historicalRoute.locations.length - 1].latitude,
+                  historicalRoute.locations[historicalRoute.locations.length - 1].longitude
                 ]}
               >
                 <Popup>
                   <div className="p-2">
                     <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
                     <p className="text-xs text-gray-600 mt-1">
-                      {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
+                      {new Date(historicalRoute.locations[historicalRoute.locations.length - 1].timestamp).toLocaleString()}
                     </p>
                   </div>
                 </Popup>

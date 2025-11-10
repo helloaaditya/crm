@@ -16,7 +16,6 @@ import Employees from './pages/Employee/Employees'
 import EmployeeManagement from './pages/Employee/EmployeeManagement'
 import Attendance from './pages/Employee/Attendance'
 import Salary from './pages/Employee/SalaryManagement'
-import LiveLocationTracking from './pages/Employee/LiveLocationTracking'
 import Accounts from './pages/Accounts'
 import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
@@ -35,7 +34,6 @@ import MyProjects from './pages/Employee/MyProjects'
 import WorkUpdates from './pages/Employee/WorkUpdates'
 import CalendarReminders from './pages/Employee/CalendarReminders'
 import MyExpenses from './pages/Employee/MyExpenses'
-import MyLocationTracking from './pages/Employee/MyLocationTracking'
 
 // Layout
 import Layout from './components/Layout/Layout'
@@ -120,7 +118,6 @@ function App() {
           <Route path="employees/attendance" element={<Attendance />} />
           <Route path="employees/salary" element={<Salary />} />
           <Route path="employees/leave" element={<LeaveManagement />} />
-          <Route path="employees/live-location" element={<LiveLocationTracking />} />
           
           {/* Accounts Route (Admin Only) */}
           <Route path="accounts" element={<Accounts />} />
@@ -140,7 +137,6 @@ function App() {
           <Route path="work-updates" element={<WorkUpdates />} />
           <Route path="calendar-reminders" element={<CalendarReminders />} />
           <Route path="my-expenses" element={<MyExpenses />} />
-          <Route path="my-location" element={<MyLocationTracking />} />
           
           {/* Other Routes */}
           <Route path="reminders" element={<Reminders />} />

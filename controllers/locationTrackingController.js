@@ -28,7 +28,25 @@ export const startTracking = asyncHandler(async (req, res) => {
   
   console.log('✅ Employee found:', employee.employeeId, employee.name);
   
-  // Create initial location record
+  // **PREVENT DUPLICATE SESSIONS**: Check for existing active session for this employee
+  const existingActiveSession = await LocationTracking.findOne({
+    employee: employee._id,
+    isActive: true
+  }).sort({ createdAt: -1 });
+  
+  if (existingActiveSession) {
+    console.log('⚠️ Active session already exists, stopping it first');
+    // Stop the existing session
+    await LocationTracking.updateMany(
+      { 
+        employee: employee._id,
+        isActive: true
+      },
+      { isActive: false }
+    );
+  }
+  
+  // Create initial location record with new session
   const locationRecord = await LocationTracking.create({
     employee: employee._id,
     user: req.user._id,
@@ -264,7 +282,7 @@ export const getLocationHistory = asyncHandler(async (req, res) => {
   let groupedData = locations;
   
   if (!sessionId && locations.length > 0) {
-    // Group locations by sessionId
+    // Group locations by sessionId with analytics
     const sessions = {};
     
     locations.forEach(loc => {
@@ -275,7 +293,9 @@ export const getLocationHistory = asyncHandler(async (req, res) => {
           startTime: loc.createdAt,
           endTime: loc.createdAt,
           isActive: loc.isActive,
-          locations: []
+          locations: [],
+          stopPoints: 0,
+          majorStops: []
         };
       }
       
@@ -288,13 +308,54 @@ export const getLocationHistory = asyncHandler(async (req, res) => {
         speed: loc.speed,
         heading: loc.heading,
         batteryLevel: loc.batteryLevel,
+        isStopPoint: loc.isStopPoint,
+        stopDuration: loc.stopDuration,
         timestamp: loc.createdAt
       });
+      
+      // Count stop points
+      if (loc.isStopPoint) {
+        sessions[loc.sessionId].stopPoints++;
+        // Track major stops (> 5 minutes)
+        if (loc.stopDuration > 300) {
+          sessions[loc.sessionId].majorStops.push({
+            address: loc.address,
+            duration: Math.round(loc.stopDuration / 60),
+            timestamp: loc.createdAt,
+            coordinates: [loc.location.coordinates[1], loc.location.coordinates[0]]
+          });
+        }
+      }
       
       // Update end time
       if (loc.createdAt > sessions[loc.sessionId].endTime) {
         sessions[loc.sessionId].endTime = loc.createdAt;
       }
+    });
+    
+    // Calculate distance for each session
+    Object.values(sessions).forEach(session => {
+      let totalDistance = 0;
+      for (let i = 1; i < session.locations.length; i++) {
+        const prev = session.locations[i - 1];
+        const curr = session.locations[i];
+        
+        const R = 6371e3;
+        const φ1 = prev.latitude * Math.PI / 180;
+        const φ2 = curr.latitude * Math.PI / 180;
+        const Δφ = (curr.latitude - prev.latitude) * Math.PI / 180;
+        const Δλ = (curr.longitude - prev.longitude) * Math.PI / 180;
+        
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        totalDistance += R * c;
+      }
+      
+      session.totalDistance = (totalDistance / 1000).toFixed(2); // km
+      session.duration = Math.round((new Date(session.endTime) - new Date(session.startTime)) / 1000 / 60); // minutes
+      session.avgSpeed = session.duration > 0 ? ((totalDistance / 1000) / (session.duration / 60)).toFixed(1) : '0'; // km/h
     });
     
     groupedData = Object.values(sessions);
@@ -381,6 +442,76 @@ export const getTrackingStats = asyncHandler(async (req, res) => {
         activeSessionsCount: 0
       },
       currentlyActive: currentlyActive.length
+    }
+  });
+});
+
+// @desc    Get detailed session analytics (distance, stops, etc.)
+// @route   GET /api/location-tracking/session-analytics/:sessionId
+// @access  Private (Admin)
+export const getSessionAnalytics = asyncHandler(async (req, res) => {
+  const { sessionId } = req.params;
+  
+  // Get all locations for this session
+  const locations = await LocationTracking.find({ sessionId })
+    .sort({ createdAt: 1 })
+    .populate('employee', 'employeeId name role');
+  
+  if (locations.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: 'No locations found for this session'
+    });
+  }
+  
+  // Calculate total distance using Haversine formula
+  let totalDistance = 0;
+  for (let i = 1; i < locations.length; i++) {
+    const prev = locations[i - 1];
+    const curr = locations[i];
+    
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = prev.location.coordinates[1] * Math.PI / 180;
+    const φ2 = curr.location.coordinates[1] * Math.PI / 180;
+    const Δφ = (curr.location.coordinates[1] - prev.location.coordinates[1]) * Math.PI / 180;
+    const Δλ = (curr.location.coordinates[0] - prev.location.coordinates[0]) * Math.PI / 180;
+    
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    totalDistance += R * c;
+  }
+  
+  // Find major stops (> 5 minutes at same location)
+  const majorStops = locations.filter(loc => loc.isStopPoint && loc.stopDuration > 300); // 5 minutes
+  
+  // Calculate duration
+  const startTime = new Date(locations[0].createdAt);
+  const endTime = new Date(locations[locations.length - 1].createdAt);
+  const duration = Math.round((endTime - startTime) / 1000 / 60); // minutes
+  
+  // Calculate average speed
+  const avgSpeed = duration > 0 ? (totalDistance / 1000) / (duration / 60) : 0; // km/h
+  
+  res.json({
+    success: true,
+    data: {
+      sessionId,
+      employee: locations[0].employee,
+      startTime,
+      endTime,
+      duration, // minutes
+      totalDistance: (totalDistance / 1000).toFixed(2), // km
+      avgSpeed: avgSpeed.toFixed(1), // km/h
+      totalPoints: locations.length,
+      stopPoints: locations.filter(loc => loc.isStopPoint).length,
+      majorStops: majorStops.map(stop => ({
+        address: stop.address,
+        duration: Math.round(stop.stopDuration / 60), // minutes
+        timestamp: stop.createdAt,
+        coordinates: stop.location.coordinates
+      }))
     }
   });
 });
