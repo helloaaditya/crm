@@ -135,15 +135,41 @@ export const getMachineryById = async (req, res) => {
 // Create new machinery
 export const createMachinery = async (req, res) => {
   try {
+    // Validate required fields
+    if (!req.body.name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Machinery name is required'
+      })
+    }
+    
+    if (!req.body.category) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category is required'
+      })
+    }
+    
+    if (req.body.quantity === undefined || req.body.quantity === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quantity is required'
+      })
+    }
+
     // Normalize serialNumber: convert empty string to null for sparse unique index
     let serialNumber = req.body.serialNumber?.trim()
     if (!serialNumber || serialNumber === '') {
       serialNumber = null
     }
     
+    // Ensure unit has a default value
+    const unit = req.body.unit || 'pcs'
+    
     const machineryData = {
       ...req.body,
       serialNumber: serialNumber, // null instead of empty string for sparse unique index
+      unit: unit, // Ensure unit is set
       createdBy: req.user._id,
       availableQuantity: req.body.quantity || 0
     }
@@ -160,6 +186,26 @@ export const createMachinery = async (req, res) => {
     })
   } catch (error) {
     console.error('Error creating machinery:', error)
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message).join(', ')
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        error: errors
+      })
+    }
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Duplicate entry. Serial number already exists.',
+        error: error.message
+      })
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Failed to create machinery',
