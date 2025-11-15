@@ -144,7 +144,7 @@ export const createMachinery = async (req, res) => {
     const machineryData = {
       ...req.body,
       serialNumber: serialNumber, // null instead of empty string for sparse unique index
-      createdBy: req.user.id,
+      createdBy: req.user._id,
       availableQuantity: req.body.quantity || 0
     }
 
@@ -191,7 +191,7 @@ export const updateMachinery = async (req, res) => {
     const updateData = {
       ...req.body,
       serialNumber: req.body.serialNumber !== undefined ? serialNumber : undefined,
-      updatedBy: req.user.id
+      updatedBy: req.user._id
     }
 
     // If quantity is being updated, recalculate available quantity
@@ -253,7 +253,7 @@ export const deleteMachinery = async (req, res) => {
     }
 
     machinery.isActive = false
-    machinery.updatedBy = req.user.id
+    machinery.updatedBy = req.user._id
     await machinery.save()
 
     res.json({
