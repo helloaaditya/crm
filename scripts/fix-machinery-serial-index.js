@@ -1,10 +1,10 @@
 /**
- * Migration script to fix the serialNumber index in Machinery collection
+ * Migration script to remove the serialNumber unique index from Machinery collection
  * 
- * This script drops the existing serialNumber index and recreates it as sparse unique,
- * which allows multiple documents to have null serialNumber values.
+ * This script drops the existing serialNumber unique index since serialNumber
+ * is now optional and not required to be unique.
  * 
- * Run this script once to fix the database index issue.
+ * Run this script once to remove the database index constraint.
  * 
  * Usage: node scripts/fix-machinery-serial-index.js
  */
@@ -34,34 +34,30 @@ const fixSerialNumberIndex = async () => {
       // Drop existing index
       try {
         await collection.dropIndex('serialNumber_1');
-        console.log('✅ Dropped existing serialNumber index');
+        console.log('✅ Dropped existing serialNumber unique index');
       } catch (err) {
         if (err.code === 27) {
-          console.log('ℹ️  Index does not exist, creating new one...');
+          console.log('ℹ️  Index does not exist, nothing to remove.');
         } else {
           throw err;
         }
       }
+    } else {
+      console.log('ℹ️  No serialNumber index found, nothing to remove.');
     }
 
-    // Create new sparse unique index
-    await collection.createIndex(
-      { serialNumber: 1 },
-      { 
-        unique: true, 
-        sparse: true,
-        name: 'serialNumber_1'
-      }
-    );
-    console.log('✅ Created new sparse unique index on serialNumber');
-
-    // Verify the index
-    const newIndexes = await collection.indexes();
-    const newSerialIndex = newIndexes.find(idx => idx.key && idx.key.serialNumber);
-    console.log('📋 New serialNumber index:', JSON.stringify(newSerialIndex, null, 2));
+    // Verify the index is removed
+    const finalIndexes = await collection.indexes();
+    const finalSerialIndex = finalIndexes.find(idx => idx.key && idx.key.serialNumber);
+    
+    if (finalSerialIndex) {
+      console.log('⚠️  Warning: serialNumber index still exists:', JSON.stringify(finalSerialIndex, null, 2));
+    } else {
+      console.log('✅ Confirmed: serialNumber index has been removed');
+    }
 
     console.log('\n✅ Migration completed successfully!');
-    console.log('You can now create multiple machinery entries with null serialNumber.');
+    console.log('SerialNumber is now optional and not required to be unique.');
 
     await mongoose.connection.close();
     process.exit(0);

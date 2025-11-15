@@ -157,10 +157,10 @@ export const createMachinery = async (req, res) => {
       })
     }
 
-    // Normalize serialNumber: convert empty string to null for sparse unique index
+    // Normalize serialNumber: convert empty string to undefined
     let serialNumber = req.body.serialNumber?.trim()
     if (!serialNumber || serialNumber === '') {
-      serialNumber = null
+      serialNumber = undefined
     }
     
     // Ensure unit has a default value
@@ -168,10 +168,15 @@ export const createMachinery = async (req, res) => {
     
     const machineryData = {
       ...req.body,
-      serialNumber: serialNumber, // null instead of empty string for sparse unique index
+      serialNumber: serialNumber, // undefined if empty
       unit: unit, // Ensure unit is set
       createdBy: req.user._id,
       availableQuantity: req.body.quantity || 0
+    }
+    
+    // Remove serialNumber from data if it's undefined
+    if (serialNumber === undefined) {
+      delete machineryData.serialNumber
     }
 
     const machinery = new Machinery(machineryData)
@@ -199,21 +204,6 @@ export const createMachinery = async (req, res) => {
     
     // Handle duplicate key errors
     if (error.code === 11000) {
-      // Check if it's a serialNumber duplicate
-      if (error.keyPattern && error.keyPattern.serialNumber) {
-        if (error.keyValue && error.keyValue.serialNumber === null) {
-          return res.status(400).json({
-            success: false,
-            message: 'Database index issue: Multiple null serial numbers detected. Please contact administrator to fix the database index.',
-            error: 'The serialNumber index needs to be recreated as sparse. Run: db.machinery.dropIndex("serialNumber_1") in MongoDB shell.'
-          })
-        }
-        return res.status(400).json({
-          success: false,
-          message: 'Duplicate entry. Serial number already exists.',
-          error: error.message
-        })
-      }
       return res.status(400).json({
         success: false,
         message: 'Duplicate entry detected.',
@@ -241,18 +231,26 @@ export const updateMachinery = async (req, res) => {
       })
     }
 
-    // Normalize serialNumber: convert empty string to null for sparse unique index
+    // Normalize serialNumber: convert empty string to undefined
     let serialNumber = req.body.serialNumber?.trim()
     if (req.body.serialNumber !== undefined) {
       if (!serialNumber || serialNumber === '') {
-        serialNumber = null
+        serialNumber = undefined
       }
     }
     
     const updateData = {
       ...req.body,
-      serialNumber: req.body.serialNumber !== undefined ? serialNumber : undefined,
       updatedBy: req.user._id
+    }
+    
+    // Handle serialNumber separately
+    if (req.body.serialNumber !== undefined) {
+      if (serialNumber === undefined) {
+        delete updateData.serialNumber
+      } else {
+        updateData.serialNumber = serialNumber
+      }
     }
 
     // If quantity is being updated, recalculate available quantity

@@ -25,10 +25,7 @@ const machinerySchema = new mongoose.Schema({
   },
   serialNumber: {
     type: String,
-    unique: true,
-    sparse: true,
-    trim: true,
-    default: null
+    trim: true
   },
   description: {
     type: String,
@@ -155,8 +152,6 @@ const machinerySchema = new mongoose.Schema({
 
 // Index for better query performance
 machinerySchema.index({ name: 1, category: 1 })
-// Explicitly create sparse unique index for serialNumber to allow multiple nulls
-machinerySchema.index({ serialNumber: 1 }, { unique: true, sparse: true })
 machinerySchema.index({ 'assignedProjects.project': 1 })
 
 // Virtual for calculating utilization percentage
@@ -213,11 +208,11 @@ machinerySchema.methods.returnFromProject = function(projectId, actualReturnDate
   return this.save()
 }
 
-// Pre-save middleware to convert empty serialNumber to null (for sparse unique index)
+// Pre-save middleware
 machinerySchema.pre('save', function(next) {
-  // Convert empty string to null for serialNumber to work with sparse unique index
-  if (this.serialNumber === '' || this.serialNumber === undefined) {
-    this.serialNumber = null
+  // Convert empty string to empty or undefined for serialNumber
+  if (this.serialNumber === '') {
+    this.serialNumber = undefined
   }
   
   // Update available quantity
