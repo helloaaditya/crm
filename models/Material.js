@@ -38,7 +38,7 @@ const materialSchema = new mongoose.Schema({
   unit: {
     type: String,
     required: true,
-    enum: ['kg', 'ltr', 'pcs', 'box', 'bag', 'sqft', 'sqm', 'other']
+    enum: ['kg', 'ltr', 'litre', 'grams', 'pcs', 'box', 'bag', 'kit', 'sqft', 'sqm', 'other']
   },
   minStockLevel: {
     type: Number,

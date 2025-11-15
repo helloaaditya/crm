@@ -531,8 +531,14 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
                     <option value="pcs">Pcs</option>
                     <option value="kg">Kg</option>
                     <option value="ltr">Ltr</option>
-                    <option value="sqft">Sqft</option>
+                    <option value="litre">Litre</option>
+                    <option value="grams">Grams</option>
                     <option value="box">Box</option>
+                    <option value="bag">Bag</option>
+                    <option value="kit">KIT</option>
+                    <option value="sqft">Sqft</option>
+                    <option value="sqm">Sqm</option>
+                    <option value="other">Other</option>
                   </select>
                   <input
                     type="number"
