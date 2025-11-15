@@ -155,7 +155,8 @@ const machinerySchema = new mongoose.Schema({
 
 // Index for better query performance
 machinerySchema.index({ name: 1, category: 1 })
-machinerySchema.index({ serialNumber: 1 })
+// Explicitly create sparse unique index for serialNumber to allow multiple nulls
+machinerySchema.index({ serialNumber: 1 }, { unique: true, sparse: true })
 machinerySchema.index({ 'assignedProjects.project': 1 })
 
 // Virtual for calculating utilization percentage

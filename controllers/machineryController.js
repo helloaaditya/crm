@@ -199,9 +199,24 @@ export const createMachinery = async (req, res) => {
     
     // Handle duplicate key errors
     if (error.code === 11000) {
+      // Check if it's a serialNumber duplicate
+      if (error.keyPattern && error.keyPattern.serialNumber) {
+        if (error.keyValue && error.keyValue.serialNumber === null) {
+          return res.status(400).json({
+            success: false,
+            message: 'Database index issue: Multiple null serial numbers detected. Please contact administrator to fix the database index.',
+            error: 'The serialNumber index needs to be recreated as sparse. Run: db.machinery.dropIndex("serialNumber_1") in MongoDB shell.'
+          })
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Duplicate entry. Serial number already exists.',
+          error: error.message
+        })
+      }
       return res.status(400).json({
         success: false,
-        message: 'Duplicate entry. Serial number already exists.',
+        message: 'Duplicate entry detected.',
         error: error.message
       })
     }
