@@ -135,8 +135,15 @@ export const getMachineryById = async (req, res) => {
 // Create new machinery
 export const createMachinery = async (req, res) => {
   try {
+    // Normalize serialNumber: convert empty string to null for sparse unique index
+    let serialNumber = req.body.serialNumber?.trim()
+    if (!serialNumber || serialNumber === '') {
+      serialNumber = null
+    }
+    
     const machineryData = {
       ...req.body,
+      serialNumber: serialNumber, // null instead of empty string for sparse unique index
       createdBy: req.user.id,
       availableQuantity: req.body.quantity || 0
     }
@@ -173,8 +180,17 @@ export const updateMachinery = async (req, res) => {
       })
     }
 
+    // Normalize serialNumber: convert empty string to null for sparse unique index
+    let serialNumber = req.body.serialNumber?.trim()
+    if (req.body.serialNumber !== undefined) {
+      if (!serialNumber || serialNumber === '') {
+        serialNumber = null
+      }
+    }
+    
     const updateData = {
       ...req.body,
+      serialNumber: req.body.serialNumber !== undefined ? serialNumber : undefined,
       updatedBy: req.user.id
     }
 

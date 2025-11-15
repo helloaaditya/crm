@@ -27,7 +27,8 @@ const machinerySchema = new mongoose.Schema({
     type: String,
     unique: true,
     sparse: true,
-    trim: true
+    trim: true,
+    default: null
   },
   description: {
     type: String,
@@ -211,8 +212,14 @@ machinerySchema.methods.returnFromProject = function(projectId, actualReturnDate
   return this.save()
 }
 
-// Pre-save middleware to update available quantity
+// Pre-save middleware to convert empty serialNumber to null (for sparse unique index)
 machinerySchema.pre('save', function(next) {
+  // Convert empty string to null for serialNumber to work with sparse unique index
+  if (this.serialNumber === '' || this.serialNumber === undefined) {
+    this.serialNumber = null
+  }
+  
+  // Update available quantity
   if (this.isModified('quantity') || this.isModified('assignedProjects')) {
     const assignedQuantity = this.assignedProjects.reduce((total, assignment) => {
       if (assignment.status === 'assigned' || assignment.status === 'in_use') {
