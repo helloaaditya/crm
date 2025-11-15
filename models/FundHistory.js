@@ -24,7 +24,7 @@ const fundHistorySchema = new mongoose.Schema({
   // Reference to related entity
   referenceType: {
     type: String,
-    enum: ['expense', 'manual_add', 'manual_deduct', 'adjustment'],
+    enum: ['expense', 'manual_add', 'manual_deduct', 'adjustment', 'other', 'initial_deposit'],
     default: 'manual_add'
   },
   referenceId: {

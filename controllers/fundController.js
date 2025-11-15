@@ -178,7 +178,7 @@ export const deductFundsManually = asyncHandler(async (req, res) => {
     amount,
     balanceAfter: newBalance,
     description: `Funds deducted manually - ₹${amount.toLocaleString()}`,
-    referenceType: 'other',
+    referenceType: 'manual_deduct',
     performedBy: req.user._id,
     paymentMode: paymentMode || 'bank_transfer',
     transactionReference: transactionReference || '',
