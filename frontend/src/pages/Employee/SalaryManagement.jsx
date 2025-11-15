@@ -38,7 +38,8 @@ const SalaryManagement = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await API.employees.getAll()
+      // Fetch all employees with a high limit to ensure we get all of them
+      const response = await API.employees.getAll({ limit: 10000 })
       setEmployees(response.data.data || [])
     } catch (error) {
       console.error('Error fetching employees:', error)
@@ -301,7 +302,7 @@ const SalaryManagement = () => {
                 )}
               </div>
             </div>
-            <div className="p-4 max-h-[calc(100vh-400px)] overflow-y-auto">
+            <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)', minHeight: '400px' }}>
               {filteredEmployees.length === 0 ? (
                 <div className="text-center py-8">
                   <FiUser className="mx-auto text-gray-400 mb-2" size={48} />

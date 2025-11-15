@@ -15,7 +15,7 @@ const EmployeeManagement = () => {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { limit: 10000 }; // Fetch all employees
       if (filterStatus === 'active') params.isActive = true;
       if (filterStatus === 'inactive') params.isActive = false;
 

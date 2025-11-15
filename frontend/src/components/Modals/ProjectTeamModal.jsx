@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { FiX, FiPlus, FiTrash2 } from 'react-icons/fi'
+import { useState, useEffect, useRef } from 'react'
+import { FiX, FiPlus, FiTrash2, FiChevronDown } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
@@ -9,9 +9,14 @@ const ProjectTeamModal = ({ isOpen, onClose, project }) => {
   const [selectedRole, setSelectedRole] = useState('worker')
   const [teamMembers, setTeamMembers] = useState([])
   const [loading, setLoading] = useState(false)
+  const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false)
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('')
+  const employeeDropdownRef = useRef(null)
 
   // All available roles
   const availableRoles = [
+    { value: 'manager', label: 'Manager', color: 'indigo' },
+    { value: 'admin', label: 'Admin', color: 'red' },
     { value: 'supervisor', label: 'Supervisor', color: 'purple' },
     { value: 'engineer', label: 'Engineer', color: 'blue' },
     { value: 'worker', label: 'Worker', color: 'green' },
@@ -22,14 +27,15 @@ const ProjectTeamModal = ({ isOpen, onClose, project }) => {
 
   const fetchEmployees = async () => {
     try {
-      // Fetch employees based on selected role
+      // Fetch all employees with the selected role designation
       const response = await API.employees.getAll({ 
-        limit: 1000, 
+        limit: 10000, // Fetch all employees
         designation: selectedRole 
       })
       setAllEmployees(response.data.data || [])
     } catch (error) {
       console.error('Error fetching employees:', error)
+      toast.error('Failed to load employees')
     }
   }
 
@@ -46,8 +52,27 @@ const ProjectTeamModal = ({ isOpen, onClose, project }) => {
       fetchEmployees()
       // Reset selected employee when role changes
       setSelectedEmployee('')
+      setEmployeeDropdownOpen(false)
+      setEmployeeSearchTerm('')
     }
   }, [selectedRole, isOpen, project])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target)) {
+        setEmployeeDropdownOpen(false)
+      }
+    }
+
+    if (employeeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [employeeDropdownOpen])
 
   const fetchTeamMembers = async () => {
     try {
@@ -115,7 +140,14 @@ const ProjectTeamModal = ({ isOpen, onClose, project }) => {
   }
 
   const getAvailableEmployees = () => {
-    return allEmployees
+    // Filter employees based on search term
+    if (!employeeSearchTerm) return allEmployees
+    
+    const searchLower = employeeSearchTerm.toLowerCase()
+    return allEmployees.filter(emp => {
+      return emp.name?.toLowerCase().includes(searchLower) || 
+             emp.employeeId?.toLowerCase().includes(searchLower)
+    })
   }
 
   const getRoleBadgeColor = (role) => {
@@ -160,19 +192,62 @@ const ProjectTeamModal = ({ isOpen, onClose, project }) => {
                 ))}
               </select>
             </div>
-            <div>
-              <select
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            <div className="relative" ref={employeeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmployeeDropdownOpen(!employeeDropdownOpen)
+                  setEmployeeSearchTerm('')
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-left flex items-center justify-between"
               >
-                <option value="">Select Employee</option>
-                {getAvailableEmployees().map(emp => (
-                  <option key={emp._id} value={emp._id}>
-                    {emp.name} ({emp.employeeId})
-                  </option>
-                ))}
-              </select>
+                <span className={selectedEmployee ? 'text-gray-900' : 'text-gray-500'}>
+                  {selectedEmployee 
+                    ? `${allEmployees.find(e => e._id === selectedEmployee)?.name || ''} (${allEmployees.find(e => e._id === selectedEmployee)?.employeeId || ''})`
+                    : 'Select Employee'}
+                </span>
+                <FiChevronDown className={`transition-transform ${employeeDropdownOpen ? 'transform rotate-180' : ''}`} />
+              </button>
+              
+              {employeeDropdownOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '60vh' }}>
+                  {/* Search Input */}
+                  <div className="p-2 border-b sticky top-0 bg-white z-10">
+                    <input
+                      type="text"
+                      placeholder="Search employee..."
+                      value={employeeSearchTerm}
+                      onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  
+                  {/* Scrollable Employee List */}
+                  <div className="overflow-y-auto" style={{ maxHeight: 'calc(60vh - 60px)' }}>
+                    {getAvailableEmployees().length === 0 ? (
+                      <div className="px-4 py-2 text-gray-500 text-sm">No employees found</div>
+                    ) : (
+                      getAvailableEmployees().map(emp => (
+                        <button
+                          key={emp._id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedEmployee(emp._id)
+                            setEmployeeDropdownOpen(false)
+                            setEmployeeSearchTerm('')
+                          }}
+                          className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                            selectedEmployee === emp._id ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                          }`}
+                        >
+                          {emp.name} ({emp.employeeId})
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <button
@@ -203,6 +278,8 @@ const ProjectTeamModal = ({ isOpen, onClose, project }) => {
                     </p>
                     <p className="text-sm text-gray-600">
                       {member.employee?.employeeId || 'N/A'} • <span className={`px-2 py-0.5 rounded-full text-xs ${
+                        member.role === 'manager' ? 'bg-indigo-100 text-indigo-800' :
+                        member.role === 'admin' ? 'bg-red-100 text-red-800' :
                         member.role === 'supervisor' ? 'bg-purple-100 text-purple-800' :
                         member.role === 'engineer' ? 'bg-blue-100 text-blue-800' :
                         member.role === 'technician' ? 'bg-orange-100 text-orange-800' :

@@ -145,6 +145,57 @@ export const getFundStats = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Deduct funds manually
+// @route   POST /api/funds/deduct
+// @access  Private (expense module + canHandleAccounts)
+export const deductFundsManually = asyncHandler(async (req, res) => {
+  const { amount, paymentMode, transactionReference, remarks } = req.body;
+  
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ message: 'Please enter a valid amount' });
+  }
+  
+  const fund = await Fund.getFund();
+  
+  if (fund.availableFunds < amount) {
+    return res.status(400).json({ 
+      message: `Insufficient funds. Available: ₹${fund.availableFunds.toLocaleString()}, Required: ₹${amount.toLocaleString()}` 
+    });
+  }
+  
+  const previousBalance = fund.availableFunds;
+  const newBalance = previousBalance - amount;
+  
+  // Update fund
+  fund.availableFunds = newBalance;
+  fund.lastUpdated = new Date();
+  fund.lastUpdatedBy = req.user._id;
+  await fund.save();
+  
+  // Create history record
+  await FundHistory.create({
+    transactionType: 'debit',
+    amount,
+    balanceAfter: newBalance,
+    description: `Funds deducted manually - ₹${amount.toLocaleString()}`,
+    referenceType: 'other',
+    performedBy: req.user._id,
+    paymentMode: paymentMode || 'bank_transfer',
+    transactionReference: transactionReference || '',
+    remarks: remarks || ''
+  });
+  
+  res.json({
+    success: true,
+    data: {
+      previousBalance,
+      amountDeducted: amount,
+      newBalance,
+      message: `Successfully deducted ₹${amount.toLocaleString()} from funds`
+    }
+  });
+});
+
 // Helper function to deduct funds (used by expense controller)
 export const deductFunds = async (amount, expenseId, userId, paymentMode, transactionReference, remarks) => {
   const fund = await Fund.getFund();
@@ -187,6 +238,7 @@ export const deductFunds = async (amount, expenseId, userId, paymentMode, transa
 export default {
   getFunds,
   addFunds,
+  deductFundsManually,
   getFundHistory,
   getFundStats,
   deductFunds

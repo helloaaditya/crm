@@ -290,6 +290,7 @@ export const expenseAPI = {
 export const fundAPI = {
   getFunds: () => api.get('/funds'),
   addFunds: (data) => api.post('/funds/add', data),
+  deductFunds: (data) => api.post('/funds/deduct', data),
   getHistory: (params) => api.get('/funds/history', { params }),
   getStats: (params) => api.get('/funds/stats', { params })
 };

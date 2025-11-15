@@ -3,6 +3,7 @@ import { protect, moduleAccess, checkPermission } from '../middleware/auth.js';
 import {
   getFunds,
   addFunds,
+  deductFundsManually,
   getFundHistory,
   getFundStats
 } from '../controllers/fundController.js';
@@ -24,6 +25,9 @@ router.get('/history', getFundHistory);
 
 // Add funds (requires canHandleAccounts permission)
 router.post('/add', checkPermission('canHandleAccounts'), addFunds);
+
+// Deduct funds (requires canHandleAccounts permission)
+router.post('/deduct', checkPermission('canHandleAccounts'), deductFundsManually);
 
 export default router;
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiCreditCard, FiPlus, FiCheck, FiX, FiDollarSign, FiSearch, FiFilter, FiFileText, FiUpload, FiDownload, FiEye, FiTrendingUp, FiClock, FiRefreshCw } from 'react-icons/fi'
+import { FiCreditCard, FiPlus, FiCheck, FiX, FiDollarSign, FiSearch, FiFilter, FiFileText, FiUpload, FiDownload, FiEye, FiTrendingUp, FiClock, FiRefreshCw, FiEdit } from 'react-icons/fi'
 import API from '../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
@@ -33,7 +33,14 @@ const Expenses = () => {
   const [fundHistory, setFundHistory] = useState([])
   const [showFundModal, setShowFundModal] = useState(false)
   const [showFundHistory, setShowFundHistory] = useState(false)
+  const [showEditFundModal, setShowEditFundModal] = useState(false)
   const [fundData, setFundData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
+  const [editFundData, setEditFundData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
     transactionReference: '',
@@ -115,13 +122,19 @@ const Expenses = () => {
   const handleAddFunds = async (e) => {
     e.preventDefault()
     
-    if (!fundData.amount || fundData.amount <= 0) {
+    // Convert amount to number to prevent string concatenation
+    const amount = Number(fundData.amount)
+    
+    if (!amount || amount <= 0 || isNaN(amount)) {
       toast.error('Please enter a valid amount')
       return
     }
     
     try {
-      const response = await API.funds.addFunds(fundData)
+      const response = await API.funds.addFunds({
+        ...fundData,
+        amount: amount // Ensure it's a number
+      })
       toast.success(response.data.data.message || 'Funds added successfully')
       setShowFundModal(false)
       setFundData({
@@ -135,6 +148,72 @@ const Expenses = () => {
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to add funds')
     }
+  }
+  
+  const handleEditFunds = async (e) => {
+    e.preventDefault()
+    
+    // Convert amount to number to prevent string concatenation
+    const amount = Number(editFundData.amount)
+    
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    
+    // Calculate the difference to add/subtract
+    const currentAmount = Number(availableFunds) || 0
+    const newAmount = amount
+    const difference = newAmount - currentAmount
+    
+    if (difference === 0) {
+      toast.info('No change in amount')
+      return
+    }
+    
+    try {
+      if (difference > 0) {
+        // Add the difference
+        await API.funds.addFunds({
+          amount: difference,
+          paymentMode: editFundData.paymentMode,
+          transactionReference: editFundData.transactionReference,
+          remarks: editFundData.remarks || `Manual adjustment: Set to ₹${newAmount.toLocaleString('en-IN')}`
+        })
+        toast.success(`Funds adjusted: Added ₹${difference.toLocaleString('en-IN')}`)
+      } else {
+        // Deduct the difference
+        await API.funds.deductFunds({
+          amount: Math.abs(difference),
+          paymentMode: editFundData.paymentMode,
+          transactionReference: editFundData.transactionReference,
+          remarks: editFundData.remarks || `Manual adjustment: Set to ₹${newAmount.toLocaleString('en-IN')}`
+        })
+        toast.success(`Funds adjusted: Deducted ₹${Math.abs(difference).toLocaleString('en-IN')}`)
+      }
+      
+      setShowEditFundModal(false)
+      setEditFundData({
+        amount: '',
+        paymentMode: 'bank_transfer',
+        transactionReference: '',
+        remarks: ''
+      })
+      fetchFunds()
+      fetchFundHistory()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to edit funds')
+    }
+  }
+  
+  const openEditFundModal = () => {
+    setEditFundData({
+      amount: availableFunds.toString(),
+      paymentMode: 'bank_transfer',
+      transactionReference: '',
+      remarks: ''
+    })
+    setShowEditFundModal(true)
   }
   
   const handleFileUpload = async (e) => {
@@ -344,6 +423,14 @@ const Expenses = () => {
               >
                 <FiClock className="mr-2" />
                 History
+              </button>
+              <button
+                onClick={openEditFundModal}
+                className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+                title="Edit/Adjust Funds"
+              >
+                <FiEdit className="mr-2" />
+                Edit
               </button>
               <button
                 onClick={() => setShowFundModal(true)}
@@ -1101,6 +1188,107 @@ const Expenses = () => {
                   className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                 >
                   Add Funds
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Edit Funds Modal */}
+      {showEditFundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Edit/Adjust Funds</h2>
+              <button onClick={() => setShowEditFundModal(false)} className="text-gray-500 hover:text-gray-700">
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditFunds} className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Current Balance:</strong> ₹{availableFunds.toLocaleString('en-IN')}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Enter the new total amount you want to set. The system will automatically calculate the difference.
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Total Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={editFundData.amount}
+                  onChange={(e) => setEditFundData({ ...editFundData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter new total amount"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={editFundData.paymentMode}
+                  onChange={(e) => setEditFundData({ ...editFundData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={editFundData.transactionReference}
+                  onChange={(e) => setEditFundData({ ...editFundData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Remarks
+                </label>
+                <textarea
+                  value={editFundData.remarks}
+                  onChange={(e) => setEditFundData({ ...editFundData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="2"
+                  placeholder="Reason for adjustment..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditFundModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Update Funds
                 </button>
               </div>
             </form>
