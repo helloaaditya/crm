@@ -3,6 +3,7 @@ import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { createNotification, NotificationTemplates } from './notificationController.js';
+import { deductFunds } from './fundController.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -392,6 +393,23 @@ export const processExpensePayment = asyncHandler(async (req, res) => {
   expense.remarks = remarks || expense.remarks;
   
   await expense.save();
+  
+  // Auto-deduct from available funds
+  try {
+    const fundDeduction = await deductFunds(
+      paidAmount,
+      expense._id,
+      req.user._id,
+      paymentMode,
+      transactionReference,
+      `Expense payment: ${expense.expenseId} - ${expense.description}`
+    );
+    console.log(`💰 Funds deducted: ₹${paidAmount.toLocaleString()}, New balance: ₹${fundDeduction.newBalance.toLocaleString()}`);
+  } catch (fundError) {
+    console.error('⚠️ Fund deduction failed:', fundError.message);
+    // Don't fail the payment if fund deduction fails, but log it
+    // You might want to handle this differently based on business requirements
+  }
   
   // Notify employee
   if (expense.submittedBy) {

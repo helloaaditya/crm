@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiCreditCard, FiPlus, FiCheck, FiX, FiDollarSign, FiSearch, FiFilter, FiFileText, FiUpload, FiDownload, FiEye } from 'react-icons/fi'
+import { FiCreditCard, FiPlus, FiCheck, FiX, FiDollarSign, FiSearch, FiFilter, FiFileText, FiUpload, FiDownload, FiEye, FiTrendingUp, FiClock, FiRefreshCw } from 'react-icons/fi'
 import API from '../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
@@ -29,6 +29,16 @@ const Expenses = () => {
   const [filterCategory, setFilterCategory] = useState('all')
   const [stats, setStats] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [availableFunds, setAvailableFunds] = useState(0)
+  const [fundHistory, setFundHistory] = useState([])
+  const [showFundModal, setShowFundModal] = useState(false)
+  const [showFundHistory, setShowFundHistory] = useState(false)
+  const [fundData, setFundData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
   const [formData, setFormData] = useState({
     category: 'petrol',
     description: '',
@@ -55,6 +65,7 @@ const Expenses = () => {
     fetchExpenses()
     if (hasExpenseAccess) {
       fetchStats()
+      fetchFunds()
     }
   }, [])
   
@@ -79,6 +90,50 @@ const Expenses = () => {
       setStats(response.data.data)
     } catch (error) {
       console.error('Error fetching stats:', error)
+    }
+  }
+  
+  const fetchFunds = async () => {
+    try {
+      const response = await API.funds.getFunds()
+      setAvailableFunds(response.data.data.availableFunds || 0)
+    } catch (error) {
+      console.error('Error fetching funds:', error)
+    }
+  }
+  
+  const fetchFundHistory = async () => {
+    try {
+      const response = await API.funds.getHistory({ limit: 100 })
+      setFundHistory(response.data.data || [])
+    } catch (error) {
+      console.error('Error fetching fund history:', error)
+      toast.error('Failed to load fund history')
+    }
+  }
+  
+  const handleAddFunds = async (e) => {
+    e.preventDefault()
+    
+    if (!fundData.amount || fundData.amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    
+    try {
+      const response = await API.funds.addFunds(fundData)
+      toast.success(response.data.data.message || 'Funds added successfully')
+      setShowFundModal(false)
+      setFundData({
+        amount: '',
+        paymentMode: 'bank_transfer',
+        transactionReference: '',
+        remarks: ''
+      })
+      fetchFunds()
+      fetchFundHistory()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add funds')
     }
   }
   
@@ -203,6 +258,10 @@ const Expenses = () => {
       setPaymentModal(null)
       fetchExpenses()
       fetchStats()
+      fetchFunds() // Refresh funds after payment
+      if (showFundHistory) {
+        fetchFundHistory() // Refresh history if modal is open
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to process payment')
     }
@@ -266,6 +325,38 @@ const Expenses = () => {
         </button>
       </div>
       
+      {/* Available Funds Box (Admin Only) */}
+      {hasExpenseAccess && (
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-6 mb-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm opacity-90 mb-1">Available Funds</p>
+              <p className="text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
+              <p className="text-xs opacity-75 mt-1">Auto-deducted when expenses are paid</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowFundHistory(true)
+                  fetchFundHistory()
+                }}
+                className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+              >
+                <FiClock className="mr-2" />
+                History
+              </button>
+              <button
+                onClick={() => setShowFundModal(true)}
+                className="flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition"
+              >
+                <FiPlus className="mr-2" />
+                Add Funds
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Statistics (Admin Only) */}
       {hasExpenseAccess && stats && (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
@@ -915,6 +1006,208 @@ const Expenses = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Add Funds Modal */}
+      {showFundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Add Funds</h2>
+              <button onClick={() => setShowFundModal(false)} className="text-gray-500 hover:text-gray-700">
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddFunds} className="p-6 space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-green-800">
+                  <strong>Current Balance:</strong> ₹{availableFunds.toLocaleString('en-IN')}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={fundData.amount}
+                  onChange={(e) => setFundData({ ...fundData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter amount to add"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={fundData.paymentMode}
+                  onChange={(e) => setFundData({ ...fundData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={fundData.transactionReference}
+                  onChange={(e) => setFundData({ ...fundData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Remarks
+                </label>
+                <textarea
+                  value={fundData.remarks}
+                  onChange={(e) => setFundData({ ...fundData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  rows="2"
+                  placeholder="Any notes about this fund addition..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowFundModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                >
+                  Add Funds
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Fund History Modal */}
+      {showFundHistory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Fund Transaction History</h2>
+                <p className="text-sm text-gray-600 mt-1">Complete log of all fund transactions</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    fetchFundHistory()
+                    fetchFunds()
+                  }}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                  title="Refresh"
+                >
+                  <FiRefreshCw size={20} />
+                </button>
+                <button onClick={() => setShowFundHistory(false)} className="text-gray-500 hover:text-gray-700">
+                  <FiX size={24} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {fundHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <FiClock className="mx-auto text-gray-400 mb-4" size={48} />
+                  <p className="text-gray-600">No transaction history found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {fundHistory.map((transaction, idx) => (
+                    <div
+                      key={idx}
+                      className={`border-l-4 rounded-lg p-4 ${
+                        transaction.transactionType === 'credit'
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-500 bg-red-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={`px-2 py-1 text-xs font-semibold rounded ${
+                                transaction.transactionType === 'credit'
+                                  ? 'bg-green-200 text-green-800'
+                                  : 'bg-red-200 text-red-800'
+                              }`}
+                            >
+                              {transaction.transactionType === 'credit' ? 'CREDIT' : 'DEBIT'}
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {new Date(transaction.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-gray-900 mb-1">{transaction.description}</p>
+                          {transaction.referenceType === 'expense' && transaction.referenceId && (
+                            <p className="text-xs text-gray-600 mb-1">
+                              Expense: {typeof transaction.referenceId === 'object' && transaction.referenceId.expenseId 
+                                ? transaction.referenceId.expenseId 
+                                : transaction.referenceId || 'N/A'}
+                            </p>
+                          )}
+                          {transaction.performedBy && (
+                            <p className="text-xs text-gray-500">
+                              By: {transaction.performedBy.name || 'System'}
+                            </p>
+                          )}
+                          {transaction.remarks && (
+                            <p className="text-xs text-gray-600 mt-1 italic">{transaction.remarks}</p>
+                          )}
+                          {transaction.transactionReference && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Ref: {transaction.transactionReference}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p
+                            className={`text-lg font-bold ${
+                              transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
+                            }`}
+                          >
+                            {transaction.transactionType === 'credit' ? '+' : '-'}₹
+                            {transaction.amount.toLocaleString('en-IN')}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Balance: ₹{transaction.balanceAfter.toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
