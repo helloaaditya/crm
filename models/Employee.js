@@ -316,8 +316,44 @@ const employeeSchema = new mongoose.Schema({
 employeeSchema.pre('validate', async function(next) {
   if (this.isNew && !this.employeeId) {
     try {
-      const count = await mongoose.model('Employee').countDocuments();
-      this.employeeId = `EMP${String(count + 1).padStart(5, '0')}`;
+      // Find a unique employee ID that doesn't exist yet
+      let nextNumber = 1;
+      let employeeId;
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10000; // Safety limit
+      
+      // Start from the highest existing ID + 1
+      const lastEmployee = await mongoose.model('Employee')
+        .findOne({ employeeId: { $regex: /^EMP\d+$/ } })
+        .sort({ employeeId: -1 })
+        .select('employeeId')
+        .lean();
+      
+      if (lastEmployee && lastEmployee.employeeId) {
+        const lastNumber = parseInt(lastEmployee.employeeId.replace('EMP', ''));
+        if (!isNaN(lastNumber)) {
+          nextNumber = lastNumber + 1;
+        }
+      }
+      
+      // Check for uniqueness and find next available
+      while (!isUnique && attempts < maxAttempts) {
+        employeeId = `EMP${String(nextNumber).padStart(5, '0')}`;
+        const exists = await mongoose.model('Employee').findOne({ employeeId });
+        if (!exists) {
+          isUnique = true;
+        } else {
+          nextNumber++;
+          attempts++;
+        }
+      }
+      
+      if (!isUnique) {
+        return next(new Error('Could not generate unique employeeId'));
+      }
+      
+      this.employeeId = employeeId;
     } catch (error) {
       return next(error);
     }

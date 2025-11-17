@@ -44,27 +44,59 @@ export const register = asyncHandler(async (req, res) => {
   // Auto-create Employee record for non-admin users
   if (role && role !== 'main_admin') {
     try {
-      console.log('📝 Creating employee record...');
-      // Generate unique employee ID
-      const employeeCount = await Employee.countDocuments();
-      const employeeId = `EMP${String(employeeCount + 1).padStart(4, '0')}`;
-
-      await Employee.create({
-        employeeId,
+      console.log('📝 Creating employee record for:', name, role);
+      
+      // Normalize phone number (ensure it's 10 digits)
+      let phoneNumber = phone || '0000000000';
+      if (phoneNumber.length !== 10 || !/^\d+$/.test(phoneNumber)) {
+        phoneNumber = '0000000000';
+      }
+      
+      // Map role to designation (ensure it's in the enum)
+      const roleToDesignation = {
+        'admin': 'admin',
+        'supervisor': 'supervisor',
+        'engineer': 'engineer',
+        'worker': 'worker',
+        'technician': 'technician',
+        'manager': 'manager',
+        'helper': 'helper',
+        'driver': 'driver'
+      };
+      
+      const designation = roleToDesignation[role] || 'other';
+      const employeeRole = roleToDesignation[role] || 'worker';
+      
+      // Generate unique employee ID (let the model's pre-validate hook handle it)
+      const employee = await Employee.create({
         userId: user._id,
         name: user.name,
-        phone: user.phone,
+        phone: phoneNumber,
         email: user.email,
-        designation: role === 'admin' ? 'admin' : role || 'worker',
-        role: role || 'worker',
+        designation: designation,
+        role: employeeRole,
         joiningDate: new Date(),
         basicSalary: 0, // Admin can update later
         employmentType: 'full_time',
+        allowances: {
+          hra: 0,
+          transport: 0,
+          other: 0
+        },
+        deductions: {
+          pf: 0,
+          esi: 0,
+          tax: 0,
+          other: 0
+        },
         createdBy: req.user?._id || user._id
       });
-      console.log('✅ Employee record created:', employeeId);
+      
+      console.log('✅ Employee record created:', employee.employeeId, employee.name);
     } catch (error) {
-      console.log('⚠️ Employee record creation skipped:', error.message);
+      console.error('❌ Employee record creation failed:', error.message);
+      console.error('Error details:', error);
+      // Don't fail the user creation, but log the error
     }
   }
 
