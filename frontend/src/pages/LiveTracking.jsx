@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
   FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, 
-  FiUsers, FiChevronDown, FiPlay, FiCheckCircle, FiCar, FiMap, 
+  FiUsers, FiChevronDown, FiPlay, FiCheckCircle, FiTruck, FiMap, 
   FiSettings, FiDownload, FiPlus, FiFilter, FiChevronLeft, FiChevronRight,
   FiBattery, FiGlobe, FiEye
 } from 'react-icons/fi';
@@ -642,7 +642,7 @@ const LiveTracking = () => {
                     <div key={index} className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
                       {activity.type === 'travel' ? (
                         <>
-                          <FiCar className="text-blue-600 mt-0.5" size={16} />
+                          <FiTruck className="text-blue-600 mt-0.5" size={16} />
                           <div className="flex-1">
                             <div className="text-sm font-medium text-gray-900">
                               Travelled ({activity.distance}Km)
