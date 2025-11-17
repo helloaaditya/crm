@@ -1164,8 +1164,8 @@ const Expenses = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Remarks
-                </label>
+                  Reason for addition
+                  <span className="text-red-500">*</span></label>
                 <textarea
                   value={fundData.remarks}
                   onChange={(e) => setFundData({ ...fundData, remarks: e.target.value })}
