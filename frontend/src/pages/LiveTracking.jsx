@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, FiUsers } from 'react-icons/fi';
+import { FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, FiUsers, FiChevronDown } from 'react-icons/fi';
 import API from '../api';
 import { toast } from 'react-toastify';
 
@@ -93,6 +93,9 @@ const LiveTracking = () => {
       activeSessionsCount: 0
     }
   });
+  const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+  const employeeDropdownRef = useRef(null);
   const intervalRef = useRef(null);
 
   // Fetch active locations
@@ -120,10 +123,15 @@ const LiveTracking = () => {
   // Fetch all employees
   const fetchEmployees = async () => {
     try {
-      const response = await API.employees.getAll({ fields: '_id employeeId name role' });
+      // Fetch all employees with a high limit to ensure we get all of them
+      const response = await API.employees.getAll({ 
+        limit: 10000,
+        fields: '_id employeeId name role' 
+      });
       setEmployees(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch employees:', error);
+      toast.error('Failed to load employees');
     }
   };
 
@@ -228,6 +236,32 @@ const LiveTracking = () => {
 
     return () => clearInterval(timer);
   }, [lastUpdateTime]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target)) {
+        setEmployeeDropdownOpen(false);
+      }
+    };
+
+    if (employeeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [employeeDropdownOpen]);
+
+  // Filter employees based on search term
+  const filteredEmployees = employees.filter(emp => {
+    if (!employeeSearchTerm) return true;
+    const searchLower = employeeSearchTerm.toLowerCase();
+    return emp.name?.toLowerCase().includes(searchLower) || 
+           emp.employeeId?.toLowerCase().includes(searchLower) ||
+           emp.role?.toLowerCase().includes(searchLower);
+  });
 
   // Get map center - default to first active location or India center
   const getMapCenter = () => {
@@ -347,20 +381,75 @@ const LiveTracking = () => {
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">📍 View Historical Route</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div className="relative z-[10000]" ref={employeeDropdownRef}>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Employee</label>
-            <select
-              value={selectedEmployee || ''}
-              onChange={(e) => handleEmployeeSelect(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            <button
+              type="button"
+              onClick={() => {
+                setEmployeeDropdownOpen(!employeeDropdownOpen);
+                setEmployeeSearchTerm('');
+              }}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between relative z-[10001]"
             >
-              <option value="">-- Select Employee --</option>
-              {employees.map(emp => (
-                <option key={emp._id} value={emp._id}>
-                  {emp.employeeId} - {emp.name} ({emp.role})
-                </option>
-              ))}
-            </select>
+              <span className={selectedEmployee ? 'text-gray-900' : 'text-gray-500'}>
+                {selectedEmployee 
+                  ? `${employees.find(e => e._id === selectedEmployee)?.employeeId || ''} - ${employees.find(e => e._id === selectedEmployee)?.name || ''} (${employees.find(e => e._id === selectedEmployee)?.role || ''})`
+                  : '-- Select Employee --'}
+              </span>
+              <FiChevronDown className={`transition-transform ${employeeDropdownOpen ? 'transform rotate-180' : ''}`} />
+            </button>
+            
+            {employeeDropdownOpen && (
+              <div className="absolute w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '60vh', zIndex: 10000 }}>
+                {/* Search Input */}
+                <div className="p-2 border-b sticky top-0 bg-white z-10">
+                  <input
+                    type="text"
+                    placeholder="Search employee..."
+                    value={employeeSearchTerm}
+                    onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Scrollable Employee List */}
+                <div className="overflow-y-auto" style={{ maxHeight: 'calc(60vh - 60px)' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleEmployeeSelect('');
+                      setEmployeeDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                      !selectedEmployee ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                    }`}
+                  >
+                    -- Select Employee --
+                  </button>
+                  {filteredEmployees.length === 0 ? (
+                    <div className="px-4 py-2 text-gray-500 text-sm">No employees found</div>
+                  ) : (
+                    filteredEmployees.map(emp => (
+                      <button
+                        key={emp._id}
+                        type="button"
+                        onClick={() => {
+                          handleEmployeeSelect(emp._id);
+                          setEmployeeDropdownOpen(false);
+                          setEmployeeSearchTerm('');
+                        }}
+                        className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                          selectedEmployee === emp._id ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                        }`}
+                      >
+                        {emp.employeeId} - {emp.name} ({emp.role})
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>

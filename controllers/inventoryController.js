@@ -267,8 +267,10 @@ export const importMaterials = asyncHandler(async (req, res) => {
 
   const results = [];
   const errors = [];
+  const skipped = [];
   let successCount = 0;
   let errorCount = 0;
+  let skippedCount = 0;
 
   // Parse CSV file
   fs.createReadStream(req.file.path)
@@ -302,6 +304,45 @@ export const importMaterials = asyncHandler(async (req, res) => {
             continue;
           }
 
+          // Normalize unit to lowercase and handle common variations
+          const unitMapping = {
+            'kg': 'kg',
+            'kilograms': 'kg',
+            'kilogram': 'kg',
+            'ltr': 'ltr',
+            'litre': 'litre',
+            'liters': 'litre',
+            'liter': 'litre',
+            'grams': 'grams',
+            'gram': 'grams',
+            'pcs': 'pcs',
+            'pieces': 'pcs',
+            'piece': 'pcs',
+            'box': 'box',
+            'boxes': 'box',
+            'bag': 'bag',
+            'bags': 'bag',
+            'kit': 'kit',
+            'kits': 'kit',
+            'sqft': 'sqft',
+            'sqm': 'sqm',
+            'other': 'other'
+          };
+          
+          const unitInput = row.Unit.trim().toLowerCase();
+          const normalizedUnit = unitMapping[unitInput] || unitInput;
+          
+          // Validate unit
+          const validUnits = ['kg', 'ltr', 'litre', 'grams', 'pcs', 'box', 'bag', 'kit', 'sqft', 'sqm', 'other'];
+          if (!validUnits.includes(normalizedUnit)) {
+            errors.push({
+              row: rowNumber,
+              message: `Invalid unit: "${row.Unit}". Must be one of: ${validUnits.join(', ')}`
+            });
+            errorCount++;
+            continue;
+          }
+
           // Find vendor by name if provided
           let vendorId = null;
           if (row.VendorName) {
@@ -319,7 +360,7 @@ export const importMaterials = asyncHandler(async (req, res) => {
             category: row.Category.toLowerCase().trim(),
             brand: row.Brand?.trim() || '',
             product: row.Product?.trim() || '',
-            unit: row.Unit.trim(),
+            unit: normalizedUnit,
             quantity: parseFloat(row.Quantity) || 0,
             minStockLevel: parseFloat(row.MinStockLevel) || 10,
             saleCost: parseFloat(row.SaleCost) || 0,
@@ -340,17 +381,75 @@ export const importMaterials = asyncHandler(async (req, res) => {
           }
 
           // Check if material already exists (by name and brand)
-          const existingMaterial = await Material.findOne({
-            name: { $regex: new RegExp(`^${materialData.name}$`, 'i') },
-            brand: materialData.brand ? { $regex: new RegExp(`^${materialData.brand}$`, 'i') } : ''
-          });
+          let duplicateQuery = {
+            name: { $regex: new RegExp(`^${materialData.name}$`, 'i') }
+          };
+          
+          // If brand is provided, match by name and brand; if not, match by name only (no brand)
+          if (materialData.brand && materialData.brand.trim()) {
+            duplicateQuery.brand = { $regex: new RegExp(`^${materialData.brand.trim()}$`, 'i') };
+          } else {
+            duplicateQuery.$or = [
+              { brand: { $exists: false } },
+              { brand: null },
+              { brand: '' }
+            ];
+          }
+          
+          const existingMaterial = await Material.findOne(duplicateQuery);
 
           if (existingMaterial) {
-            errors.push({
-              row: rowNumber,
-              message: `Material already exists: ${materialData.name} ${materialData.brand ? '(' + materialData.brand + ')' : ''}`
-            });
-            errorCount++;
+            // Update existing material with new data (optional: add quantity, update prices)
+            const updateData = {};
+            let wasUpdated = false;
+
+            // Update quantity if provided (add to existing)
+            if (materialData.quantity > 0) {
+              existingMaterial.quantity = (existingMaterial.quantity || 0) + materialData.quantity;
+              updateData.quantity = existingMaterial.quantity;
+              wasUpdated = true;
+            }
+
+            // Update prices if provided and different
+            if (materialData.saleCost > 0 && existingMaterial.saleCost !== materialData.saleCost) {
+              existingMaterial.saleCost = materialData.saleCost;
+              updateData.saleCost = materialData.saleCost;
+              wasUpdated = true;
+            }
+
+            if (materialData.mrp > 0 && existingMaterial.mrp !== materialData.mrp) {
+              existingMaterial.mrp = materialData.mrp;
+              updateData.mrp = materialData.mrp;
+              wasUpdated = true;
+            }
+
+            // Update other fields if provided
+            if (materialData.minStockLevel && existingMaterial.minStockLevel !== materialData.minStockLevel) {
+              existingMaterial.minStockLevel = materialData.minStockLevel;
+              wasUpdated = true;
+            }
+
+            if (materialData.unit && existingMaterial.unit !== materialData.unit) {
+              existingMaterial.unit = materialData.unit;
+              wasUpdated = true;
+            }
+
+            if (wasUpdated) {
+              await existingMaterial.save();
+              skipped.push({
+                row: rowNumber,
+                message: `Material updated: ${materialData.name} ${materialData.brand ? '(' + materialData.brand + ')' : ''}`,
+                action: 'updated'
+              });
+              successCount++; // Count as success since we updated it
+            } else {
+              skipped.push({
+                row: rowNumber,
+                message: `Material already exists (skipped): ${materialData.name} ${materialData.brand ? '(' + materialData.brand + ')' : ''}`,
+                action: 'skipped'
+              });
+              skippedCount++;
+            }
             continue;
           }
 
@@ -376,10 +475,12 @@ export const importMaterials = asyncHandler(async (req, res) => {
         data: {
           successCount,
           errorCount,
+          skippedCount,
           totalRows: results.length,
-          errors: errors.slice(0, 50) // Limit to first 50 errors to avoid huge response
+          errors: errors.slice(0, 50), // Limit to first 50 errors to avoid huge response
+          skipped: skipped.slice(0, 50) // Limit to first 50 skipped items
         },
-        message: `Import completed: ${successCount} successful, ${errorCount} failed`
+        message: `Import completed: ${successCount} successful, ${skippedCount} skipped, ${errorCount} failed`
       });
     })
     .on('error', (error) => {
