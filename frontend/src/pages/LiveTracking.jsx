@@ -4,9 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
   FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, 
-  FiUsers, FiChevronDown, FiPlay, FiCheckCircle, FiTruck, FiMap, 
-  FiSettings, FiDownload, FiPlus, FiFilter, FiChevronLeft, FiChevronRight,
-  FiBattery, FiGlobe, FiEye
+  FiUsers, FiChevronDown, FiTruck, 
+  FiSettings, FiDownload, FiBattery, FiGlobe
 } from 'react-icons/fi';
 import API from '../api';
 import { toast } from 'react-toastify';
@@ -37,16 +36,6 @@ const stopPointIcon = new L.Icon({
   iconAnchor: [10, 33],
   popupAnchor: [1, -28],
   shadowSize: [33, 33]
-});
-
-// Custom icon for movement points (blue)
-const movementPointIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [15, 25],
-  iconAnchor: [7, 25],
-  popupAnchor: [1, -20],
-  shadowSize: [25, 25]
 });
 
 // Component to auto-fit map bounds
@@ -178,7 +167,6 @@ const LiveTracking = () => {
           
           // Process activities (travel segments and stoppages)
           let currentSegment = null;
-          let lastStop = null;
           
           for (let i = 0; i < session.locations.length; i++) {
             const loc = session.locations[i];
@@ -186,7 +174,7 @@ const LiveTracking = () => {
             
             if (loc.isStopPoint && loc.stopDuration) {
               // End current travel segment if exists
-              if (currentSegment) {
+              if (currentSegment && prevLoc) {
                 const segmentDistance = calculateDistance(
                   currentSegment.start.latitude,
                   currentSegment.start.longitude,
@@ -212,7 +200,6 @@ const LiveTracking = () => {
                   timestamp: loc.timestamp,
                   coordinates: [loc.latitude, loc.longitude]
                 });
-                lastStop = loc;
               }
             } else {
               // Start new travel segment if not exists
@@ -247,7 +234,7 @@ const LiveTracking = () => {
       setHistoricalRoute(allLocations);
       setActivityLog(activities);
       setTodayStats({
-        completed: 0, // TODO: Fetch from tasks API
+        completed: 0,
         distance: (totalDistance / 1000).toFixed(2),
         punchIn: punchInTime
       });
@@ -284,11 +271,6 @@ const LiveTracking = () => {
     if (employeeId) {
       const emp = employees.find(e => e._id === employeeId);
       setSelectedEmployee(emp);
-      
-      // Find active location for this employee
-      const empLocation = activeLocations.find(loc => 
-        loc.employeeDetails?._id === employeeId
-      );
       
       // Fetch historical route for today
       await fetchHistoricalRoute(employeeId, selectedDate);
@@ -407,15 +389,7 @@ const LiveTracking = () => {
 
   const tabs = [
     { id: 'live', label: 'Live' },
-    { id: 'playback', label: 'Playback' },
-    { id: 'task', label: 'Task' },
-    { id: 'attendance', label: 'All Attendance' },
-    { id: 'leave', label: 'All Leave' },
-    { id: 'details', label: 'Details' },
-    { id: 'managers', label: 'Managers' },
-    { id: 'feeds', label: 'Feeds' },
-    { id: 'expense', label: 'Expense' },
-    { id: 'audit', label: 'Audit History' }
+    { id: 'playback', label: 'Playback' }
   ];
 
   const currentEmpLocation = selectedEmployeeId 
@@ -437,14 +411,15 @@ const LiveTracking = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            disabled={loading}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             title="Refresh"
           >
-            <FiRefreshCw className={loading ? 'animate-spin' : ''} />
+            <FiRefreshCw className={loading ? 'animate-spin' : ''} size={18} />
           </button>
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`px-3 py-1 rounded-lg text-sm ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               autoRefresh ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
             }`}
           >
@@ -571,24 +546,15 @@ const LiveTracking = () => {
                     </span>
                   </div>
                 </div>
-
-                <div className="mt-4 flex gap-2">
-                  <button className="flex-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded text-sm font-medium">
-                    Default
-                  </button>
-                  <button className="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm font-medium">
-                    Sales
-                  </button>
-                </div>
               </div>
 
               {/* Tabs */}
-              <div className="border-b flex overflow-x-auto">
+              <div className="border-b flex">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    className={`flex-1 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -599,24 +565,15 @@ const LiveTracking = () => {
                 ))}
               </div>
 
-              {/* 360° View Section */}
-              <div className="p-4 border-b flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-800">360° View</h3>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <FiRefreshCw size={16} />
-                </button>
-              </div>
-
               {/* Activity Log */}
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                       <FiCalendar size={16} />
                       Today
                     </h3>
                     <div className="flex items-center gap-4 text-xs text-gray-600">
-                      <span>Completed {todayStats.completed}</span>
                       <span>Distance {todayStats.distance}Km</span>
                     </div>
                   </div>
@@ -625,25 +582,24 @@ const LiveTracking = () => {
                 <div className="space-y-3">
                   {/* Punch In */}
                   {todayStats.punchIn && (
-                    <div className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
-                      <FiClock className="text-blue-600 mt-0.5" size={16} />
-                      <div className="flex-1">
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <FiClock className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                      <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900">
                           {new Date(todayStats.punchIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </div>
                         <div className="text-xs text-gray-600">Punch In</div>
-                        <button className="text-xs text-blue-600 hover:underline mt-1">See on Map!</button>
                       </div>
                     </div>
                   )}
 
                   {/* Activity Items */}
                   {activityLog.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
+                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                       {activity.type === 'travel' ? (
                         <>
-                          <FiTruck className="text-blue-600 mt-0.5" size={16} />
-                          <div className="flex-1">
+                          <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                          <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-900">
                               Travelled ({activity.distance}Km)
                             </div>
@@ -656,12 +612,12 @@ const LiveTracking = () => {
                         </>
                       ) : (
                         <>
-                          <FiMapPin className="text-red-600 mt-0.5" size={16} />
-                          <div className="flex-1">
+                          <FiMapPin className="text-red-600 mt-0.5 flex-shrink-0" size={16} />
+                          <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-900">
                               Stoppage of {formatDuration(activity.duration)}
                             </div>
-                            <div className="text-xs text-gray-600 mt-1">
+                            <div className="text-xs text-gray-600 mt-1 break-words">
                               {activity.address || 'Location not available'}
                             </div>
                           </div>
@@ -676,23 +632,14 @@ const LiveTracking = () => {
                     </div>
                   )}
                 </div>
-
-                {/* Nearest Location */}
-                <div className="mt-4 p-2 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600">Nearest Location</span>
-                    <button className="text-xs text-blue-600 hover:underline">See location on map</button>
-                  </div>
-                </div>
               </div>
 
               {/* Device Info Bar */}
               {currentEmpLocation && (
                 <div className="p-3 border-t bg-gray-50 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-4">
-                    <span className="text-gray-600">Device: Mobile</span>
+                  <div className="flex items-center gap-3">
                     {currentEmpLocation.batteryLevel && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 text-gray-600">
                         <FiBattery size={14} />
                         <span>{currentEmpLocation.batteryLevel}%</span>
                       </div>
@@ -701,29 +648,13 @@ const LiveTracking = () => {
                       {Math.floor((new Date() - new Date(currentEmpLocation.createdAt)) / 1000 / 60)} min ago
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <FiPlus size={14} />
-                    </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <FiDownload size={14} />
-                    </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <FiSettings size={14} />
-                    </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <FiFilter size={14} />
-                    </button>
-                    <button className="p-1 hover:bg-gray-200 rounded" onClick={handleRefresh}>
-                      <FiRefreshCw size={14} />
-                    </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <FiChevronLeft size={14} />
-                    </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <FiChevronRight size={14} />
-                    </button>
-                  </div>
+                  <button 
+                    className="p-1.5 hover:bg-gray-200 rounded transition-colors" 
+                    onClick={handleRefresh}
+                    title="Refresh"
+                  >
+                    <FiRefreshCw className={loading ? 'animate-spin' : ''} size={14} />
+                  </button>
                 </div>
               )}
             </>
