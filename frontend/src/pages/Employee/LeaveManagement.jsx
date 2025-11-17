@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { FiCheckCircle, FiXCircle, FiClock, FiFilter } from 'react-icons/fi'
+import { useState, useEffect, useRef } from 'react'
+import { FiCheckCircle, FiXCircle, FiClock, FiFilter, FiChevronDown } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
@@ -9,6 +9,9 @@ const LeaveManagement = () => {
   const [loading, setLoading] = useState(true)
   const [filterEmployee, setFilterEmployee] = useState('')
   const [filterStatus, setFilterStatus] = useState('pending')
+  const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false)
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('')
+  const employeeDropdownRef = useRef(null)
 
   useEffect(() => {
     fetchLeaveRequests()
@@ -20,7 +23,7 @@ const LeaveManagement = () => {
       setLoading(true)
       // For now, we'll fetch all employees and filter on frontend
       // In a real app, you'd have a backend endpoint for this
-      const employeesResponse = await API.employees.getAll()
+      const employeesResponse = await API.employees.getAll({ limit: 10000 })
       const allEmployees = employeesResponse.data.data || []
       
       // Flatten leave requests from all employees
@@ -52,13 +55,37 @@ const LeaveManagement = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await API.employees.getAll()
+      const response = await API.employees.getAll({ limit: 10000 })
       setEmployees(response.data.data || [])
     } catch (error) {
       console.error('Error fetching employees:', error)
       toast.error('Failed to load employees')
     }
   }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target)) {
+        setEmployeeDropdownOpen(false)
+      }
+    }
+    if (employeeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [employeeDropdownOpen])
+
+  // Filter employees based on search term
+  const filteredEmployees = employees.filter(emp => {
+    if (!employeeSearchTerm) return true
+    const searchLower = employeeSearchTerm.toLowerCase()
+    return emp.name?.toLowerCase().includes(searchLower) || 
+           emp.employeeId?.toLowerCase().includes(searchLower) ||
+           emp.role?.toLowerCase().includes(searchLower)
+  })
 
   const handleApprove = async (leaveId, employeeId) => {
     try {
@@ -123,20 +150,76 @@ const LeaveManagement = () => {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div>
+          <div className="relative z-[10000]" ref={employeeDropdownRef}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Employee</label>
-            <select
-              value={filterEmployee}
-              onChange={(e) => setFilterEmployee(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+            <button
+              type="button"
+              onClick={() => {
+                setEmployeeDropdownOpen(!employeeDropdownOpen)
+                setEmployeeSearchTerm('')
+              }}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-left flex items-center justify-between relative z-[10001]"
             >
-              <option value="">All Employees</option>
-              {employees.map(employee => (
-                <option key={employee._id} value={employee._id}>
-                  {employee.name} ({employee.employeeId})
-                </option>
-              ))}
-            </select>
+              <span className={filterEmployee ? 'text-gray-900' : 'text-gray-500'}>
+                {filterEmployee 
+                  ? `${employees.find(e => e._id === filterEmployee)?.name || ''} (${employees.find(e => e._id === filterEmployee)?.employeeId || ''})`
+                  : 'All Employees'}
+              </span>
+              <FiChevronDown className={`transition-transform ${employeeDropdownOpen ? 'transform rotate-180' : ''}`} />
+            </button>
+            
+            {employeeDropdownOpen && (
+              <div className="absolute z-[10000] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '60vh' }}>
+                {/* Search Input */}
+                <div className="p-2 border-b sticky top-0 bg-white z-10">
+                  <input
+                    type="text"
+                    placeholder="Search employee..."
+                    value={employeeSearchTerm}
+                    onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Scrollable Employee List */}
+                <div className="overflow-y-auto" style={{ maxHeight: 'calc(60vh - 60px)' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterEmployee('')
+                      setEmployeeDropdownOpen(false)
+                      setEmployeeSearchTerm('')
+                    }}
+                    className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                      !filterEmployee ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                    }`}
+                  >
+                    All Employees
+                  </button>
+                  {filteredEmployees.length === 0 ? (
+                    <div className="px-4 py-2 text-gray-500 text-sm">No employees found</div>
+                  ) : (
+                    filteredEmployees.map(emp => (
+                      <button
+                        key={emp._id}
+                        type="button"
+                        onClick={() => {
+                          setFilterEmployee(emp._id)
+                          setEmployeeDropdownOpen(false)
+                          setEmployeeSearchTerm('')
+                        }}
+                        className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                          filterEmployee === emp._id ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                        }`}
+                      >
+                        {emp.name} ({emp.employeeId})
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           
           <div>
