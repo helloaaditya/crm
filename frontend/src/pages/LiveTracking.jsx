@@ -719,20 +719,42 @@ const LiveTracking = () => {
                       smoothFactor={1.5}
                     />
                     
-                    {/* Start marker */}
-                    <Marker
-                      position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
-                      icon={activeEmployeeIcon}
-                    >
-                      <Popup>
-                        <div className="p-2">
-                          <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {new Date(historicalRoute[0].timestamp).toLocaleString()}
-                          </p>
-                        </div>
-                      </Popup>
-                    </Marker>
+                    {/* Start marker - Use check-in location if available, otherwise first GPS point */}
+                    {todayAttendance?.checkInLocation?.coordinates ? (
+                      <Marker
+                        position={[
+                          todayAttendance.checkInLocation.coordinates[1],
+                          todayAttendance.checkInLocation.coordinates[0]
+                        ]}
+                        icon={activeEmployeeIcon}
+                      >
+                        <Popup>
+                          <div className="p-2">
+                            <h3 className="font-semibold text-green-600">🚀 Journey Start (Check-In)</h3>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {new Date(todayAttendance.checkInTime).toLocaleString()}
+                            </p>
+                            {todayAttendance.checkInLocation.address && (
+                              <p className="text-xs text-gray-500 mt-1">{todayAttendance.checkInLocation.address}</p>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ) : (
+                      <Marker
+                        position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
+                        icon={activeEmployeeIcon}
+                      >
+                        <Popup>
+                          <div className="p-2">
+                            <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {new Date(historicalRoute[0].timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
                     
                     {/* Stop points */}
                     {historicalRoute
@@ -757,25 +779,28 @@ const LiveTracking = () => {
                         </Marker>
                       ))}
                     
-                    {/* End marker */}
-                    {historicalRoute.length > 1 && (
+                    {/* End marker - Only show if checked out */}
+                    {todayAttendance?.checkOutTime && todayAttendance?.checkOutLocation?.coordinates ? (
                       <Marker
                         position={[
-                          historicalRoute[historicalRoute.length - 1].latitude,
-                          historicalRoute[historicalRoute.length - 1].longitude
+                          todayAttendance.checkOutLocation.coordinates[1],
+                          todayAttendance.checkOutLocation.coordinates[0]
                         ]}
                         icon={stopPointIcon}
                       >
                         <Popup>
                           <div className="p-2">
-                            <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
+                            <h3 className="font-semibold text-red-600">🏁 Journey End (Check-Out)</h3>
                             <p className="text-xs text-gray-600 mt-1">
-                              {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
+                              {new Date(todayAttendance.checkOutTime).toLocaleString()}
                             </p>
+                            {todayAttendance.checkOutLocation.address && (
+                              <p className="text-xs text-gray-500 mt-1">{todayAttendance.checkOutLocation.address}</p>
+                            )}
                           </div>
                         </Popup>
                       </Marker>
-                    )}
+                    ) : null}
                   </>
                 )}
                 
