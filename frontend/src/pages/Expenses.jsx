@@ -548,7 +548,7 @@ const Expenses = () => {
         </div>
       )}
 
-      {/* Employee Funds Summary (Admin Only)
+      {/* Employee Funds Summary (Admin Only) */}
       {hasExpenseAccess && employeesFunds.length > 0 && (
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-6 border-b">
@@ -580,32 +580,23 @@ const Expenses = () => {
                           <span className="font-bold text-green-600 text-lg">₹{emp.availableFunds.toLocaleString('en-IN')}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={async () => {
-                                setSelectedEmployeeHistory(emp)
-                                setShowHistoryModal(true)
-                                try {
-                                  const response = await API.funds.getEmployeeFundHistory(emp._id, { limit: 100 })
-                                  setEmployeeFundHistory(response.data.data || [])
-                                } catch (error) {
-                                  console.error('Error fetching employee fund history:', error)
-                                  toast.error('Failed to load fund history')
-                                }
-                              }}
-                              className="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
-                            >
-                              <FiClock className="mr-1" size={14} />
-                              History
-                            </button>
-                            <button
-                              onClick={() => openAddEmployeeFundModal(emp)}
-                              className="flex items-center px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
-                            >
-                              <FiPlus className="mr-1" size={14} />
-                              Add Funds
-                            </button>
-                          </div>
+                          <button
+                            onClick={async () => {
+                              setSelectedEmployeeHistory(emp)
+                              setShowHistoryModal(true)
+                              try {
+                                const response = await API.funds.getEmployeeFundHistory(emp._id, { limit: 100 })
+                                setEmployeeFundHistory(response.data.data || [])
+                              } catch (error) {
+                                console.error('Error fetching employee fund history:', error)
+                                toast.error('Failed to load fund history')
+                              }
+                            }}
+                            className="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                          >
+                            <FiClock className="mr-1" size={14} />
+                            History
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -614,7 +605,7 @@ const Expenses = () => {
             </div>
           </div>
         </div>
-      )} */}
+      )}
 
       {/* Employee Expense Summary (Admin Only)
       {hasExpenseAccess && expenses.length > 0 && (

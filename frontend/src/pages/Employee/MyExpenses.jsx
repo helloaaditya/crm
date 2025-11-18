@@ -1255,6 +1255,119 @@ function MyExpenses() {
           </div>
         </div>
       )}
+
+      {/* Add Funds Modal */}
+      {showFundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-lg my-4 max-h-[95vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sticky top-0 bg-white z-10">
+              <div className="flex-1">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Add Funds to My Account</h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">Add funds to your personal expense account</p>
+              </div>
+              <button 
+                onClick={() => setShowFundModal(false)} 
+                className="text-gray-500 hover:text-gray-700 self-end sm:self-auto"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddFunds} className="p-4 sm:p-6 space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-xs sm:text-sm text-green-800">
+                  <strong>Current Balance:</strong> ₹{availableFunds.toLocaleString('en-IN')}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={fundData.amount}
+                  onChange={(e) => setFundData({ ...fundData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                  placeholder="Enter amount to add"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={fundData.paymentMode}
+                  onChange={(e) => setFundData({ ...fundData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={fundData.transactionReference}
+                  onChange={(e) => setFundData({ ...fundData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for addition <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={fundData.remarks}
+                  onChange={(e) => setFundData({ ...fundData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                  rows="3"
+                  placeholder="Any notes about this fund addition..."
+                  required
+                />
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFundModal(false)
+                    setFundData({
+                      amount: '',
+                      paymentMode: 'bank_transfer',
+                      transactionReference: '',
+                      remarks: ''
+                    })
+                  }}
+                  className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm sm:text-base font-semibold"
+                >
+                  Add Funds
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
