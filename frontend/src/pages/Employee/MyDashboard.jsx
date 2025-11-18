@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
 import Confetti from 'react-confetti'
 import useLocationTracking from '../../hooks/useLocationTracking'
+import { requestLocationPermission, checkLocationPermission } from '../../utils/locationPermission'
 
 const MyDashboard = () => {
   const { user } = useAuth()
@@ -66,7 +67,46 @@ const MyDashboard = () => {
     
     fetchEmployeeProfile()
     fetchDashboardData()
-    getCurrentLocation()
+    // Request location permission on page load
+    const requestPermission = async () => {
+      const permission = await checkLocationPermission()
+      if (permission === 'prompt' || permission === 'default') {
+        // Show info toast and request permission
+        toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
+          autoClose: 5000
+        })
+        const result = await requestLocationPermission()
+        if (!result.granted) {
+          if (result.reason === 'permission_denied') {
+            toast.error('Location permission denied. Please enable location permission in your browser settings.', {
+              autoClose: 7000
+            })
+          } else if (result.reason === 'location_disabled') {
+            toast.error('Location services are disabled. Please enable location/GPS on your device.', {
+              autoClose: 7000
+            })
+          }
+        }
+      } else if (permission === 'denied') {
+        toast.error('Location permission denied. Please enable location permission in your browser settings.', {
+          autoClose: 7000
+        })
+      }
+      // Get location after permission check
+      getCurrentLocation()
+    }
+    requestPermission()
+  }, [user])
+
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchDashboardData()
+      fetchEmployeeProfile()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
   }, [user])
 
   const getCurrentLocation = () => {
@@ -155,10 +195,36 @@ const MyDashboard = () => {
   }
 
   const handleCheckIn = async () => {
-    if (!location) {
-      toast.error('Please enable location access')
-      getCurrentLocation()
+    // Request location permission if not already granted
+    const result = await requestLocationPermission()
+    if (!result.granted) {
+      if (result.reason === 'permission_denied') {
+        toast.error('Location permission is required for check-in. Please enable location permission in your browser settings.', {
+          autoClose: 7000
+        })
+      } else if (result.reason === 'location_disabled') {
+        toast.error('Location services are disabled. Please enable location/GPS on your device to check in.', {
+          autoClose: 7000
+        })
+      } else {
+        toast.error('Could not access your location. Please enable location services and try again.', {
+          autoClose: 7000
+        })
+      }
       return
+    }
+
+    if (!location) {
+      toast.info('Getting your location...')
+      getCurrentLocation()
+      // Wait a bit for location to be fetched
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (!location || location.address === 'Location not available') {
+        toast.error('Could not get your location. Please ensure location services are enabled and try again.', {
+          autoClose: 7000
+        })
+        return
+      }
     }
 
     console.log('📥 Dashboard - Check-in button clicked');
@@ -195,10 +261,36 @@ const MyDashboard = () => {
   }
 
   const handleCheckOut = async () => {
-    if (!location) {
-      toast.error('Please enable location access')
-      getCurrentLocation()
+    // Request location permission if not already granted
+    const result = await requestLocationPermission()
+    if (!result.granted) {
+      if (result.reason === 'permission_denied') {
+        toast.error('Location permission is required for check-out. Please enable location permission in your browser settings.', {
+          autoClose: 7000
+        })
+      } else if (result.reason === 'location_disabled') {
+        toast.error('Location services are disabled. Please enable location/GPS on your device to check out.', {
+          autoClose: 7000
+        })
+      } else {
+        toast.error('Could not access your location. Please enable location services and try again.', {
+          autoClose: 7000
+        })
+      }
       return
+    }
+
+    if (!location) {
+      toast.info('Getting your location...')
+      getCurrentLocation()
+      // Wait a bit for location to be fetched
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (!location || location.address === 'Location not available') {
+        toast.error('Could not get your location. Please ensure location services are enabled and try again.', {
+          autoClose: 7000
+        })
+        return
+      }
     }
 
     console.log('📤 Dashboard - Check-out button clicked');

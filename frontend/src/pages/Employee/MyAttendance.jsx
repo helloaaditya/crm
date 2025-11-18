@@ -33,7 +33,22 @@ function MyAttendance() {
         toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
           autoClose: 5000
         })
-        await requestLocationPermission()
+        const result = await requestLocationPermission()
+        if (!result.granted) {
+          if (result.reason === 'permission_denied') {
+            toast.error('Location permission denied. Please enable location permission in your browser settings.', {
+              autoClose: 7000
+            })
+          } else if (result.reason === 'location_disabled') {
+            toast.error('Location services are disabled. Please enable location/GPS on your device.', {
+              autoClose: 7000
+            })
+          }
+        }
+      } else if (permission === 'denied') {
+        toast.error('Location permission denied. Please enable location permission in your browser settings.', {
+          autoClose: 7000
+        })
       }
       // Get location after permission check
       getCurrentLocation()
@@ -147,9 +162,21 @@ function MyAttendance() {
 
   const handleCheckIn = async () => {
     // Request location permission if not already granted
-    const hasPermission = await requestLocationPermission()
-    if (!hasPermission) {
-      toast.error('Location permission is required for check-in. Please enable location access in your browser settings.')
+    const result = await requestLocationPermission()
+    if (!result.granted) {
+      if (result.reason === 'permission_denied') {
+        toast.error('Location permission is required for check-in. Please enable location permission in your browser settings.', {
+          autoClose: 7000
+        })
+      } else if (result.reason === 'location_disabled') {
+        toast.error('Location services are disabled. Please enable location/GPS on your device to check in.', {
+          autoClose: 7000
+        })
+      } else {
+        toast.error('Could not access your location. Please enable location services and try again.', {
+          autoClose: 7000
+        })
+      }
       return
     }
 
@@ -157,9 +184,11 @@ function MyAttendance() {
       toast.info('Getting your location...')
       getCurrentLocation()
       // Wait a bit for location to be fetched
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      if (!location) {
-        toast.error('Could not get your location. Please try again.')
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (!location || location.address === 'Location not available') {
+        toast.error('Could not get your location. Please ensure location services are enabled and try again.', {
+          autoClose: 7000
+        })
         return
       }
     }
@@ -199,9 +228,21 @@ function MyAttendance() {
 
   const handleCheckOut = async () => {
     // Request location permission if not already granted
-    const hasPermission = await requestLocationPermission()
-    if (!hasPermission) {
-      toast.error('Location permission is required for check-out. Please enable location access in your browser settings.')
+    const result = await requestLocationPermission()
+    if (!result.granted) {
+      if (result.reason === 'permission_denied') {
+        toast.error('Location permission is required for check-out. Please enable location permission in your browser settings.', {
+          autoClose: 7000
+        })
+      } else if (result.reason === 'location_disabled') {
+        toast.error('Location services are disabled. Please enable location/GPS on your device to check out.', {
+          autoClose: 7000
+        })
+      } else {
+        toast.error('Could not access your location. Please enable location services and try again.', {
+          autoClose: 7000
+        })
+      }
       return
     }
 
@@ -209,9 +250,11 @@ function MyAttendance() {
       toast.info('Getting your location...')
       getCurrentLocation()
       // Wait a bit for location to be fetched
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      if (!location) {
-        toast.error('Could not get your location. Please try again.')
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      if (!location || location.address === 'Location not available') {
+        toast.error('Could not get your location. Please ensure location services are enabled and try again.', {
+          autoClose: 7000
+        })
         return
       }
     }
