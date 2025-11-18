@@ -1,33 +1,40 @@
 import express from 'express';
-import { protect, moduleAccess, checkPermission } from '../middleware/auth.js';
+import { protect, checkModuleAccess } from '../middleware/authMiddleware.js';
 import {
   getFunds,
   addFunds,
   deductFundsManually,
   getFundHistory,
-  getFundStats
+  getFundStats,
+  getEmployeeFunds,
+  addEmployeeFunds,
+  getEmployeeFundHistory,
+  getAllEmployeesFunds,
+  addFundsToEmployee
 } from '../controllers/fundController.js';
 
 const router = express.Router();
 
-// All routes require authentication and expense module access
-router.use(protect);
-router.use(moduleAccess('expense', 'all'));
+// Company funds routes
+router.get('/', protect, checkModuleAccess('expense'), getFunds);
+router.post('/add', protect, checkModuleAccess('expense'), addFunds);
+router.post('/deduct', protect, checkModuleAccess('expense'), deductFundsManually);
+router.get('/history', protect, checkModuleAccess('expense'), getFundHistory);
+router.get('/stats', protect, checkModuleAccess('expense'), getFundStats);
 
-// Get current funds
-router.get('/', getFunds);
+// Employee funds routes
+// Get my funds (employee)
+router.get('/employee/my', protect, getEmployeeFunds);
+router.post('/employee/my/add', protect, addEmployeeFunds);
+router.get('/employee/my/history', protect, getEmployeeFundHistory);
 
-// Get fund statistics
-router.get('/stats', getFundStats);
+// Get all employees' funds (admin)
+router.get('/employees/all', protect, checkModuleAccess('expense'), getAllEmployeesFunds);
 
-// Get fund history
-router.get('/history', getFundHistory);
-
-// Add funds (requires canHandleAccounts permission)
-router.post('/add', checkPermission('canHandleAccounts'), addFunds);
-
-// Deduct funds (requires canHandleAccounts permission)
-router.post('/deduct', checkPermission('canHandleAccounts'), deductFundsManually);
+// Manage specific employee funds (admin)
+router.get('/employee/:employeeId', protect, checkModuleAccess('expense'), getEmployeeFunds);
+router.post('/employee/:employeeId/add', protect, checkModuleAccess('expense'), addFundsToEmployee);
+router.get('/employee/:employeeId/history', protect, checkModuleAccess('expense'), getEmployeeFundHistory);
 
 export default router;
 
