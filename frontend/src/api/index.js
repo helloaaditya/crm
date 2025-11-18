@@ -275,6 +275,7 @@ export const expenseAPI = {
   getById: (id) => api.get(`/expenses/${id}`),
   getMyExpenses: () => api.get('/expenses/my-expenses'),
   create: (data) => api.post('/expenses/my-expense', data),
+  createAndPayDirect: (data) => api.post('/expenses/my-expense/pay-direct', data), // Create and pay directly from own funds
   update: (id, data) => api.put(`/expenses/my-expense/${id}`, data),
   delete: (id) => api.delete(`/expenses/my-expense/${id}`),
   approve: (id, data) => api.put(`/expenses/${id}/approve`, data),

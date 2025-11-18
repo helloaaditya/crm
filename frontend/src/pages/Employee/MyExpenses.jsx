@@ -32,6 +32,7 @@ function MyExpenses() {
   const [showFundModal, setShowFundModal] = useState(false)
   const [showPayModal, setShowPayModal] = useState(false)
   const [selectedExpenseForPayment, setSelectedExpenseForPayment] = useState(null)
+  const [showDirectPayModal, setShowDirectPayModal] = useState(false) // Direct pay modal (create and pay)
   const [fundData, setFundData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
@@ -42,6 +43,16 @@ function MyExpenses() {
     paymentMode: 'bank_transfer',
     transactionReference: '',
     remarks: ''
+  })
+  const [directPayData, setDirectPayData] = useState({ // Direct pay form data
+    category: 'petrol',
+    description: '',
+    amount: '',
+    expenseDate: new Date().toISOString().split('T')[0],
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: '',
+    notes: ''
   })
   
   const categories = [
@@ -193,6 +204,71 @@ function MyExpenses() {
     })
     setShowPayModal(true)
   }
+
+  const handleDirectPay = async (e) => {
+    e.preventDefault()
+    
+    const amount = Number(directPayData.amount)
+    
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    
+    if (!directPayData.description.trim()) {
+      toast.error('Please enter a reason/description')
+      return
+    }
+    
+    if (Number(availableFunds) < amount) {
+      toast.error(`Insufficient funds. Available: ₹${availableFunds.toLocaleString('en-IN')}, Required: ₹${amount.toLocaleString('en-IN')}`)
+      return
+    }
+    
+    try {
+      const response = await API.expenses.createAndPayDirect({
+        category: directPayData.category,
+        description: directPayData.description,
+        amount: amount,
+        expenseDate: directPayData.expenseDate,
+        paymentMode: directPayData.paymentMode,
+        transactionReference: directPayData.transactionReference,
+        remarks: directPayData.remarks,
+        notes: directPayData.notes
+      })
+      toast.success(response.data.message || 'Expense paid successfully')
+      setShowDirectPayModal(false)
+      setDirectPayData({
+        category: 'petrol',
+        description: '',
+        amount: '',
+        expenseDate: new Date().toISOString().split('T')[0],
+        paymentMode: 'bank_transfer',
+        transactionReference: '',
+        remarks: '',
+        notes: ''
+      })
+      fetchExpenses()
+      fetchFunds()
+      fetchFundHistory()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to pay expense')
+    }
+  }
+
+  const openDirectPayModal = () => {
+    setDirectPayData({
+      category: 'petrol',
+      description: '',
+      amount: '',
+      expenseDate: new Date().toISOString().split('T')[0],
+      paymentMode: 'bank_transfer',
+      transactionReference: '',
+      remarks: '',
+      notes: ''
+    })
+    setShowDirectPayModal(true)
+  }
   
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files)
@@ -302,13 +378,22 @@ function MyExpenses() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">My Expenses</h1>
           <p className="text-sm text-gray-600 mt-1">Submit and track your expense claims</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
-        >
-          <FiPlus className="mr-2" />
-          Submit New Expense
-        </button>
+            <div className="flex gap-2">
+              <button
+                onClick={openDirectPayModal}
+                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                <FiCheck className="mr-2" />
+                Pay Expense
+              </button>
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+              >
+                <FiPlus className="mr-2" />
+                Submit Expense
+              </button>
+            </div>
       </div>
       
       {/* Available Funds Box */}
@@ -1013,6 +1098,156 @@ function MyExpenses() {
                   className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                 >
                   Pay ₹{selectedExpenseForPayment.amount.toLocaleString('en-IN')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Direct Pay Expense Modal (Create and Pay) */}
+      {showDirectPayModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="p-6 border-b flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Pay Expense from My Funds</h2>
+                <p className="text-sm text-gray-600 mt-1">Create and pay expense directly (no approval needed)</p>
+              </div>
+              <button onClick={() => setShowDirectPayModal(false)} className="text-gray-500 hover:text-gray-700">
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleDirectPay} className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Available Funds:</strong> ₹{availableFunds.toLocaleString('en-IN')}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={directPayData.category}
+                  onChange={(e) => setDirectPayData({ ...directPayData, category: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  required
+                >
+                  {categories.map(cat => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason/Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={directPayData.description}
+                  onChange={(e) => setDirectPayData({ ...directPayData, description: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  rows="2"
+                  placeholder="Enter reason for expense..."
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={directPayData.amount}
+                  onChange={(e) => setDirectPayData({ ...directPayData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter amount"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+                {directPayData.amount && Number(directPayData.amount) > 0 && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Balance after payment: ₹{(availableFunds - Number(directPayData.amount)).toLocaleString('en-IN')}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Expense Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={directPayData.expenseDate}
+                  onChange={(e) => setDirectPayData({ ...directPayData, expenseDate: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={directPayData.paymentMode}
+                  onChange={(e) => setDirectPayData({ ...directPayData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={directPayData.transactionReference}
+                  onChange={(e) => setDirectPayData({ ...directPayData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Remarks
+                </label>
+                <textarea
+                  value={directPayData.remarks}
+                  onChange={(e) => setDirectPayData({ ...directPayData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  rows="2"
+                  placeholder="Any additional notes..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDirectPayModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  disabled={!directPayData.amount || Number(directPayData.amount) <= 0 || Number(availableFunds) < Number(directPayData.amount)}
+                >
+                  Pay ₹{directPayData.amount ? Number(directPayData.amount).toLocaleString('en-IN') : '0'}
                 </button>
               </div>
             </form>

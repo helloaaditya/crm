@@ -11,6 +11,7 @@ import {
   rejectExpense,
   processExpensePayment,
   payExpenseFromOwnFunds,
+  createAndPayExpenseDirect,
   getMyExpenses,
   getExpenseStats,
   uploadExpenseDocuments
@@ -27,6 +28,7 @@ router.use(protect);
 // My Expenses (Employee Self-Service)
 router.get('/my-expenses', getMyExpenses);
 router.post('/my-expense', createExpense);
+router.post('/my-expense/pay-direct', createAndPayExpenseDirect); // Create and pay expense directly from own funds
 router.put('/my-expense/:id', updateExpense);
 router.delete('/my-expense/:id', deleteExpense);
 router.put('/my-expense/:id/pay', payExpenseFromOwnFunds); // Employee pays from own funds

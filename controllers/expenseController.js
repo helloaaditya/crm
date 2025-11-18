@@ -515,6 +515,89 @@ export const payExpenseFromOwnFunds = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Create and pay expense directly from employee funds (no approval needed)
+// @route   POST /api/expenses/my-expense/pay-direct
+// @access  Private
+export const createAndPayExpenseDirect = asyncHandler(async (req, res) => {
+  const { category, description, amount, expenseDate, paymentMode, transactionReference, remarks, notes } = req.body;
+  
+  // Validate required fields
+  if (!category || !description || !amount || !expenseDate) {
+    return res.status(400).json({ message: 'Category, description, amount, and date are required' });
+  }
+  
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ message: 'Please enter a valid amount' });
+  }
+  
+  // Get employee record
+  const employee = await Employee.findOne({ userId: req.user._id });
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+  
+  // Check if employee has sufficient funds
+  const employeeFund = await EmployeeFund.getOrCreateFund(employee._id);
+  if (employeeFund.availableFunds < amount) {
+    return res.status(400).json({ 
+      message: `Insufficient funds. Available: ₹${employeeFund.availableFunds.toLocaleString()}, Required: ₹${amount.toLocaleString()}` 
+    });
+  }
+  
+  // Create expense with paid status
+  const expense = await Expense.create({
+    employee: employee._id,
+    submittedBy: req.user._id,
+    category,
+    description,
+    amount,
+    expenseDate: new Date(expenseDate),
+    status: 'paid', // Directly mark as paid
+    paymentStatus: 'paid',
+    paidAmount: amount,
+    paymentDate: new Date(),
+    paymentMode: paymentMode || 'bank_transfer',
+    transactionReference: transactionReference || '',
+    paidBy: req.user._id,
+    remarks: remarks || '',
+    notes: notes || '',
+    paidFromEmployeeFunds: true, // Mark that it was paid from employee funds
+    approvedBy: req.user._id, // Self-approved
+    approvalDate: new Date()
+  });
+  
+  // Deduct from employee's own funds
+  try {
+    const fundDeduction = await deductEmployeeFunds(
+      employee._id,
+      amount,
+      expense._id,
+      req.user._id,
+      paymentMode || 'bank_transfer',
+      transactionReference || '',
+      remarks || `Direct expense payment: ${expense.expenseId} - ${description}`
+    );
+    console.log(`💰 Employee funds deducted: ₹${amount.toLocaleString()}, New balance: ₹${fundDeduction.newBalance.toLocaleString()}`);
+  } catch (fundError) {
+    console.error('⚠️ Employee fund deduction failed:', fundError.message);
+    // If fund deduction fails, delete the expense
+    await Expense.findByIdAndDelete(expense._id);
+    return res.status(400).json({ 
+      message: fundError.message || 'Failed to deduct funds. Expense not created.' 
+    });
+  }
+  
+  const created = await Expense.findById(expense._id)
+    .populate('employee', 'name employeeId')
+    .populate('paidBy', 'name');
+  
+  res.status(201).json({
+    success: true,
+    data: created,
+    message: 'Expense created and paid successfully from your account'
+  });
+});
+
 // @desc    Get my expenses (employee self-service)
 // @route   GET /api/expenses/my-expenses
 // @access  Private
