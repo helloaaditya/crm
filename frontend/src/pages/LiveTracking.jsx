@@ -3,9 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
-  FiRefreshCw, FiUser, FiMapPin, FiClock, FiNavigation, FiCalendar, 
-  FiUsers, FiChevronDown, FiTruck, 
-  FiSettings, FiDownload, FiBattery, FiGlobe
+  FiRefreshCw, FiUser, FiMapPin, FiClock, FiCalendar, 
+  FiChevronDown, FiTruck, FiCheckCircle
 } from 'react-icons/fi';
 import API from '../api';
 import { toast } from 'react-toastify';
@@ -56,7 +55,7 @@ function MapBounds({ locations, route }) {
         }
       });
     }
-      
+    
     if (allPoints.length > 0) {
       if (allPoints.length === 1) {
         map.setView(allPoints[0], 13);
@@ -79,16 +78,14 @@ const LiveTracking = () => {
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
-  const [activeTab, setActiveTab] = useState('live');
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const employeeDropdownRef = useRef(null);
   const intervalRef = useRef(null);
   const [activityLog, setActivityLog] = useState([]);
+  const [todayAttendance, setTodayAttendance] = useState(null);
   const [todayStats, setTodayStats] = useState({
-    completed: 0,
-    distance: 0,
-    punchIn: null
+    distance: 0
   });
 
   // Fetch active locations
@@ -98,16 +95,6 @@ const LiveTracking = () => {
       const locations = response.data.data || [];
       setActiveLocations(locations);
       setLastUpdateTime(new Date());
-      
-      // If an employee is selected, find their active location
-      if (selectedEmployeeId) {
-        const empLocation = locations.find(loc => 
-          loc.employeeDetails?._id === selectedEmployeeId
-        );
-        if (empLocation) {
-          setSelectedEmployee(empLocation.employeeDetails);
-        }
-      }
     } catch (error) {
       console.error('Failed to fetch active locations:', error);
     }
@@ -118,12 +105,36 @@ const LiveTracking = () => {
     try {
       const response = await API.employees.getAll({ 
         limit: 10000,
-        fields: '_id employeeId name role phone designation profilePicture' 
+        fields: '_id employeeId name role' 
       });
       setEmployees(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch employees:', error);
       toast.error('Failed to load employees');
+    }
+  };
+
+  // Fetch today's attendance for selected employee
+  const fetchTodayAttendance = async (employeeId) => {
+    try {
+      const today = new Date();
+      const month = today.getMonth() + 1;
+      const year = today.getFullYear();
+      
+      const response = await API.employees.getAttendance(employeeId, { month, year });
+      const attendanceRecords = response.data.data || [];
+      
+      const todayRecord = attendanceRecords.find(a => {
+        const attDate = new Date(a.date);
+        const todayStr = today.toDateString();
+        const attDateStr = attDate.toDateString();
+        return attDateStr === todayStr;
+      });
+      
+      setTodayAttendance(todayRecord || null);
+    } catch (error) {
+      console.error('Failed to fetch attendance:', error);
+      setTodayAttendance(null);
     }
   };
 
@@ -136,15 +147,13 @@ const LiveTracking = () => {
       
       let allLocations = [];
       let totalDistance = 0;
-      let punchInTime = null;
       const activities = [];
+      
+      // Fetch today's attendance
+      await fetchTodayAttendance(employeeId);
       
       sessions.forEach(session => {
         if (session.locations && Array.isArray(session.locations)) {
-          if (session.locations.length > 0 && !punchInTime) {
-            punchInTime = session.locations[0].timestamp;
-          }
-          
           allLocations = [...allLocations, ...session.locations];
           
           // Calculate distance for this session
@@ -234,9 +243,7 @@ const LiveTracking = () => {
       setHistoricalRoute(allLocations);
       setActivityLog(activities);
       setTodayStats({
-        completed: 0,
-        distance: (totalDistance / 1000).toFixed(2),
-        punchIn: punchInTime
+        distance: (totalDistance / 1000).toFixed(2)
       });
       
       if (allLocations.length === 0) {
@@ -278,6 +285,7 @@ const LiveTracking = () => {
       setSelectedEmployee(null);
       setHistoricalRoute([]);
       setActivityLog([]);
+      setTodayAttendance(null);
     }
   };
 
@@ -370,12 +378,6 @@ const LiveTracking = () => {
     return [20.5937, 78.9629]; // Center of India
   };
 
-  // Get employee avatar initial
-  const getAvatarInitial = (name) => {
-    if (!name) return '?';
-    return name.charAt(0).toUpperCase();
-  };
-
   // Format duration
   const formatDuration = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -387,39 +389,74 @@ const LiveTracking = () => {
     return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  const tabs = [
-    { id: 'live', label: 'Live' },
-    { id: 'playback', label: 'Playback' }
-  ];
-
   const currentEmpLocation = selectedEmployeeId 
     ? activeLocations.find(loc => loc.employeeDetails?._id === selectedEmployeeId)
     : null;
 
+  // Build activity log with check-in/check-out
+  const buildActivityLog = () => {
+    const activities = [];
+    
+    // Add check-in
+    if (todayAttendance?.checkInTime) {
+      activities.push({
+        type: 'checkin',
+        timestamp: todayAttendance.checkInTime,
+        address: todayAttendance.checkInLocation?.address,
+        coordinates: todayAttendance.checkInLocation?.coordinates
+      });
+    }
+    
+    // Add travel and stoppage activities (sorted by time)
+    activities.push(...activityLog);
+    
+    // Add check-out
+    if (todayAttendance?.checkOutTime) {
+      activities.push({
+        type: 'checkout',
+        timestamp: todayAttendance.checkOutTime,
+        address: todayAttendance.checkOutLocation?.address,
+        coordinates: todayAttendance.checkOutLocation?.coordinates
+      });
+    }
+    
+    // Sort by timestamp
+    return activities.sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.startTime || 0);
+      const timeB = new Date(b.timestamp || b.startTime || 0);
+      return timeA - timeB;
+    });
+  };
+
+  const sortedActivities = buildActivityLog();
+
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* Top Bar */}
-      <div className="bg-white border-b px-3 sm:px-4 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <h1 className="text-base sm:text-xl font-semibold text-gray-800">Live Employee Tracking</h1>
-          {lastUpdateTime && (
-            <span className="text-xs text-gray-500 hidden sm:inline">
-              Updated {Math.floor((new Date() - lastUpdateTime) / 1000)}s ago
-            </span>
-          )}
+    <div className="p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Live Employee Tracking</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            Real-time location monitoring & route history
+            {lastUpdateTime && (
+              <span className="ml-2 text-xs text-green-600">
+                • Updated {Math.floor((new Date() - lastUpdateTime) / 1000)}s ago
+              </span>
+            )}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-            title="Refresh"
+            className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
           >
-            <FiRefreshCw className={loading ? 'animate-spin' : ''} size={18} />
+            <FiRefreshCw className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
               autoRefresh ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
             }`}
           >
@@ -428,193 +465,166 @@ const LiveTracking = () => {
         </div>
       </div>
 
-      {/* Main Content - Split Layout (Stack on mobile, side-by-side on desktop) */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left Panel - Employee Details & Activity Log */}
-        <div className="w-full lg:w-96 bg-white border-b lg:border-r lg:border-b-0 flex flex-col overflow-hidden max-h-[50vh] lg:max-h-none">
-          {/* Employee Selection */}
-          <div className="p-3 sm:p-4 border-b">
-            <div className="relative z-[10000]" ref={employeeDropdownRef}>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Select Employee</label>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmployeeDropdownOpen(!employeeDropdownOpen);
-                  setEmployeeSearchTerm('');
-                }}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between relative z-[10001]"
-              >
-                <span className={selectedEmployee ? 'text-gray-900' : 'text-gray-500'}>
-                  {selectedEmployee 
-                    ? `${selectedEmployee.employeeId || ''} - ${selectedEmployee.name || ''}`
-                    : '-- Select Employee --'}
-                </span>
-                <FiChevronDown className={`transition-transform ${employeeDropdownOpen ? 'transform rotate-180' : ''}`} />
-              </button>
-              
-              {employeeDropdownOpen && (
-                <div className="absolute w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '50vh', zIndex: 10000 }}>
-                  <div className="p-2 border-b sticky top-0 bg-white z-10">
-                    <input
-                      type="text"
-                      placeholder="Search employee..."
-                      value={employeeSearchTerm}
-                      onChange={(e) => setEmployeeSearchTerm(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="overflow-y-auto" style={{ maxHeight: 'calc(50vh - 60px)' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleEmployeeSelect('');
-                        setEmployeeDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                        !selectedEmployee ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
-                      }`}
-                    >
-                      -- Select Employee --
-                    </button>
-                    {filteredEmployees.length === 0 ? (
-                      <div className="px-4 py-2 text-gray-500 text-sm">No employees found</div>
-                    ) : (
-                      filteredEmployees.map(emp => (
-                        <button
-                          key={emp._id}
-                          type="button"
-                          onClick={() => {
-                            handleEmployeeSelect(emp._id);
-                            setEmployeeDropdownOpen(false);
-                            setEmployeeSearchTerm('');
-                          }}
-                          className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                            selectedEmployeeId === emp._id ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
-                          }`}
-                        >
-                          {emp.employeeId} - {emp.name} ({emp.role})
-                        </button>
-                      ))
-                    )}
-                  </div>
-            </div>
-              )}
-            </div>
-          </div>
-
-          {/* Employee Information */}
-          {selectedEmployee && (
-            <>
-              <div className="p-3 sm:p-4 border-b">
-                <div className="flex flex-col items-center mb-3 sm:mb-4">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center text-white text-xl sm:text-2xl font-bold mb-2">
-                    {selectedEmployee.profilePicture ? (
-                      <img 
-                        src={selectedEmployee.profilePicture} 
-                        alt={selectedEmployee.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      getAvatarInitial(selectedEmployee.name)
-                    )}
-                  </div>
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-900">{selectedEmployee.name}</h2>
-                  <p className="text-xs sm:text-sm text-gray-600 capitalize">{selectedEmployee.role || selectedEmployee.designation}</p>
+      {/* Employee Selection and Date */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="relative z-[10000]" ref={employeeDropdownRef}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Employee</label>
+            <button
+              type="button"
+              onClick={() => {
+                setEmployeeDropdownOpen(!employeeDropdownOpen);
+                setEmployeeSearchTerm('');
+              }}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between relative z-[10001]"
+            >
+              <span className={selectedEmployee ? 'text-gray-900' : 'text-gray-500'}>
+                {selectedEmployee 
+                  ? `${selectedEmployee.employeeId || ''} - ${selectedEmployee.name || ''}`
+                  : '-- Select Employee --'}
+              </span>
+              <FiChevronDown className={`transition-transform ${employeeDropdownOpen ? 'transform rotate-180' : ''}`} />
+            </button>
+            
+            {employeeDropdownOpen && (
+              <div className="absolute w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '60vh', zIndex: 10000 }}>
+                <div className="p-2 border-b sticky top-0 bg-white z-10">
+                  <input
+                    type="text"
+                    placeholder="Search employee..."
+                    value={employeeSearchTerm}
+                    onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    autoFocus
+                  />
                 </div>
-                
-                <div className="space-y-2 text-xs sm:text-sm w-full">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Employee ID:</span>
-                    <span className="font-medium">{selectedEmployee.employeeId}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Phone:</span>
-                    <span className="font-medium">{selectedEmployee.phone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Date:</span>
-                    <span className="font-medium flex items-center gap-1">
-                      {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      <span className="text-green-500">✓</span>
-                    </span>
-            </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Time Zone:</span>
-                    <span className="font-medium flex items-center gap-1">
-                      IST <FiGlobe className="text-gray-400" size={14} />
-                    </span>
-            </div>
-          </div>
-        </div>
-
-              {/* Tabs */}
-              <div className="border-b flex overflow-x-auto">
-                {tabs.map(tab => (
+                <div className="overflow-y-auto" style={{ maxHeight: 'calc(60vh - 60px)' }}>
                   <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 min-w-[80px] px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    type="button"
+                    onClick={() => {
+                      handleEmployeeSelect('');
+                      setEmployeeDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                      !selectedEmployee ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
                     }`}
                   >
-                    {tab.label}
+                    -- Select Employee --
                   </button>
-                ))}
+                  {filteredEmployees.length === 0 ? (
+                    <div className="px-4 py-2 text-gray-500 text-sm">No employees found</div>
+                  ) : (
+                    filteredEmployees.map(emp => (
+                      <button
+                        key={emp._id}
+                        type="button"
+                        onClick={() => {
+                          handleEmployeeSelect(emp._id);
+                          setEmployeeDropdownOpen(false);
+                          setEmployeeSearchTerm('');
+                        }}
+                        className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                          selectedEmployeeId === emp._id ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                        }`}
+                      >
+                        {emp.employeeId} - {emp.name} ({emp.role})
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content - Map and Activity Log */}
+      {selectedEmployee ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Activity Log */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <FiCalendar size={18} />
+                  Activity Log
+                </h2>
+                <div className="text-xs text-gray-600">
+                  Distance: {todayStats.distance}Km
+                </div>
               </div>
 
-              {/* Activity Log */}
-              <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-                <div className="mb-3 sm:mb-4">
-                  <div className="flex items-center justify-between mb-2 sm:mb-3">
-                    <h3 className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-2">
-                      <FiCalendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      Today
-                    </h3>
-                    <div className="flex items-center gap-2 sm:gap-4 text-xs text-gray-600">
-                      <span>Distance {todayStats.distance}Km</span>
-                    </div>
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {sortedActivities.length === 0 && !loading ? (
+                  <div className="text-center py-8 text-gray-500 text-sm">
+                    No activity data available
                   </div>
-                </div>
-
-                <div className="space-y-2 sm:space-y-3">
-                  {/* Punch In */}
-                  {todayStats.punchIn && (
-                    <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
-                      <FiClock className="text-blue-600 mt-0.5 flex-shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-medium text-gray-900">
-                          {new Date(todayStats.punchIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </div>
-                        <div className="text-xs text-gray-600">Punch In</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Activity Items */}
-                  {activityLog.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
-                      {activity.type === 'travel' ? (
+                ) : (
+                  sortedActivities.map((activity, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      {activity.type === 'checkin' ? (
                         <>
-                          <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          <FiCheckCircle className="text-green-600 mt-0.5 flex-shrink-0" size={16} />
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs sm:text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900">
+                              Checked In
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </div>
+                            {activity.address && (
+                              <div className="text-xs text-gray-500 mt-1 break-words">
+                                {activity.address}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : activity.type === 'checkout' ? (
+                        <>
+                          <FiClock className="text-red-600 mt-0.5 flex-shrink-0" size={16} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900">
+                              Checked Out
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </div>
+                            {activity.address && (
+                              <div className="text-xs text-gray-500 mt-1 break-words">
+                                {activity.address}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : activity.type === 'travel' ? (
+                        <>
+                          <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900">
                               Travelled ({activity.distance}Km)
                             </div>
                             <div className="text-xs text-gray-600">
                               {new Date(activity.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - 
                               {new Date(activity.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                              <span className="ml-1 sm:ml-2">({formatDuration(activity.duration)})</span>
+                              <span className="ml-2">({formatDuration(activity.duration)})</span>
                             </div>
                           </div>
                         </>
                       ) : (
                         <>
-                          <FiMapPin className="text-red-600 mt-0.5 flex-shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          <FiMapPin className="text-red-600 mt-0.5 flex-shrink-0" size={16} />
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs sm:text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900">
                               Stoppage of {formatDuration(activity.duration)}
                             </div>
                             <div className="text-xs text-gray-600 mt-1 break-words">
@@ -624,200 +634,218 @@ const LiveTracking = () => {
                         </>
                       )}
                     </div>
-                  ))}
-
-                  {activityLog.length === 0 && !loading && (
-                    <div className="text-center py-8 text-gray-500 text-sm">
-                      No activity data available
-              </div>
-            )}
-                </div>
-              </div>
-            
-              {/* Device Info Bar */}
-              {currentEmpLocation && (
-                <div className="p-2 sm:p-3 border-t bg-gray-50 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    {currentEmpLocation.batteryLevel && (
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <FiBattery className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                        <span>{currentEmpLocation.batteryLevel}%</span>
-                      </div>
-                    )}
-                    <span className="text-gray-600">
-                      {Math.floor((new Date() - new Date(currentEmpLocation.createdAt)) / 1000 / 60)} min ago
-                    </span>
-                  </div>
-                  <button 
-                    className="p-1.5 hover:bg-gray-200 rounded transition-colors" 
-                    onClick={handleRefresh}
-                    title="Refresh"
-                  >
-                    <FiRefreshCw className={`${loading ? 'animate-spin' : ''} w-3 h-3 sm:w-3.5 sm:h-3.5`} />
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Empty State */}
-          {!selectedEmployee && (
-            <div className="flex-1 flex items-center justify-center text-gray-500 p-4">
-              <div className="text-center">
-                <FiUser size={40} className="sm:w-12 sm:h-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-xs sm:text-sm">Select an employee to view tracking details</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Panel - Map */}
-        <div className="flex-1 relative min-h-[50vh] lg:min-h-0">
-        <MapContainer
-            center={getCurrentLocation()}
-          zoom={13}
-          style={{ height: '100%', width: '100%' }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          
-            <MapBounds 
-              locations={selectedEmployeeId ? [] : activeLocations} 
-              route={historicalRoute}
-            />
-            
-            {/* Historical route polyline */}
-          {historicalRoute.length > 0 && (
-            <>
-              <Polyline
-                positions={historicalRoute.map(loc => [loc.latitude, loc.longitude])}
-                color="#2563eb"
-                weight={4}
-                opacity={0.8}
-                smoothFactor={1.5}
-              />
-              
-                {/* Start marker */}
-              <Marker
-                position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
-                icon={activeEmployeeIcon}
-              >
-                <Popup>
-                  <div className="p-2">
-                    <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {new Date(historicalRoute[0].timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-              
-                {/* Stop points */}
-                {historicalRoute
-                  .filter(loc => loc.isStopPoint)
-                  .map((loc, idx) => (
-                <Marker
-                  key={`stop-${idx}`}
-                  position={[loc.latitude, loc.longitude]}
-                  icon={stopPointIcon}
-                >
-                  <Popup>
-                    <div className="p-2">
-                      <h3 className="font-semibold text-red-600">⏸️ Stop Point</h3>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {new Date(loc.timestamp).toLocaleTimeString()}
-                      </p>
-                      {loc.address && (
-                        <p className="text-xs text-gray-500 mt-1">{loc.address}</p>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-              
-                {/* End marker */}
-                {historicalRoute.length > 1 && (
-              <Marker
-                position={[
-                  historicalRoute[historicalRoute.length - 1].latitude,
-                  historicalRoute[historicalRoute.length - 1].longitude
-                ]}
-                    icon={stopPointIcon}
-              >
-                <Popup>
-                  <div className="p-2">
-                    <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
+                  ))
                 )}
-            </>
-          )}
-            
-            {/* Active employee markers (if not viewing specific employee) */}
-            {!selectedEmployeeId && activeLocations.map((loc, index) => (
-              <Marker
-                key={`active-${index}`}
-                position={[loc.location.coordinates[1], loc.location.coordinates[0]]}
-                icon={activeEmployeeIcon}
-              >
-                <Popup>
-                  <div className="p-2">
-                    <h3 className="font-semibold text-lg">{loc.employeeDetails.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {loc.employeeDetails.employeeId} • {loc.employeeDetails.role}
-                    </p>
-                    <div className="mt-2 space-y-1 text-xs">
-                      <p><strong>Accuracy:</strong> {Math.round(loc.accuracy)}m</p>
-                      {loc.speed && <p><strong>Speed:</strong> {(loc.speed * 3.6).toFixed(1)} km/h</p>}
-                      {loc.batteryLevel && <p><strong>Battery:</strong> {loc.batteryLevel}%</p>}
-                      <p><strong>Last Update:</strong> {new Date(loc.createdAt).toLocaleTimeString()}</p>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-            
-            {/* Current active location for selected employee */}
-            {selectedEmployeeId && currentEmpLocation && (
-              <Marker
-                position={[
-                  currentEmpLocation.location.coordinates[1],
-                  currentEmpLocation.location.coordinates[0]
-                ]}
-                icon={activeEmployeeIcon}
-              >
-                <Popup>
-                  <div className="p-2">
-                    <h3 className="font-semibold text-lg">{currentEmpLocation.employeeDetails.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {currentEmpLocation.employeeDetails.employeeId} • Live Tracking
-                    </p>
-                    <div className="mt-2 space-y-1 text-xs">
-                      <p><strong>Accuracy:</strong> {Math.round(currentEmpLocation.accuracy)}m</p>
-                      {currentEmpLocation.speed && (
-                        <p><strong>Speed:</strong> {(currentEmpLocation.speed * 3.6).toFixed(1)} km/h</p>
-                      )}
-                      {currentEmpLocation.batteryLevel && (
-                        <p><strong>Battery:</strong> {currentEmpLocation.batteryLevel}%</p>
-                      )}
-                      <p><strong>Last Update:</strong> {new Date(currentEmpLocation.createdAt).toLocaleTimeString()}</p>
-                      {currentEmpLocation.address && (
-                        <p><strong>Location:</strong> {currentEmpLocation.address}</p>
-                    )}
-                  </div>
-                </div>
-                </Popup>
-              </Marker>
-            )}
-          </MapContainer>
+              </div>
             </div>
           </div>
+
+          {/* Right Column - Map */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow overflow-hidden" style={{ height: '600px' }}>
+              <MapContainer
+                center={getCurrentLocation()}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                
+                <MapBounds 
+                  locations={selectedEmployeeId ? [] : activeLocations} 
+                  route={historicalRoute}
+                />
+                
+                {/* Historical route polyline */}
+                {historicalRoute.length > 0 && (
+                  <>
+                    <Polyline
+                      positions={historicalRoute.map(loc => [loc.latitude, loc.longitude])}
+                      color="#2563eb"
+                      weight={4}
+                      opacity={0.8}
+                      smoothFactor={1.5}
+                    />
+                    
+                    {/* Start marker */}
+                    <Marker
+                      position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
+                      icon={activeEmployeeIcon}
+                    >
+                      <Popup>
+                        <div className="p-2">
+                          <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {new Date(historicalRoute[0].timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                    
+                    {/* Stop points */}
+                    {historicalRoute
+                      .filter(loc => loc.isStopPoint)
+                      .map((loc, idx) => (
+                        <Marker
+                          key={`stop-${idx}`}
+                          position={[loc.latitude, loc.longitude]}
+                          icon={stopPointIcon}
+                        >
+                          <Popup>
+                            <div className="p-2">
+                              <h3 className="font-semibold text-red-600">⏸️ Stop Point</h3>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {new Date(loc.timestamp).toLocaleTimeString()}
+                              </p>
+                              {loc.address && (
+                                <p className="text-xs text-gray-500 mt-1">{loc.address}</p>
+                              )}
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ))}
+                    
+                    {/* End marker */}
+                    {historicalRoute.length > 1 && (
+                      <Marker
+                        position={[
+                          historicalRoute[historicalRoute.length - 1].latitude,
+                          historicalRoute[historicalRoute.length - 1].longitude
+                        ]}
+                        icon={stopPointIcon}
+                      >
+                        <Popup>
+                          <div className="p-2">
+                            <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
+                  </>
+                )}
+                
+                {/* Active employee markers (if not viewing specific employee) */}
+                {!selectedEmployeeId && activeLocations.map((loc, index) => (
+                  <Marker
+                    key={`active-${index}`}
+                    position={[loc.location.coordinates[1], loc.location.coordinates[0]]}
+                    icon={activeEmployeeIcon}
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="font-semibold text-lg">{loc.employeeDetails.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {loc.employeeDetails.employeeId} • {loc.employeeDetails.role}
+                        </p>
+                        <div className="mt-2 space-y-1 text-xs">
+                          <p><strong>Accuracy:</strong> {Math.round(loc.accuracy)}m</p>
+                          {loc.speed && <p><strong>Speed:</strong> {(loc.speed * 3.6).toFixed(1)} km/h</p>}
+                          {loc.batteryLevel && <p><strong>Battery:</strong> {loc.batteryLevel}%</p>}
+                          <p><strong>Last Update:</strong> {new Date(loc.createdAt).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+                
+                {/* Current active location for selected employee */}
+                {selectedEmployeeId && currentEmpLocation && (
+                  <Marker
+                    position={[
+                      currentEmpLocation.location.coordinates[1],
+                      currentEmpLocation.location.coordinates[0]
+                    ]}
+                    icon={activeEmployeeIcon}
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="font-semibold text-lg">{currentEmpLocation.employeeDetails.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {currentEmpLocation.employeeDetails.employeeId} • Live Tracking
+                        </p>
+                        <div className="mt-2 space-y-1 text-xs">
+                          <p><strong>Accuracy:</strong> {Math.round(currentEmpLocation.accuracy)}m</p>
+                          {currentEmpLocation.speed && (
+                            <p><strong>Speed:</strong> {(currentEmpLocation.speed * 3.6).toFixed(1)} km/h</p>
+                          )}
+                          {currentEmpLocation.batteryLevel && (
+                            <p><strong>Battery:</strong> {currentEmpLocation.batteryLevel}%</p>
+                          )}
+                          <p><strong>Last Update:</strong> {new Date(currentEmpLocation.createdAt).toLocaleTimeString()}</p>
+                          {currentEmpLocation.address && (
+                            <p><strong>Location:</strong> {currentEmpLocation.address}</p>
+                          )}
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
+              </MapContainer>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <FiUser className="mx-auto text-gray-400 mb-4" size={64} />
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">No Employee Selected</h3>
+          <p className="text-gray-600">
+            Select an employee from the dropdown above to view their live location and activity log.
+          </p>
+        </div>
+      )}
+
+      {/* Active Employees List */}
+      {activeLocations.length > 0 && !selectedEmployeeId && (
+        <div className="mt-6 bg-white rounded-lg shadow">
+          <div className="p-6 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">🟢 Currently Tracked Employees</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Real-time tracking • Updates every 30s • Sessions auto-cleanup after 10 minutes of inactivity
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeLocations.map((loc, index) => (
+                <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{loc.employeeDetails.name}</h3>
+                      <p className="text-sm text-gray-600">{loc.employeeDetails.employeeId}</p>
+                      <p className="text-xs text-gray-500 mt-1">{loc.employeeDetails.role}</p>
+                    </div>
+                    <div className="flex items-center text-green-600">
+                      <FiClock className="animate-pulse" size={16} />
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t text-xs space-y-1">
+                    <p className="flex justify-between">
+                      <span className="text-gray-600">Accuracy:</span>
+                      <span className="font-medium">{Math.round(loc.accuracy)}m</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-gray-600">Last Update:</span>
+                      <span className="font-medium">
+                        {new Date(loc.createdAt).toLocaleTimeString()}
+                      </span>
+                    </p>
+                    {loc.batteryLevel && (
+                      <p className="flex justify-between">
+                        <span className="text-gray-600">Battery:</span>
+                        <span className="font-medium">{loc.batteryLevel}%</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

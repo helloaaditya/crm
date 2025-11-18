@@ -437,7 +437,7 @@ export const importMaterials = asyncHandler(async (req, res) => {
             if (wasUpdated) {
               await existingMaterial.save();
               skipped.push({
-                row: rowNumber,
+              row: rowNumber,
                 message: `Material updated: ${materialData.name} ${materialData.brand ? '(' + materialData.brand + ')' : ''}`,
                 action: 'updated'
               });
@@ -447,7 +447,7 @@ export const importMaterials = asyncHandler(async (req, res) => {
                 row: rowNumber,
                 message: `Material already exists (skipped): ${materialData.name} ${materialData.brand ? '(' + materialData.brand + ')' : ''}`,
                 action: 'skipped'
-              });
+            });
               skippedCount++;
             }
             continue;
