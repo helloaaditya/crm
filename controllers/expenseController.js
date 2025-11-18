@@ -1,5 +1,6 @@
 import Expense from '../models/Expense.js';
 import Employee from '../models/Employee.js';
+import EmployeeFund from '../models/EmployeeFund.js';
 import User from '../models/User.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { createNotification, NotificationTemplates } from './notificationController.js';
