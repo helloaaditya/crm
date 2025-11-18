@@ -292,15 +292,40 @@ export const getActiveLocations = asyncHandler(async (req, res) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
     
     // Find employees who are checked in today (have checkInTime but no checkOutTime)
-    const checkedInEmployees = await Employee.find({
-      _id: { $in: activeSessions },
-      'attendance.date': {
-        $gte: today,
-        $lt: tomorrow
+    // Use aggregation to properly query nested attendance array
+    const checkedInEmployeesResult = await Employee.aggregate([
+      {
+        $match: {
+          _id: { $in: activeSessions }
+        }
       },
-      'attendance.checkInTime': { $exists: true, $ne: null },
-      'attendance.checkOutTime': null
-    }).distinct('_id');
+      {
+        $unwind: {
+          path: '$attendance',
+          preserveNullAndEmptyArrays: false
+        }
+      },
+      {
+        $match: {
+          'attendance.date': {
+            $gte: today,
+            $lt: tomorrow
+          },
+          'attendance.checkInTime': { $exists: true, $ne: null },
+          $or: [
+            { 'attendance.checkOutTime': { $exists: false } },
+            { 'attendance.checkOutTime': null }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: '$_id'
+        }
+      }
+    ]);
+    
+    const checkedInEmployees = checkedInEmployeesResult.map(emp => emp._id);
     
     // Only cleanup sessions for employees who are NOT checked in
     const employeesToCleanup = activeSessions.filter(empId => 
