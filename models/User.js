@@ -34,8 +34,8 @@ const userSchema = new mongoose.Schema({
   module: {
     type: String,
     default: 'all'
-    // Allow comma-separated module values like 'crm,inventory,employee'
-    // Valid modules: crm, inventory, employee, all, none
+    // Allow comma-separated module values like 'crm,inventory,employee,employee_funds'
+    // Valid modules: crm, inventory, employee, expense, employee_funds, all, none
   },
   permissions: {
     canCreate: { type: Boolean, default: false },

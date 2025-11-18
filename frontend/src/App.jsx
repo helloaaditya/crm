@@ -20,6 +20,7 @@ import Accounts from './pages/Accounts'
 import Reminders from './pages/Reminders'
 import Settings from './pages/Settings'
 import Expenses from './pages/Expenses'
+import EmployeeFunds from './pages/EmployeeFunds'
 import WorkOrders from './pages/WorkOrders'
 import CompanyDocuments from './pages/CompanyDocuments'
 import BulkImport from './pages/BulkImport'
@@ -123,6 +124,8 @@ function App() {
           <Route path="accounts" element={<Accounts />} />
           {/* Expenses (Main Admin Only UI; menu restricts visibility) */}
           <Route path="expenses" element={<Expenses />} />
+          {/* Employee Funds (Module-based access) */}
+          <Route path="employee-funds" element={<EmployeeFunds />} />
           {/* Bulk Import (Admin Only via menu visibility) */}
           <Route path="bulk-import" element={<BulkImport />} />
           {/* Live Tracking (Admin Only) */}

@@ -36,7 +36,10 @@ const Expenses = () => {
   const [showEditFundModal, setShowEditFundModal] = useState(false)
   const [employeesFunds, setEmployeesFunds] = useState([])
   const [showEmployeeFundModal, setShowEmployeeFundModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [selectedEmployeeForFund, setSelectedEmployeeForFund] = useState(null)
+  const [selectedEmployeeHistory, setSelectedEmployeeHistory] = useState(null)
+  const [employeeFundHistory, setEmployeeFundHistory] = useState([])
   const [employeeFundData, setEmployeeFundData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
@@ -577,13 +580,32 @@ const Expenses = () => {
                           <span className="font-bold text-green-600 text-lg">₹{emp.availableFunds.toLocaleString('en-IN')}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <button
-                            onClick={() => openAddEmployeeFundModal(emp)}
-                            className="flex items-center px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
-                          >
-                            <FiPlus className="mr-1" size={14} />
-                            Add Funds
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                setSelectedEmployeeHistory(emp)
+                                setShowHistoryModal(true)
+                                try {
+                                  const response = await API.funds.getEmployeeFundHistory(emp._id, { limit: 100 })
+                                  setEmployeeFundHistory(response.data.data || [])
+                                } catch (error) {
+                                  console.error('Error fetching employee fund history:', error)
+                                  toast.error('Failed to load fund history')
+                                }
+                              }}
+                              className="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                            >
+                              <FiClock className="mr-1" size={14} />
+                              History
+                            </button>
+                            <button
+                              onClick={() => openAddEmployeeFundModal(emp)}
+                              className="flex items-center px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                            >
+                              <FiPlus className="mr-1" size={14} />
+                              Add Funds
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

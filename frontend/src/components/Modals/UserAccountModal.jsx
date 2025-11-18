@@ -179,7 +179,8 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
         'crm': ['crm:customers', 'crm:projects', 'crm:invoices', 'crm:payments', 'crm:work-orders'],
         'inventory': ['inventory:materials', 'inventory:machinery', 'inventory:vendors', 'inventory:vendor-payments'],
         'employee': ['employee:list', 'employee:management', 'employee:attendance', 'employee:salary', 'employee:leave'],
-        'expense': ['expense:list', 'expense:approvals']
+        'expense': ['expense:list', 'expense:approvals'],
+        'employee_funds': []
       }
       
       if (newModules.includes(moduleValue)) {
@@ -503,6 +504,32 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                         { value: 'expense', label: '✓ All Expense Pages', description: 'Full expense access' },
                         { value: 'expense:list', label: 'All Expenses', description: 'Expense list' },
                         { value: 'expense:approvals', label: 'Expense Approvals', description: 'Approve/reject expenses' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Employee Funds Pages */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">💰 Employee Funds Module</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'employee_funds', label: 'Employee Funds Management', description: 'View and manage employee funds' }
                       ].map((page) => (
                         <label 
                           key={page.value}

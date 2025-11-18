@@ -29,12 +29,12 @@ router.post('/employee/my/add', protect, addEmployeeFunds);
 router.get('/employee/my/history', protect, getEmployeeFundHistory);
 
 // Get all employees' funds (admin)
-router.get('/employees/all', protect, moduleAccess('expense', 'all'), getAllEmployeesFunds);
+router.get('/employees/all', protect, moduleAccess('employee_funds', 'expense', 'all'), getAllEmployeesFunds);
 
 // Manage specific employee funds (admin)
-router.get('/employee/:employeeId', protect, moduleAccess('expense', 'all'), getEmployeeFunds);
-router.post('/employee/:employeeId/add', protect, moduleAccess('expense', 'all'), checkPermission('canHandleAccounts'), addFundsToEmployee);
-router.get('/employee/:employeeId/history', protect, moduleAccess('expense', 'all'), getEmployeeFundHistory);
+router.get('/employee/:employeeId', protect, moduleAccess('employee_funds', 'expense', 'all'), getEmployeeFunds);
+router.post('/employee/:employeeId/add', protect, moduleAccess('employee_funds', 'expense', 'all'), checkPermission('canHandleAccounts'), addFundsToEmployee);
+router.get('/employee/:employeeId/history', protect, moduleAccess('employee_funds', 'expense', 'all'), getEmployeeFundHistory);
 
 export default router;
 
