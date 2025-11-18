@@ -26,7 +26,7 @@ const Sidebar = () => {
     { name: 'Customers', icon: FiUsers, path: '/customers', module: 'crm' },
     { name: 'Projects', icon: FiBriefcase, path: '/projects', module: 'crm' },
     { name: 'Invoices', icon: FiFileText, path: '/invoices', module: 'crm', notificationCount: counts.invoices },
-    { name: 'Payments', icon: FiDollarSign, path: '/payments', module: 'all' },
+    { name: 'Payments', icon: FiDollarSign, path: '/payments', module: 'crm:payments' },
     
     // Inventory Section
     { name: 'Materials', icon: FiPackage, path: '/inventory/materials', module: 'inventory', notificationCount: counts.lowStock },
@@ -52,21 +52,21 @@ const Sidebar = () => {
     { name: 'Calendar', icon: FiBell, path: '/calendar-reminders', module: 'all', notificationCount: counts.reminders },
     
     // Accounts Section
-    { name: 'Accounts', icon: FiKey, path: '/accounts', module: 'all'},
+    { name: 'Accounts', icon: FiKey, path: '/accounts', module: 'admin:accounts'},
     
     // Expense Section
     { name: 'Expenses', icon: FiCreditCard, path: '/expenses', module: 'expense' },
     { name: 'Employee Expense Funds', icon: FiDollarSign, path: '/employee-funds', module: 'employee_funds' },
     
     // Live Tracking - admin/main_admin only
-    { name: 'Live Tracking', icon: FiNavigation, path: '/live-tracking', module: 'all'},
+    { name: 'Live Tracking', icon: FiNavigation, path: '/live-tracking', module: 'admin:live-tracking'},
     
 
     { name: 'Work Orders', icon: FiClipboard, path: '/work-orders', module: 'crm' },
 
     
     // Company Documents - accessible to all modules
-    { name: 'Documents', icon: FiFolder, path: '/company-documents', module: 'all' },
+    { name: 'Documents', icon: FiFolder, path: '/company-documents', module: 'shared:documents' },
     // { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
     
     // Common
@@ -117,7 +117,7 @@ const Sidebar = () => {
     // Also check base module access (e.g., 'crm', 'inventory')
     const itemModule = item.module
     
-    // Map paths to their page identifiers
+    // Map paths to their page identifiers (for backward compatibility and fallback)
     const pathToPageId = {
       '/customers': 'crm:customers',
       '/projects': 'crm:projects',
@@ -143,17 +143,22 @@ const Sidebar = () => {
     
     const pageId = pathToPageId[item.path]
     
+    // If item module is 'all', show it to everyone (unless user has 'none')
+    if (itemModule === 'all') {
+      return true
+    }
+    
     // Check if user has access to this specific page or the base module
     const hasAccess = userModules.some(userModule => {
-      if (userModule === itemModule) return true // Base module match
-      if (pageId && userModule === pageId) return true // Specific page match
-      // If user has base module (e.g., 'crm'), grant access to all its pages (e.g., 'crm:customers')
+      if (userModule === itemModule) return true // Direct module match (e.g., 'crm:payments' === 'crm:payments')
+      if (pageId && userModule === pageId) return true // Specific page match via path mapping
+      // If user has base module (e.g., 'crm'), grant access to all its pages (e.g., 'crm:customers', 'crm:payments')
+      if (itemModule && itemModule.startsWith(userModule + ':')) return true
       if (pageId && pageId.startsWith(userModule + ':')) return true
       return false
     })
     
-    // Otherwise, check if item's module is in user's allowed modules or specific page access
-    return item.module === 'all' || hasAccess
+    return hasAccess
   })
 
   return (
