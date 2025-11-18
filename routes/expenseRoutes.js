@@ -26,9 +26,10 @@ router.use(protect);
 // These routes are accessible to ALL authenticated users
 
 // My Expenses (Employee Self-Service)
+// IMPORTANT: These routes must be defined BEFORE moduleAccess middleware
 router.get('/my-expenses', getMyExpenses);
 router.post('/my-expense', createExpense);
-router.post('/my-expense/pay-direct', createAndPayExpenseDirect); // Create and pay expense directly from own funds
+router.post('/my-expense/pay-direct', createAndPayExpenseDirect); // Create and pay expense directly from own funds (NO MODULE ACCESS REQUIRED)
 router.put('/my-expense/:id', updateExpense);
 router.delete('/my-expense/:id', deleteExpense);
 router.put('/my-expense/:id/pay', payExpenseFromOwnFunds); // Employee pays from own funds
