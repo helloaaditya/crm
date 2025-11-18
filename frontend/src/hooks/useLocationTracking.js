@@ -262,6 +262,12 @@ const useLocationTracking = (shouldTrack = false) => {
         return;
       }
 
+      // Check if already tracking - prevent duplicate sessions
+      if (isTracking || watchId.current !== null) {
+        console.log('⚠️ Tracking already active, skipping duplicate start');
+        return;
+      }
+
       // Generate new session ID
       const newSessionId = generateSessionId();
       setSessionId(newSessionId);
