@@ -1626,6 +1626,116 @@ const Expenses = () => {
           </div>
         </div>
       )}
+
+      {/* Employee Fund History Modal */}
+      {showHistoryModal && selectedEmployeeHistory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Fund Transaction History</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedEmployeeHistory.name} ({selectedEmployeeHistory.employeeId})
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await API.funds.getEmployeeFundHistory(selectedEmployeeHistory._id, { limit: 100 })
+                      setEmployeeFundHistory(response.data.data || [])
+                    } catch (error) {
+                      console.error('Error fetching employee fund history:', error)
+                      toast.error('Failed to load fund history')
+                    }
+                  }}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                  title="Refresh"
+                >
+                  <FiRefreshCw size={20} />
+                </button>
+                <button onClick={() => setShowHistoryModal(false)} className="text-gray-500 hover:text-gray-700">
+                  <FiX size={24} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {employeeFundHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <FiClock className="mx-auto text-gray-400 mb-4" size={48} />
+                  <p className="text-gray-600">No transaction history found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {employeeFundHistory.map((transaction, idx) => (
+                    <div
+                      key={idx}
+                      className={`border-l-4 rounded-lg p-4 ${
+                        transaction.transactionType === 'credit'
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-500 bg-red-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={`px-2 py-1 text-xs font-semibold rounded ${
+                                transaction.transactionType === 'credit'
+                                  ? 'bg-green-200 text-green-800'
+                                  : 'bg-red-200 text-red-800'
+                              }`}
+                            >
+                              {transaction.transactionType === 'credit' ? 'CREDIT' : 'DEBIT'}
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {new Date(transaction.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-gray-900 mb-1">{transaction.description}</p>
+                          {transaction.referenceType === 'expense' && transaction.referenceId && (
+                            <p className="text-xs text-gray-600 mb-1">
+                              Expense: {typeof transaction.referenceId === 'object' && transaction.referenceId.expenseId 
+                                ? transaction.referenceId.expenseId 
+                                : transaction.referenceId || 'N/A'}
+                            </p>
+                          )}
+                          {transaction.performedBy && (
+                            <p className="text-xs text-gray-500">
+                              By: {transaction.performedBy.name || 'System'}
+                            </p>
+                          )}
+                          {transaction.remarks && (
+                            <p className="text-xs text-gray-600 mt-1 italic">{transaction.remarks}</p>
+                          )}
+                          {transaction.transactionReference && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Ref: {transaction.transactionReference}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p
+                            className={`text-lg font-bold ${
+                              transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
+                            }`}
+                          >
+                            {transaction.transactionType === 'credit' ? '+' : '-'}₹{transaction.amount?.toLocaleString('en-IN')}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Balance: ₹{transaction.balanceAfter?.toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
