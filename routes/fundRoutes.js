@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect, checkModuleAccess } from '../middleware/authMiddleware.js';
+import { protect, moduleAccess, checkPermission } from '../middleware/auth.js';
 import {
   getFunds,
   addFunds,
@@ -16,11 +16,11 @@ import {
 const router = express.Router();
 
 // Company funds routes
-router.get('/', protect, checkModuleAccess('expense'), getFunds);
-router.post('/add', protect, checkModuleAccess('expense'), addFunds);
-router.post('/deduct', protect, checkModuleAccess('expense'), deductFundsManually);
-router.get('/history', protect, checkModuleAccess('expense'), getFundHistory);
-router.get('/stats', protect, checkModuleAccess('expense'), getFundStats);
+router.get('/', protect, moduleAccess('expense', 'all'), getFunds);
+router.post('/add', protect, moduleAccess('expense', 'all'), checkPermission('canHandleAccounts'), addFunds);
+router.post('/deduct', protect, moduleAccess('expense', 'all'), checkPermission('canHandleAccounts'), deductFundsManually);
+router.get('/history', protect, moduleAccess('expense', 'all'), getFundHistory);
+router.get('/stats', protect, moduleAccess('expense', 'all'), getFundStats);
 
 // Employee funds routes
 // Get my funds (employee)
@@ -29,12 +29,12 @@ router.post('/employee/my/add', protect, addEmployeeFunds);
 router.get('/employee/my/history', protect, getEmployeeFundHistory);
 
 // Get all employees' funds (admin)
-router.get('/employees/all', protect, checkModuleAccess('expense'), getAllEmployeesFunds);
+router.get('/employees/all', protect, moduleAccess('expense', 'all'), getAllEmployeesFunds);
 
 // Manage specific employee funds (admin)
-router.get('/employee/:employeeId', protect, checkModuleAccess('expense'), getEmployeeFunds);
-router.post('/employee/:employeeId/add', protect, checkModuleAccess('expense'), addFundsToEmployee);
-router.get('/employee/:employeeId/history', protect, checkModuleAccess('expense'), getEmployeeFundHistory);
+router.get('/employee/:employeeId', protect, moduleAccess('expense', 'all'), getEmployeeFunds);
+router.post('/employee/:employeeId/add', protect, moduleAccess('expense', 'all'), checkPermission('canHandleAccounts'), addFundsToEmployee);
+router.get('/employee/:employeeId/history', protect, moduleAccess('expense', 'all'), getEmployeeFundHistory);
 
 export default router;
 
