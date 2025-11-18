@@ -45,7 +45,7 @@ function MyExpenses() {
     remarks: ''
   })
   const [directPayData, setDirectPayData] = useState({ // Direct pay form data
-    category: 'petrol',
+    category: 'Travel',
     description: '',
     amount: '',
     expenseDate: new Date().toISOString().split('T')[0],
@@ -56,14 +56,9 @@ function MyExpenses() {
   })
   
   const categories = [
-    { value: 'petrol', label: '⛽ Petrol/Fuel' },
     { value: 'travel', label: '✈️ Travel' },
-    { value: 'food', label: '🍽️ Food & Refreshments' },
     { value: 'accommodation', label: '🏨 Accommodation' },
-    { value: 'materials', label: '📦 Materials' },
     { value: 'tools', label: '🔧 Tools & Equipment' },
-    { value: 'medical', label: '💊 Medical' },
-    { value: 'communication', label: '📞 Communication' },
     { value: 'other', label: '📝 Other' }
   ]
   

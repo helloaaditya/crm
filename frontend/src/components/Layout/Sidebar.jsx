@@ -56,7 +56,7 @@ const Sidebar = () => {
     
     // Expense Section
     { name: 'Expenses', icon: FiCreditCard, path: '/expenses', module: 'expense' },
-    { name: 'Employee Funds', icon: FiDollarSign, path: '/employee-funds', module: 'employee_funds' },
+    { name: 'Employee Expense Funds', icon: FiDollarSign, path: '/employee-funds', module: 'employee_funds' },
     
     // Live Tracking - admin/main_admin only
     { name: 'Live Tracking', icon: FiNavigation, path: '/live-tracking', module: 'all', adminOnly: true },
