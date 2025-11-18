@@ -483,6 +483,87 @@ const Expenses = () => {
           </div>
         </div>
       )}
+
+      {/* Employee Expense Summary (Admin Only) */}
+      {hasExpenseAccess && expenses.length > 0 && (
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">Employee Expense Summary</h2>
+            <p className="text-sm text-gray-600 mt-1">Expense totals by employee</p>
+          </div>
+          <div className="p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left py-3 px-4">Employee</th>
+                    <th className="text-left py-3 px-4">Total Expenses</th>
+                    <th className="text-left py-3 px-4">Pending</th>
+                    <th className="text-left py-3 px-4">Approved</th>
+                    <th className="text-left py-3 px-4">Paid</th>
+                    <th className="text-left py-3 px-4">Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(
+                    expenses.reduce((acc, expense) => {
+                      const empId = expense.employee?._id || expense.employee || 'unknown'
+                      const empName = expense.employee?.name || 'Unknown Employee'
+                      const empIdStr = expense.employee?.employeeId || 'N/A'
+                      
+                      if (!acc[empId]) {
+                        acc[empId] = {
+                          name: empName,
+                          employeeId: empIdStr,
+                          total: 0,
+                          pending: 0,
+                          approved: 0,
+                          paid: 0,
+                          totalAmount: 0
+                        }
+                      }
+                      
+                      acc[empId].total++
+                      if (expense.status === 'pending') acc[empId].pending++
+                      if (expense.status === 'approved') acc[empId].approved++
+                      if (expense.status === 'paid') acc[empId].paid++
+                      acc[empId].totalAmount += expense.amount || 0
+                      
+                      return acc
+                    }, {})
+                  )
+                    .sort((a, b) => b[1].totalAmount - a[1].totalAmount)
+                    .map(([empId, summary]) => (
+                      <tr key={empId} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{summary.name}</p>
+                            <p className="text-sm text-gray-500">{summary.employeeId}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-semibold text-gray-800">{summary.total}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-yellow-600 font-semibold">{summary.pending}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-green-600 font-semibold">{summary.approved}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-blue-600 font-semibold">{summary.paid}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-bold text-purple-600">₹{summary.totalAmount.toLocaleString('en-IN')}</span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">

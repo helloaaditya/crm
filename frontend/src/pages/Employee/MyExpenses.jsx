@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2 } from 'react-icons/fi'
+import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2, FiDollarSign, FiClock, FiRefreshCw } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
@@ -26,6 +26,9 @@ function MyExpenses() {
     paid: 0,
     totalAmount: 0
   })
+  const [availableFunds, setAvailableFunds] = useState(0)
+  const [fundHistory, setFundHistory] = useState([])
+  const [showFundHistory, setShowFundHistory] = useState(false)
   
   const categories = [
     { value: 'petrol', label: '⛽ Petrol/Fuel' },
@@ -41,6 +44,18 @@ function MyExpenses() {
   
   useEffect(() => {
     fetchExpenses()
+    fetchFunds()
+  }, [])
+
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchExpenses()
+      fetchFunds()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
   }, [])
   
   const fetchExpenses = async () => {
@@ -64,6 +79,25 @@ function MyExpenses() {
       toast.error('Failed to fetch expenses')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchFunds = async () => {
+    try {
+      const response = await API.funds.getFunds()
+      setAvailableFunds(response.data.data.availableFunds || 0)
+    } catch (error) {
+      console.error('Error fetching funds:', error)
+    }
+  }
+
+  const fetchFundHistory = async () => {
+    try {
+      const response = await API.funds.getHistory({ limit: 100 })
+      setFundHistory(response.data.data || [])
+    } catch (error) {
+      console.error('Error fetching fund history:', error)
+      toast.error('Failed to load fund history')
     }
   }
   
@@ -184,6 +218,27 @@ function MyExpenses() {
         </button>
       </div>
       
+      {/* Available Funds Box */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-6 mb-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm opacity-90 mb-1">Available Company Funds</p>
+            <p className="text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
+            <p className="text-xs opacity-75 mt-1">Funds available for expense payments</p>
+          </div>
+          <button
+            onClick={() => {
+              setShowFundHistory(true)
+              fetchFundHistory()
+            }}
+            className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+          >
+            <FiClock className="mr-2" />
+            History
+          </button>
+        </div>
+      </div>
+
       {/* Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
