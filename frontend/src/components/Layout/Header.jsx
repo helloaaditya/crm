@@ -1,6 +1,7 @@
 import { FiRefreshCw, FiMenu } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import NotificationBell from '../NotificationBell'
 import PushNotificationPrompt from '../PushNotificationPrompt'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -10,6 +11,8 @@ const Header = () => {
   const { user, loadUser } = useAuth()
   const { refresh: refreshNotifications } = useNotifications()
   const [refreshing, setRefreshing] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -22,9 +25,19 @@ const Header = () => {
       await refreshNotifications()
       
       // Dispatch custom event for pages to listen and refresh their data
-      window.dispatchEvent(new CustomEvent('app-refresh'))
+      window.dispatchEvent(new CustomEvent('app-refresh', { 
+        detail: { 
+          path: location.pathname,
+          timestamp: Date.now()
+        } 
+      }))
       
-      toast.success('Data refreshed successfully')
+      // Force a soft refresh by navigating to the same route
+      // This will trigger useEffect hooks in all components
+      const currentPath = location.pathname
+      navigate(currentPath, { replace: true, state: { refresh: Date.now() } })
+      
+      toast.success('Website refreshed successfully')
     } catch (error) {
       console.error('Refresh error:', error)
       toast.error('Failed to refresh data')

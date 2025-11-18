@@ -30,6 +30,16 @@ const Invoices = () => {
     fetchInvoices()
   }, [page, searchTerm, statusFilter, paymentStatusFilter, startDate, endDate])
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchInvoices()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [page, searchTerm, statusFilter, paymentStatusFilter, startDate, endDate])
+
   const fetchInvoices = async () => {
     try {
       setLoading(true)

@@ -361,6 +361,19 @@ const LiveTracking = () => {
     fetchEmployees();
   }, []);
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchActiveLocations();
+      if (selectedEmployeeId) {
+        fetchHistoricalRoute(selectedEmployeeId, selectedDate);
+      }
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [selectedEmployeeId, selectedDate]);
+
   // Auto-refresh every 5 seconds
   useEffect(() => {
     if (autoRefresh) {

@@ -43,6 +43,17 @@ const Materials = () => {
     fetchStockSummary()
   }, [page, category, stockFilter, startDate, endDate])
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchMaterials()
+      fetchStockSummary()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [page, category, stockFilter, startDate, endDate])
+
   const fetchMaterials = async () => {
     try {
       setLoading(true)

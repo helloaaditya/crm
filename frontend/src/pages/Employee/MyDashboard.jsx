@@ -69,6 +69,17 @@ const MyDashboard = () => {
     getCurrentLocation()
   }, [user])
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchDashboardData()
+      fetchEmployeeProfile()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [user])
+
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(

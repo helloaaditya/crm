@@ -29,6 +29,16 @@ const Projects = () => {
     fetchProjects()
   }, [page, status, category, startDate, endDate])
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchProjects()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [page, status, category, startDate, endDate])
+
   const fetchProjects = async () => {
     try {
       setLoading(true)

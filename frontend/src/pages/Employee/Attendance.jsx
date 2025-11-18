@@ -32,6 +32,19 @@ const Attendance = () => {
     }
   }, [selectedEmployee, selectedMonth, selectedYear])
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (selectedEmployee) {
+        fetchAttendance()
+      }
+      fetchEmployees()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [selectedEmployee, selectedMonth, selectedYear])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {

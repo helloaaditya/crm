@@ -75,6 +75,20 @@ const Expenses = () => {
       fetchFunds()
     }
   }, [])
+
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchExpenses()
+      if (hasExpenseAccess) {
+        fetchStats()
+        fetchFunds()
+      }
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [hasExpenseAccess])
   
   const fetchExpenses = async () => {
     try {
