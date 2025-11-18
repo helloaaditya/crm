@@ -175,67 +175,112 @@ const LiveTracking = () => {
           }
           
           // Process activities (travel segments and stoppages)
-          let currentSegment = null;
+          // Group consecutive locations to detect movement vs stops
+          let travelStart = null;
+          let lastLocation = null;
           
           for (let i = 0; i < session.locations.length; i++) {
             const loc = session.locations[i];
-            const prevLoc = i > 0 ? session.locations[i - 1] : null;
             
-            if (loc.isStopPoint && loc.stopDuration) {
-              // End current travel segment if exists
-              if (currentSegment && prevLoc) {
-                const segmentDistance = calculateDistance(
-                  currentSegment.start.latitude,
-                  currentSegment.start.longitude,
-                  prevLoc.latitude,
-                  prevLoc.longitude
-                );
-                activities.push({
-                  type: 'travel',
-                  distance: segmentDistance,
-                  startTime: currentSegment.start.timestamp,
-                  endTime: prevLoc.timestamp,
-                  duration: Math.round((new Date(prevLoc.timestamp) - new Date(currentSegment.start.timestamp)) / 1000)
-                });
-                currentSegment = null;
+            if (!lastLocation) {
+              // First location - start tracking
+              travelStart = loc;
+              lastLocation = loc;
+              continue;
+            }
+            
+            // Calculate distance from last location
+            const distance = calculateDistance(
+              lastLocation.latitude,
+              lastLocation.longitude,
+              loc.latitude,
+              loc.longitude
+            );
+            
+            const timeDiff = (new Date(loc.timestamp) - new Date(lastLocation.timestamp)) / 1000; // seconds
+            
+            // If location moved significantly (> 20 meters), it's travel
+            if (distance > 0.02) { // 20 meters = 0.02 km
+              // If we were in a stop, end it first
+              if (travelStart && travelStart !== lastLocation) {
+                const stopDuration = (new Date(lastLocation.timestamp) - new Date(travelStart.timestamp)) / 1000;
+                if (stopDuration > 30) { // Only show stops > 30 seconds
+                  activities.push({
+                    type: 'stoppage',
+                    duration: Math.round(stopDuration),
+                    address: lastLocation.address || travelStart.address,
+                    timestamp: lastLocation.timestamp,
+                    coordinates: [lastLocation.latitude, lastLocation.longitude]
+                  });
+                }
               }
               
-              // Add stoppage
-              if (loc.stopDuration > 30) { // Only show stops > 30 seconds
-                activities.push({
-                  type: 'stoppage',
-                  duration: loc.stopDuration,
-                  address: loc.address,
-                  timestamp: loc.timestamp,
-                  coordinates: [loc.latitude, loc.longitude]
-                });
-              }
+              // Start new travel segment
+              travelStart = lastLocation;
+              lastLocation = loc;
             } else {
-              // Start new travel segment if not exists
-              if (!currentSegment) {
-                currentSegment = {
-                  start: loc
-                };
+              // Location hasn't moved much - could be a stop
+              // Check if we have a travel segment to close
+              if (travelStart && travelStart !== lastLocation) {
+                const travelDistance = calculateDistance(
+                  travelStart.latitude,
+                  travelStart.longitude,
+                  lastLocation.latitude,
+                  lastLocation.longitude
+                );
+                const travelDuration = (new Date(lastLocation.timestamp) - new Date(travelStart.timestamp)) / 1000;
+                
+                // Only add travel if distance > 50m and duration > 30s
+                if (travelDistance > 0.05 && travelDuration > 30) {
+                  activities.push({
+                    type: 'travel',
+                    distance: travelDistance,
+                    startTime: travelStart.timestamp,
+                    endTime: lastLocation.timestamp,
+                    duration: Math.round(travelDuration)
+                  });
+                }
               }
+              
+              // Update last location but keep travelStart for stop detection
+              lastLocation = loc;
             }
           }
           
-          // End last travel segment if exists
-          if (currentSegment && session.locations.length > 0) {
-            const lastLoc = session.locations[session.locations.length - 1];
-            const segmentDistance = calculateDistance(
-              currentSegment.start.latitude,
-              currentSegment.start.longitude,
-              lastLoc.latitude,
-              lastLoc.longitude
+          // Handle final segment
+          if (travelStart && lastLocation && travelStart !== lastLocation) {
+            const finalDistance = calculateDistance(
+              travelStart.latitude,
+              travelStart.longitude,
+              lastLocation.latitude,
+              lastLocation.longitude
             );
-            activities.push({
-              type: 'travel',
-              distance: segmentDistance,
-              startTime: currentSegment.start.timestamp,
-              endTime: lastLoc.timestamp,
-              duration: Math.round((new Date(lastLoc.timestamp) - new Date(currentSegment.start.timestamp)) / 1000)
-            });
+            const finalDuration = (new Date(lastLocation.timestamp) - new Date(travelStart.timestamp)) / 1000;
+            
+            // Check if it's a stop or travel
+            if (finalDistance <= 0.02) {
+              // It's a stop
+              if (finalDuration > 30) {
+                activities.push({
+                  type: 'stoppage',
+                  duration: Math.round(finalDuration),
+                  address: lastLocation.address || travelStart.address,
+                  timestamp: lastLocation.timestamp,
+                  coordinates: [lastLocation.latitude, lastLocation.longitude]
+                });
+              }
+            } else {
+              // It's travel
+              if (finalDistance > 0.05 && finalDuration > 30) {
+                activities.push({
+                  type: 'travel',
+                  distance: finalDistance,
+                  startTime: travelStart.timestamp,
+                  endTime: lastLocation.timestamp,
+                  duration: Math.round(finalDuration)
+                });
+              }
+            }
           }
         }
       });
@@ -257,9 +302,9 @@ const LiveTracking = () => {
     }
   };
 
-  // Helper function to calculate distance between two points
+  // Helper function to calculate distance between two points (returns km as number)
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3;
+    const R = 6371e3; // Earth radius in meters
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -269,7 +314,12 @@ const LiveTracking = () => {
               Math.cos(φ1) * Math.cos(φ2) *
               Math.sin(Δλ/2) * Math.sin(Δλ/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return (R * c / 1000).toFixed(2); // Return in km
+    return (R * c / 1000); // Return in km as number
+  };
+  
+  // Helper function to format distance for display
+  const formatDistance = (distance) => {
+    return parseFloat(distance).toFixed(2);
   };
 
   // Handle employee selection
@@ -611,7 +661,7 @@ const LiveTracking = () => {
                           <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-900">
-                              Travelled ({activity.distance}Km)
+                              Travelled ({formatDistance(activity.distance)}Km)
                             </div>
                             <div className="text-xs text-gray-600">
                               {new Date(activity.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - 
