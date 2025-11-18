@@ -216,23 +216,20 @@ self.addEventListener('message', (event) => {
     
     // Register periodic background sync if available
     if ('periodicSync' in self.registration) {
-      try {
-        await self.registration.periodicSync.register('location-sync', {
-          minInterval: 30000 // 30 seconds minimum
-        });
+      self.registration.periodicSync.register('location-sync', {
+        minInterval: 30000 // 30 seconds minimum
+      }).then(() => {
         console.log('✅ Periodic background sync registered');
-      } catch (error) {
+      }).catch((error) => {
         console.log('⚠️ Periodic sync not available:', error);
-      }
+      });
     }
   } else if (event.data.type === 'STOP_LOCATION_TRACKING') {
     // Unregister periodic sync
     if ('periodicSync' in self.registration) {
-      try {
-        await self.registration.periodicSync.unregister('location-sync');
-      } catch (error) {
+      self.registration.periodicSync.unregister('location-sync').catch((error) => {
         console.log('Error unregistering periodic sync:', error);
-      }
+      });
     }
     
     // Clear tracking data
