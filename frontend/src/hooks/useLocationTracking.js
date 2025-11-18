@@ -347,12 +347,21 @@ const useLocationTracking = (shouldTrack = false) => {
         }
       }, 60000); // Check every 1 minute
 
-      toast.success('Location tracking started - continuous tracking active');
+      // Request notification permission for persistent notification
+      if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+      
+      // Show persistent notification to keep app active
+      await showPersistentNotification();
+      
+      toast.success('Location tracking started - continuous tracking active (works in background)');
       console.log('✅ All tracking mechanisms started:');
       console.log('  - watchPosition (continuous)');
       console.log('  - 30s update interval');
       console.log('  - 60s heartbeat monitor');
       console.log('  - Wake lock requested');
+      console.log('  - Persistent notification active');
     } catch (error) {
       console.error('❌ Failed to start tracking:', error);
       toast.error('Failed to start location tracking');
@@ -408,6 +417,17 @@ const useLocationTracking = (shouldTrack = false) => {
         });
         console.log('📡 Notified service worker to stop background tracking');
       }
+      
+      // Close persistent notification
+      if ('Notification' in window && 'serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          const notifications = await registration.getNotifications({ tag: 'location-tracking' });
+          notifications.forEach(notification => notification.close());
+        } catch (error) {
+          console.log('Could not close notification:', error);
+        }
+      }
 
       toast.info('Location tracking stopped');
       console.log('✅ All tracking stopped successfully');
@@ -426,33 +446,108 @@ const useLocationTracking = (shouldTrack = false) => {
     // Don't auto-stop if shouldTrack is just the default false - let manual control work
   }, [shouldTrack, isTracking, startTracking]);
 
+  // Show persistent notification to keep app active in background
+  const showPersistentNotification = async () => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification('Location Tracking Active', {
+          body: 'Your location is being tracked. Keep this notification visible for continuous tracking.',
+          icon: '/logo.png',
+          badge: '/logo.png',
+          tag: 'location-tracking',
+          requireInteraction: false,
+          silent: true,
+          persistent: true,
+          data: {
+            url: '/'
+          }
+        });
+        console.log('✅ Persistent notification shown to keep tracking active');
+      } catch (error) {
+        console.log('Could not show notification:', error);
+      }
+    }
+  };
+
   // Handle page visibility changes (background/foreground)
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.hidden) {
-        console.log('📱 Page hidden - tracking continues in background');
-        // Ensure intervals are still running
-        if (isTracking && !updateInterval.current) {
-          console.log('⚠️ Update interval missing, restarting...');
+        console.log('📱 Page hidden - ensuring tracking continues in background');
+        
+        // Show persistent notification to keep app active
+        if (isTracking) {
+          await showPersistentNotification();
+        }
+        
+        // Ensure intervals are still running - restart if needed
+        if (isTracking) {
           const options = {
             enableHighAccuracy: true,
             timeout: 30000,
             maximumAge: 0,
           };
-          updateInterval.current = setInterval(() => {
-            navigator.geolocation.getCurrentPosition(
-              (position) => sendLocationToServer(position, false),
+          
+          // Restart update interval if it was cleared
+          if (!updateInterval.current) {
+            console.log('⚠️ Update interval missing, restarting...');
+            updateInterval.current = setInterval(() => {
+              console.log('⏰ Background interval update trigger');
+              navigator.geolocation.getCurrentPosition(
+                (position) => sendLocationToServer(position, false),
+                handleLocationError,
+                options
+              );
+            }, 30000);
+          }
+          
+          // Restart heartbeat if it was cleared
+          if (!heartbeatInterval.current) {
+            heartbeatInterval.current = setInterval(() => {
+              const timeSinceLastUpdate = Date.now() - lastUpdateTime.current;
+              console.log(`💓 Background heartbeat - Last update: ${Math.round(timeSinceLastUpdate / 1000)}s ago`);
+              
+              if (timeSinceLastUpdate > 120000) {
+                console.log('⚠️ No update in 2 minutes, forcing location update...');
+                navigator.geolocation.getCurrentPosition(
+                  (position) => sendLocationToServer(position, false),
+                  handleLocationError,
+                  options
+                );
+              }
+            }, 60000);
+          }
+          
+          // Ensure watchPosition is still active
+          if (watchId.current === null) {
+            console.log('⚠️ watchPosition missing, restarting...');
+            watchId.current = navigator.geolocation.watchPosition(
+              handleLocationSuccess,
               handleLocationError,
               options
             );
-          }, 30000);
+          }
         }
       } else {
         console.log('📱 Page visible - re-acquiring wake lock and ensuring tracking is active');
+        
+        // Close persistent notification
+        if ('Notification' in window && 'serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            const notifications = await registration.getNotifications({ tag: 'location-tracking' });
+            notifications.forEach(notification => notification.close());
+          } catch (error) {
+            console.log('Could not close notification:', error);
+          }
+        }
+        
         // Re-acquire wake lock when page becomes visible again
         if (isTracking && !wakeLock.current) {
           await requestWakeLock();
         }
+        
         // Force an immediate location update when page becomes visible
         if (isTracking) {
           navigator.geolocation.getCurrentPosition(
@@ -484,14 +579,45 @@ const useLocationTracking = (shouldTrack = false) => {
       }
     };
 
+    // Handle page freeze/resume (when browser suspends/resumes the page)
+    const handleFreeze = () => {
+      console.log('❄️ Page frozen - tracking may pause');
+    };
+    
+    const handleResume = () => {
+      console.log('▶️ Page resumed - resuming tracking');
+      if (isTracking) {
+        // Restart tracking mechanisms
+        const options = {
+          enableHighAccuracy: true,
+          timeout: 30000,
+          maximumAge: 0,
+        };
+        
+        if (!updateInterval.current) {
+          updateInterval.current = setInterval(() => {
+            navigator.geolocation.getCurrentPosition(
+              (position) => sendLocationToServer(position, false),
+              handleLocationError,
+              options
+            );
+          }, 30000);
+        }
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
+    document.addEventListener('freeze', handleFreeze);
+    document.addEventListener('resume', handleResume);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('freeze', handleFreeze);
+      document.removeEventListener('resume', handleResume);
     };
-  }, [isTracking, sendLocationToServer]);
+  }, [isTracking, sendLocationToServer, handleLocationSuccess, handleLocationError]);
 
   // Cleanup on unmount
   useEffect(() => {
