@@ -26,7 +26,13 @@ router.get('/my-status', getMyTrackingStatus);
 router.post('/cleanup', cleanupDuplicateSessions);
 
 // Admin routes - for viewing employee locations
-router.get('/active', authorize('admin', 'main_admin'), getActiveLocations);
+// Allow admin, main_admin, and users with 'all' module access
+router.get('/active', (req, res, next) => {
+  if (req.user.role === 'admin' || req.user.role === 'main_admin' || req.user.module === 'all') {
+    return next();
+  }
+  return res.status(403).json({ message: 'You don\'t have access to this module. Required: admin role or all module access' });
+}, getActiveLocations);
 router.get('/history/:employeeId', authorize('admin', 'main_admin'), getLocationHistory);
 router.get('/stats', authorize('admin', 'main_admin'), getTrackingStats);
 router.get('/session-analytics/:sessionId', authorize('admin', 'main_admin'), getSessionAnalytics);
