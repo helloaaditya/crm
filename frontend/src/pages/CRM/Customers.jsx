@@ -18,6 +18,16 @@ const Customers = () => {
     fetchCustomers()
   }, [page, leadStatus])
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchCustomers()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [page, leadStatus])
+
   const fetchCustomers = async () => {
     try {
       setLoading(true)
