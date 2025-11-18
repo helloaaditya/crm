@@ -163,6 +163,19 @@ export const updateLocation = asyncHandler(async (req, res) => {
     trackingDate: new Date()
   });
   
+  // Mark previous locations as inactive (keep only latest as active)
+  await LocationTracking.updateMany(
+    {
+      employee: employee._id,
+      sessionId,
+      isActive: true,
+      _id: { $ne: locationRecord._id }
+    },
+    {
+      $set: { isActive: false }
+    }
+  );
+  
   console.log('✅ Location updated:', locationRecord._id, isStopPoint ? '⏸️ STOP' : '🚶 MOVING');
   
   res.status(201).json({
@@ -267,25 +280,51 @@ export const cleanupDuplicateSessions = asyncHandler(async (req, res) => {
 export const getActiveLocations = asyncHandler(async (req, res) => {
   console.log('🗺️  FETCHING ACTIVE LOCATIONS');
   
-  // Cleanup stale sessions - only mark as inactive if NO updates in last 10 minutes
-  // This is more forgiving and accounts for:
-  // - Network delays (30s update interval + buffer)
-  // - GPS acquisition delays
-  // - App backgrounding/throttling
-  // - Heartbeat forces update at 2min, so 10min is very safe
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-  const staleCleanup = await LocationTracking.updateMany(
-    {
-      isActive: true,
-      createdAt: { $lt: tenMinutesAgo }
-    },
-    {
-      $set: { isActive: false }
-    }
-  );
+  // Only cleanup sessions for employees who have checked out
+  // Sessions remain active until employee checks out
+  // Check each active session's employee to see if they're checked in today
+  const activeSessions = await LocationTracking.find({ isActive: true }).distinct('employee');
   
-  if (staleCleanup.modifiedCount > 0) {
-    console.log(`🧹 Auto-cleanup: Marked ${staleCleanup.modifiedCount} stale sessions (>10min old) as inactive`);
+  if (activeSessions.length > 0) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Find employees who are checked in today (have checkInTime but no checkOutTime)
+    const checkedInEmployees = await Employee.find({
+      _id: { $in: activeSessions },
+      'attendance.date': {
+        $gte: today,
+        $lt: tomorrow
+      },
+      'attendance.checkInTime': { $exists: true, $ne: null },
+      'attendance.checkOutTime': null
+    }).distinct('_id');
+    
+    // Only cleanup sessions for employees who are NOT checked in
+    const employeesToCleanup = activeSessions.filter(empId => 
+      !checkedInEmployees.some(checkedInId => checkedInId.toString() === empId.toString())
+    );
+    
+    if (employeesToCleanup.length > 0) {
+      // Also check for truly stale sessions (no updates in last 30 minutes AND not checked in)
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const staleCleanup = await LocationTracking.updateMany(
+        {
+          isActive: true,
+          employee: { $in: employeesToCleanup },
+          createdAt: { $lt: thirtyMinutesAgo }
+        },
+        {
+          $set: { isActive: false }
+        }
+      );
+      
+      if (staleCleanup.modifiedCount > 0) {
+        console.log(`🧹 Auto-cleanup: Marked ${staleCleanup.modifiedCount} stale sessions (not checked in, >30min old) as inactive`);
+      }
+    }
   }
   
   // Check total active records

@@ -15,6 +15,7 @@ const useLocationTracking = (shouldTrack = false) => {
   const [locationHistory, setLocationHistory] = useState([]);
   const watchId = useRef(null);
   const updateInterval = useRef(null);
+  const updateIntervalBackup = useRef(null); // Backup interval for web view
   const heartbeatInterval = useRef(null);
   const wakeLock = useRef(null);
   const lastLocation = useRef(null);
@@ -320,7 +321,8 @@ const useLocationTracking = (shouldTrack = false) => {
       );
 
       // Primary update interval - every 30 seconds
-      // This ensures consistent updates even if watchPosition is throttled
+      // Use setInterval with a more aggressive approach for web view
+      // In web view, intervals may be throttled, so we use a shorter interval
       updateInterval.current = setInterval(() => {
         console.log('⏰ Interval update trigger');
         navigator.geolocation.getCurrentPosition(
@@ -329,6 +331,23 @@ const useLocationTracking = (shouldTrack = false) => {
           options
         );
       }, 30000); // 30 seconds
+      
+      // Additional aggressive interval for web view (every 15 seconds as backup)
+      // This helps when the main interval gets throttled
+      if (!updateIntervalBackup.current) {
+        updateIntervalBackup.current = setInterval(() => {
+          // Only trigger if last update was more than 35 seconds ago
+          const timeSinceLastUpdate = Date.now() - lastUpdateTime.current;
+          if (timeSinceLastUpdate > 35000) {
+            console.log('⏰ Backup interval trigger (web view)');
+            navigator.geolocation.getCurrentPosition(
+              (position) => sendLocationToServer(position, false),
+              handleLocationError,
+              options
+            );
+          }
+        }, 15000); // 15 seconds backup
+      }
 
       // Heartbeat interval - keeps connection alive and prevents browser throttling
       // This runs more frequently to signal that tracking is still active
@@ -385,6 +404,12 @@ const useLocationTracking = (shouldTrack = false) => {
         clearInterval(updateInterval.current);
         updateInterval.current = null;
         console.log('  ✓ Update interval cleared');
+      }
+
+      if (updateIntervalBackup.current) {
+        clearInterval(updateIntervalBackup.current);
+        updateIntervalBackup.current = null;
+        console.log('  ✓ Backup update interval cleared');
       }
 
       if (heartbeatInterval.current) {
@@ -500,6 +525,21 @@ const useLocationTracking = (shouldTrack = false) => {
                 options
               );
             }, 30000);
+          }
+          
+          // Restart backup interval if it was cleared
+          if (!updateIntervalBackup.current) {
+            updateIntervalBackup.current = setInterval(() => {
+              const timeSinceLastUpdate = Date.now() - lastUpdateTime.current;
+              if (timeSinceLastUpdate > 35000) {
+                console.log('⏰ Background backup interval trigger');
+                navigator.geolocation.getCurrentPosition(
+                  (position) => sendLocationToServer(position, false),
+                  handleLocationError,
+                  options
+                );
+              }
+            }, 15000);
           }
           
           // Restart heartbeat if it was cleared

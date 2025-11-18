@@ -898,7 +898,7 @@ const LiveTracking = () => {
           <div className="p-6 border-b">
             <h2 className="text-lg font-semibold text-gray-800">🟢 Currently Tracked Employees</h2>
             <p className="text-xs text-gray-500 mt-1">
-              Real-time tracking • Updates every 30s • Sessions auto-cleanup after 10 minutes of inactivity
+              Real-time tracking • Updates every 30s • Sessions remain active until checkout
             </p>
           </div>
           <div className="p-6">
