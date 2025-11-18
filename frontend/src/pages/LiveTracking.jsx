@@ -56,7 +56,7 @@ function MapBounds({ locations, route }) {
         }
       });
     }
-    
+      
     if (allPoints.length > 0) {
       if (allPoints.length === 1) {
         map.setView(allPoints[0], 13);
@@ -399,11 +399,11 @@ const LiveTracking = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Top Bar */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-gray-800">Live Employee Tracking</h1>
+      <div className="bg-white border-b px-3 sm:px-4 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <h1 className="text-base sm:text-xl font-semibold text-gray-800">Live Employee Tracking</h1>
           {lastUpdateTime && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 hidden sm:inline">
               Updated {Math.floor((new Date() - lastUpdateTime) / 1000)}s ago
             </span>
           )}
@@ -419,7 +419,7 @@ const LiveTracking = () => {
           </button>
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               autoRefresh ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
             }`}
           >
@@ -428,14 +428,14 @@ const LiveTracking = () => {
         </div>
       </div>
 
-      {/* Main Content - Split Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Content - Split Layout (Stack on mobile, side-by-side on desktop) */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Panel - Employee Details & Activity Log */}
-        <div className="w-96 bg-white border-r flex flex-col overflow-hidden">
+        <div className="w-full lg:w-96 bg-white border-b lg:border-r lg:border-b-0 flex flex-col overflow-hidden max-h-[50vh] lg:max-h-none">
           {/* Employee Selection */}
-          <div className="p-4 border-b">
+          <div className="p-3 sm:p-4 border-b">
             <div className="relative z-[10000]" ref={employeeDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Employee</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Select Employee</label>
               <button
                 type="button"
                 onClick={() => {
@@ -453,7 +453,7 @@ const LiveTracking = () => {
               </button>
               
               {employeeDropdownOpen && (
-                <div className="absolute w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '60vh', zIndex: 10000 }}>
+                <div className="absolute w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '50vh', zIndex: 10000 }}>
                   <div className="p-2 border-b sticky top-0 bg-white z-10">
                     <input
                       type="text"
@@ -464,7 +464,7 @@ const LiveTracking = () => {
                       autoFocus
                     />
                   </div>
-                  <div className="overflow-y-auto" style={{ maxHeight: 'calc(60vh - 60px)' }}>
+                  <div className="overflow-y-auto" style={{ maxHeight: 'calc(50vh - 60px)' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -498,7 +498,7 @@ const LiveTracking = () => {
                       ))
                     )}
                   </div>
-                </div>
+            </div>
               )}
             </div>
           </div>
@@ -506,9 +506,9 @@ const LiveTracking = () => {
           {/* Employee Information */}
           {selectedEmployee && (
             <>
-              <div className="p-4 border-b">
-                <div className="flex flex-col items-center mb-4">
-                  <div className="w-20 h-20 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold mb-2">
+              <div className="p-3 sm:p-4 border-b">
+                <div className="flex flex-col items-center mb-3 sm:mb-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center text-white text-xl sm:text-2xl font-bold mb-2">
                     {selectedEmployee.profilePicture ? (
                       <img 
                         src={selectedEmployee.profilePicture} 
@@ -519,11 +519,11 @@ const LiveTracking = () => {
                       getAvatarInitial(selectedEmployee.name)
                     )}
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">{selectedEmployee.name}</h2>
-                  <p className="text-sm text-gray-600 capitalize">{selectedEmployee.role || selectedEmployee.designation}</p>
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900">{selectedEmployee.name}</h2>
+                  <p className="text-xs sm:text-sm text-gray-600 capitalize">{selectedEmployee.role || selectedEmployee.designation}</p>
                 </div>
                 
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-xs sm:text-sm w-full">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Employee ID:</span>
                     <span className="font-medium">{selectedEmployee.employeeId}</span>
@@ -538,23 +538,23 @@ const LiveTracking = () => {
                       {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       <span className="text-green-500">✓</span>
                     </span>
-                  </div>
+            </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Time Zone:</span>
                     <span className="font-medium flex items-center gap-1">
                       IST <FiGlobe className="text-gray-400" size={14} />
                     </span>
-                  </div>
-                </div>
-              </div>
+            </div>
+          </div>
+        </div>
 
               {/* Tabs */}
-              <div className="border-b flex">
+              <div className="border-b flex overflow-x-auto">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    className={`flex-1 min-w-[80px] px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -566,26 +566,26 @@ const LiveTracking = () => {
               </div>
 
               {/* Activity Log */}
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                      <FiCalendar size={16} />
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                <div className="mb-3 sm:mb-4">
+                  <div className="flex items-center justify-between mb-2 sm:mb-3">
+                    <h3 className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <FiCalendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       Today
                     </h3>
-                    <div className="flex items-center gap-4 text-xs text-gray-600">
+                    <div className="flex items-center gap-2 sm:gap-4 text-xs text-gray-600">
                       <span>Distance {todayStats.distance}Km</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {/* Punch In */}
                   {todayStats.punchIn && (
-                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      <FiClock className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                    <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                      <FiClock className="text-blue-600 mt-0.5 flex-shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-xs sm:text-sm font-medium text-gray-900">
                           {new Date(todayStats.punchIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </div>
                         <div className="text-xs text-gray-600">Punch In</div>
@@ -595,26 +595,26 @@ const LiveTracking = () => {
 
                   {/* Activity Items */}
                   {activityLog.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div key={index} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-lg">
                       {activity.type === 'travel' ? (
                         <>
-                          <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                          <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-xs sm:text-sm font-medium text-gray-900">
                               Travelled ({activity.distance}Km)
                             </div>
                             <div className="text-xs text-gray-600">
                               {new Date(activity.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - 
                               {new Date(activity.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                              <span className="ml-2">({formatDuration(activity.duration)})</span>
+                              <span className="ml-1 sm:ml-2">({formatDuration(activity.duration)})</span>
                             </div>
                           </div>
                         </>
                       ) : (
                         <>
-                          <FiMapPin className="text-red-600 mt-0.5 flex-shrink-0" size={16} />
+                          <FiMapPin className="text-red-600 mt-0.5 flex-shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-xs sm:text-sm font-medium text-gray-900">
                               Stoppage of {formatDuration(activity.duration)}
                             </div>
                             <div className="text-xs text-gray-600 mt-1 break-words">
@@ -629,18 +629,18 @@ const LiveTracking = () => {
                   {activityLog.length === 0 && !loading && (
                     <div className="text-center py-8 text-gray-500 text-sm">
                       No activity data available
-                    </div>
-                  )}
+              </div>
+            )}
                 </div>
               </div>
-
+            
               {/* Device Info Bar */}
               {currentEmpLocation && (
-                <div className="p-3 border-t bg-gray-50 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-3">
+                <div className="p-2 sm:p-3 border-t bg-gray-50 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     {currentEmpLocation.batteryLevel && (
                       <div className="flex items-center gap-1 text-gray-600">
-                        <FiBattery size={14} />
+                        <FiBattery className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         <span>{currentEmpLocation.batteryLevel}%</span>
                       </div>
                     )}
@@ -653,7 +653,7 @@ const LiveTracking = () => {
                     onClick={handleRefresh}
                     title="Refresh"
                   >
-                    <FiRefreshCw className={loading ? 'animate-spin' : ''} size={14} />
+                    <FiRefreshCw className={`${loading ? 'animate-spin' : ''} w-3 h-3 sm:w-3.5 sm:h-3.5`} />
                   </button>
                 </div>
               )}
@@ -662,102 +662,102 @@ const LiveTracking = () => {
 
           {/* Empty State */}
           {!selectedEmployee && (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-gray-500 p-4">
               <div className="text-center">
-                <FiUser size={48} className="mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Select an employee to view tracking details</p>
+                <FiUser size={40} className="sm:w-12 sm:h-12 mx-auto mb-2 text-gray-400" />
+                <p className="text-xs sm:text-sm">Select an employee to view tracking details</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Right Panel - Map */}
-        <div className="flex-1 relative">
-          <MapContainer
+        <div className="flex-1 relative min-h-[50vh] lg:min-h-0">
+        <MapContainer
             center={getCurrentLocation()}
-            zoom={13}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          
             <MapBounds 
               locations={selectedEmployeeId ? [] : activeLocations} 
               route={historicalRoute}
             />
             
             {/* Historical route polyline */}
-            {historicalRoute.length > 0 && (
-              <>
-                <Polyline
-                  positions={historicalRoute.map(loc => [loc.latitude, loc.longitude])}
-                  color="#2563eb"
-                  weight={4}
-                  opacity={0.8}
-                  smoothFactor={1.5}
-                />
-                
+          {historicalRoute.length > 0 && (
+            <>
+              <Polyline
+                positions={historicalRoute.map(loc => [loc.latitude, loc.longitude])}
+                color="#2563eb"
+                weight={4}
+                opacity={0.8}
+                smoothFactor={1.5}
+              />
+              
                 {/* Start marker */}
-                <Marker
-                  position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
-                  icon={activeEmployeeIcon}
-                >
-                  <Popup>
-                    <div className="p-2">
-                      <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {new Date(historicalRoute[0].timestamp).toLocaleString()}
-                      </p>
-                    </div>
-                  </Popup>
-                </Marker>
-                
+              <Marker
+                position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
+                icon={activeEmployeeIcon}
+              >
+                <Popup>
+                  <div className="p-2">
+                    <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {new Date(historicalRoute[0].timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+              
                 {/* Stop points */}
                 {historicalRoute
                   .filter(loc => loc.isStopPoint)
                   .map((loc, idx) => (
-                    <Marker
-                      key={`stop-${idx}`}
-                      position={[loc.latitude, loc.longitude]}
-                      icon={stopPointIcon}
-                    >
-                      <Popup>
-                        <div className="p-2">
-                          <h3 className="font-semibold text-red-600">⏸️ Stop Point</h3>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {new Date(loc.timestamp).toLocaleTimeString()}
-                          </p>
-                          {loc.address && (
-                            <p className="text-xs text-gray-500 mt-1">{loc.address}</p>
-                          )}
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-                
+                <Marker
+                  key={`stop-${idx}`}
+                  position={[loc.latitude, loc.longitude]}
+                  icon={stopPointIcon}
+                >
+                  <Popup>
+                    <div className="p-2">
+                      <h3 className="font-semibold text-red-600">⏸️ Stop Point</h3>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {new Date(loc.timestamp).toLocaleTimeString()}
+                      </p>
+                      {loc.address && (
+                        <p className="text-xs text-gray-500 mt-1">{loc.address}</p>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+              
                 {/* End marker */}
                 {historicalRoute.length > 1 && (
-                  <Marker
-                    position={[
-                      historicalRoute[historicalRoute.length - 1].latitude,
-                      historicalRoute[historicalRoute.length - 1].longitude
-                    ]}
+              <Marker
+                position={[
+                  historicalRoute[historicalRoute.length - 1].latitude,
+                  historicalRoute[historicalRoute.length - 1].longitude
+                ]}
                     icon={stopPointIcon}
-                  >
-                    <Popup>
-                      <div className="p-2">
-                        <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                    </Popup>
-                  </Marker>
+              >
+                <Popup>
+                  <div className="p-2">
+                    <h3 className="font-semibold text-red-600">🏁 Journey End</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
                 )}
-              </>
-            )}
+            </>
+          )}
             
             {/* Active employee markers (if not viewing specific employee) */}
             {!selectedEmployeeId && activeLocations.map((loc, index) => (
@@ -809,15 +809,15 @@ const LiveTracking = () => {
                       <p><strong>Last Update:</strong> {new Date(currentEmpLocation.createdAt).toLocaleTimeString()}</p>
                       {currentEmpLocation.address && (
                         <p><strong>Location:</strong> {currentEmpLocation.address}</p>
-                      )}
-                    </div>
+                    )}
                   </div>
+                </div>
                 </Popup>
               </Marker>
             )}
           </MapContainer>
-        </div>
-      </div>
+            </div>
+          </div>
     </div>
   );
 };
