@@ -397,29 +397,29 @@ function MyExpenses() {
       </div>
       
       {/* Available Funds Box */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-6 mb-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm opacity-90 mb-1">My Available Funds</p>
-            <p className="text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-4 sm:p-6 mb-6 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-xs sm:text-sm opacity-90 mb-1">My Available Funds</p>
+            <p className="text-3xl sm:text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
             <p className="text-xs opacity-75 mt-1">Your personal expense fund balance</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={() => {
                 setShowFundHistory(true)
                 fetchFundHistory()
               }}
-              className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+              className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm sm:text-base"
             >
-              <FiClock className="mr-2" />
+              <FiClock className="mr-2" size={16} />
               History
             </button>
             <button
               onClick={() => setShowFundModal(true)}
-              className="flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition"
+              className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition text-sm sm:text-base"
             >
-              <FiPlus className="mr-2" />
+              <FiPlus className="mr-2" size={16} />
               Add Funds
             </button>
           </div>
@@ -1107,21 +1107,24 @@ function MyExpenses() {
 
       {/* Direct Pay Expense Modal (Create and Pay) */}
       {showDirectPayModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg">
-            <div className="p-6 border-b flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Pay Expense from My Funds</h2>
-                <p className="text-sm text-gray-600 mt-1">Create and pay expense directly (no approval needed)</p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-lg my-4 max-h-[95vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sticky top-0 bg-white z-10">
+              <div className="flex-1">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Pay Expense from My Funds</h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">Create and pay expense directly (no approval needed)</p>
               </div>
-              <button onClick={() => setShowDirectPayModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button 
+                onClick={() => setShowDirectPayModal(false)} 
+                className="text-gray-500 hover:text-gray-700 self-end sm:self-auto"
+              >
                 <FiX size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleDirectPay} className="p-6 space-y-4">
+            <form onSubmit={handleDirectPay} className="p-4 sm:p-6 space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
+                <p className="text-xs sm:text-sm text-blue-800">
                   <strong>Available Funds:</strong> ₹{availableFunds.toLocaleString('en-IN')}
                 </p>
               </div>
@@ -1234,17 +1237,17 @@ function MyExpenses() {
                 />
               </div>
               
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowDirectPayModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-semibold"
                   disabled={!directPayData.amount || Number(directPayData.amount) <= 0 || Number(availableFunds) < Number(directPayData.amount)}
                 >
                   Pay ₹{directPayData.amount ? Number(directPayData.amount).toLocaleString('en-IN') : '0'}
