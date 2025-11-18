@@ -66,7 +66,20 @@ const MyDashboard = () => {
     
     fetchEmployeeProfile()
     fetchDashboardData()
-    getCurrentLocation()
+    // Request location permission on page load
+    const requestPermission = async () => {
+      const permission = await checkLocationPermission()
+      if (permission === 'prompt' || permission === 'default') {
+        // Show info toast and request permission
+        toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
+          autoClose: 5000
+        })
+        await requestLocationPermission()
+      }
+      // Get location after permission check
+      getCurrentLocation()
+    }
+    requestPermission()
   }, [user])
 
   // Listen for refresh event from Header
@@ -166,10 +179,22 @@ const MyDashboard = () => {
   }
 
   const handleCheckIn = async () => {
-    if (!location) {
-      toast.error('Please enable location access')
-      getCurrentLocation()
+    // Request location permission if not already granted
+    const hasPermission = await requestLocationPermission()
+    if (!hasPermission) {
+      toast.error('Location permission is required for check-in. Please enable location access in your browser settings.')
       return
+    }
+
+    if (!location) {
+      toast.info('Getting your location...')
+      getCurrentLocation()
+      // Wait a bit for location to be fetched
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (!location) {
+        toast.error('Could not get your location. Please try again.')
+        return
+      }
     }
 
     console.log('📥 Dashboard - Check-in button clicked');
