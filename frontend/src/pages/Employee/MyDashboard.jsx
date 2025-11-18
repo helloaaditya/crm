@@ -68,18 +68,18 @@ const MyDashboard = () => {
     fetchEmployeeProfile()
     fetchDashboardData()
     // Request location permission on page load
-    const requestPermission = async () => {
-      const permission = await checkLocationPermission()
-      if (permission === 'prompt' || permission === 'default') {
-        // Show info toast and request permission
-        toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
-          autoClose: 5000
-        })
-        await requestLocationPermission()
-      }
-      // Get location after permission check
-      getCurrentLocation()
-    }
+    // const requestPermission = async () => {
+    //   const permission = await checkLocationPermission()
+    //   if (permission === 'prompt' || permission === 'default') {
+    //     // Show info toast and request permission
+    //     toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
+    //       autoClose: 5000
+    //     })
+    //     await requestLocationPermission()
+    //   }
+    //   // Get location after permission check
+    //   getCurrentLocation()
+    // }
     requestPermission()
   }, [user])
 
