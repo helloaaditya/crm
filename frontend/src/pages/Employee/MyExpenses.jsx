@@ -1032,15 +1032,15 @@ function MyExpenses() {
               </button>
             </div>
             
-            <form onSubmit={handlePayExpense} className="p-6 space-y-4">
+            <form onSubmit={handlePayExpense} className="p-4 sm:p-6 space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
+                <p className="text-xs sm:text-sm text-blue-800">
                   <strong>Expense Amount:</strong> ₹{selectedExpenseForPayment.amount.toLocaleString('en-IN')}
                 </p>
-                <p className="text-sm text-blue-800 mt-1">
+                <p className="text-xs sm:text-sm text-blue-800 mt-1">
                   <strong>Available Funds:</strong> ₹{availableFunds.toLocaleString('en-IN')}
                 </p>
-                <p className="text-sm text-blue-800 mt-1">
+                <p className="text-xs sm:text-sm text-blue-800 mt-1">
                   <strong>Balance After Payment:</strong> ₹{(availableFunds - selectedExpenseForPayment.amount).toLocaleString('en-IN')}
                 </p>
               </div>
