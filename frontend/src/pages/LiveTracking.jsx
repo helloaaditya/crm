@@ -851,7 +851,16 @@ const LiveTracking = () => {
                           {currentEmpLocation.batteryLevel && (
                             <p><strong>Battery:</strong> {currentEmpLocation.batteryLevel}%</p>
                           )}
-                          <p><strong>Last Update:</strong> {new Date(currentEmpLocation.createdAt).toLocaleTimeString()}</p>
+                          <p><strong>Last Update:</strong> {new Date(currentEmpLocation.createdAt).toLocaleString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit',
+                            month: 'short',
+                            day: 'numeric'
+                          })}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {Math.floor((new Date() - new Date(currentEmpLocation.createdAt)) / 1000 / 60)} min ago
+                          </p>
                           {currentEmpLocation.address && (
                             <p><strong>Location:</strong> {currentEmpLocation.address}</p>
                           )}

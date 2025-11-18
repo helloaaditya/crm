@@ -367,21 +367,67 @@ const useLocationTracking = (shouldTrack = false) => {
     const handleVisibilityChange = async () => {
       if (document.hidden) {
         console.log('📱 Page hidden - tracking continues in background');
+        // Ensure intervals are still running
+        if (isTracking && !updateInterval.current) {
+          console.log('⚠️ Update interval missing, restarting...');
+          const options = {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 0,
+          };
+          updateInterval.current = setInterval(() => {
+            navigator.geolocation.getCurrentPosition(
+              (position) => sendLocationToServer(position, false),
+              handleLocationError,
+              options
+            );
+          }, 30000);
+        }
       } else {
-        console.log('📱 Page visible - re-acquiring wake lock if needed');
+        console.log('📱 Page visible - re-acquiring wake lock and ensuring tracking is active');
         // Re-acquire wake lock when page becomes visible again
         if (isTracking && !wakeLock.current) {
           await requestWakeLock();
         }
+        // Force an immediate location update when page becomes visible
+        if (isTracking) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => sendLocationToServer(position, false),
+            handleLocationError,
+            {
+              enableHighAccuracy: true,
+              timeout: 30000,
+              maximumAge: 0,
+            }
+          );
+        }
+      }
+    };
+
+    // Handle page focus/blur events as backup
+    const handleFocus = async () => {
+      if (isTracking) {
+        console.log('📱 Page focused - ensuring tracking is active');
+        navigator.geolocation.getCurrentPosition(
+          (position) => sendLocationToServer(position, false),
+          handleLocationError,
+          {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 0,
+          }
+        );
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
-  }, [isTracking]);
+  }, [isTracking, sendLocationToServer]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -402,6 +448,7 @@ const useLocationTracking = (shouldTrack = false) => {
   }, []);
 
   // Check tracking status on mount and restore from localStorage if needed
+  // Also check if employee is checked in and auto-resume tracking
   useEffect(() => {
     const checkTrackingStatus = async () => {
       try {
@@ -419,12 +466,67 @@ const useLocationTracking = (shouldTrack = false) => {
             // Resume the tracking with saved session
             setSessionId(savedSessionId);
             setIsTracking(true);
-            // Note: Geolocation watch will restart on next component interaction
-            // or you could restart it here if needed
+            // Restart tracking immediately
+            await startTracking();
           } else {
-            console.log('⚠️ Backend shows no active tracking, clearing localStorage');
+            console.log('⚠️ Backend shows no active tracking, checking if should resume...');
+            // Check if employee is checked in (has check-in but no check-out today)
+            // If checked in, resume tracking
+            try {
+              // Import API to check attendance
+              const { default: API } = await import('../api');
+              const today = new Date();
+              const month = today.getMonth() + 1;
+              const year = today.getFullYear();
+              
+              const attendanceRes = await API.employees.myAttendance.get({ month, year });
+              const records = attendanceRes.data.data || [];
+              const todayRecord = records.find(r => {
+                const rDate = new Date(r.date);
+                return rDate.toDateString() === today.toDateString();
+              });
+              
+              // If checked in but not checked out, resume tracking
+              if (todayRecord?.checkInTime && !todayRecord?.checkOutTime) {
+                console.log('✅ Employee is checked in, resuming location tracking...');
+                setSessionId(savedSessionId || generateSessionId());
+                setIsTracking(true);
+                await startTracking();
+                return;
+              }
+            } catch (attError) {
+              console.log('Could not check attendance:', attError);
+            }
+            
+            // If not checked in, clear localStorage
             localStorage.removeItem('location_tracking_active');
             localStorage.removeItem('location_tracking_session');
+          }
+        } else {
+          // No saved tracking, but check if employee is checked in
+          try {
+            const { default: API } = await import('../api');
+            const today = new Date();
+            const month = today.getMonth() + 1;
+            const year = today.getFullYear();
+            
+            const attendanceRes = await API.employees.myAttendance.get({ month, year });
+            const records = attendanceRes.data.data || [];
+            const todayRecord = records.find(r => {
+              const rDate = new Date(r.date);
+              return rDate.toDateString() === today.toDateString();
+            });
+            
+            // If checked in but not checked out, start tracking
+            if (todayRecord?.checkInTime && !todayRecord?.checkOutTime) {
+              console.log('✅ Employee is checked in but tracking not active, starting tracking...');
+              const newSessionId = generateSessionId();
+              setSessionId(newSessionId);
+              setIsTracking(true);
+              await startTracking();
+            }
+          } catch (attError) {
+            console.log('Could not check attendance:', attError);
           }
         }
       } catch (error) {
@@ -434,6 +536,7 @@ const useLocationTracking = (shouldTrack = false) => {
     };
 
     checkTrackingStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
