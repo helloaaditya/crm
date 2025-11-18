@@ -103,8 +103,34 @@ router.get('/my-payslip/:month', generateMyPayslip);
 router.post('/upload-work-files', uploadMemory.array('files', 10), uploadWorkUpdateFiles);
 
 // ============= ADMIN EMPLOYEE MANAGEMENT ROUTES =============
-// These routes require 'employee' or 'all' module access
-router.use(moduleAccess('employee', 'all'));
+// These routes require 'employee', 'all', or 'live-tracking' module access
+// (live-tracking users need to see employees for tracking purposes)
+router.use((req, res, next) => {
+  // Use moduleAccess for employee/all modules
+  const employeeModuleCheck = moduleAccess('employee', 'all');
+  
+  // Check if user has employee or all module first
+  if (req.user.module === 'all' || (req.user.module && req.user.module.split(',').some(m => m.trim() === 'employee' || m.trim().startsWith('employee:')))) {
+    return employeeModuleCheck(req, res, next);
+  }
+  
+  // Also allow users with live-tracking module access (for Live Tracking page)
+  const userModule = req.user.module || '';
+  const userModules = userModule.split(',').map(m => m.trim()).filter(m => m);
+  const hasLiveTrackingAccess = userModules.some(module => {
+    return module === 'live-tracking' || 
+           module === 'admin:live-tracking' ||
+           module.startsWith('live-tracking:') ||
+           module.startsWith('admin:live-tracking:');
+  });
+  
+  if (hasLiveTrackingAccess) {
+    return next();
+  }
+  
+  // Fall back to standard moduleAccess check
+  return employeeModuleCheck(req, res, next);
+});
 
 // Hold Requests (Admin) - must be before any '/:id' routes
 router.get('/hold-requests', checkPermission('canHandleAccounts'), listHoldRequests);
