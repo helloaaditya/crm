@@ -6,16 +6,30 @@ import { AuthProvider } from './context/AuthContext'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
-// Register Service Worker for Push Notifications
+// Register Service Worker for Background Location Tracking & Push Notifications
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('✅ Service Worker registered successfully:', registration.scope);
-      })
-      .catch(error => {
-        console.error('❌ Service Worker registration failed:', error);
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      console.log('✅ Service Worker registered successfully:', registration.scope);
+      
+      // Request persistent notification permission for background tracking
+      if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+      
+      // Check for updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('🔄 New service worker available, reload to update');
+          }
+        });
       });
+    } catch (error) {
+      console.error('❌ Service Worker registration failed:', error);
+    }
   });
 }
 

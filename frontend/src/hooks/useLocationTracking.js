@@ -20,6 +20,37 @@ const useLocationTracking = (shouldTrack = false) => {
   const lastLocation = useRef(null);
   const lastUpdateTime = useRef(Date.now());
 
+  // Queue location update for background sync
+  const queueLocationForBackgroundSync = async (locationData) => {
+    try {
+      // Store in IndexedDB for service worker to sync
+      const request = indexedDB.open('LocationQueueDB', 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('queue')) {
+          db.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+        }
+      };
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['queue'], 'readwrite');
+        const store = transaction.objectStore('queue');
+        store.add({ ...locationData, timestamp: Date.now() });
+      };
+      
+      // Register background sync
+      if ('serviceWorker' in navigator && 'sync' in self.registration) {
+        try {
+          await self.registration.sync.register(`location-update-${Date.now()}`);
+        } catch (error) {
+          console.log('Background sync registration failed:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to queue location update:', error);
+    }
+  };
+
   // Generate unique session ID
   const generateSessionId = () => {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -238,6 +269,25 @@ const useLocationTracking = (shouldTrack = false) => {
       localStorage.setItem('location_tracking_session', newSessionId);
 
       console.log('🚀 Starting location tracking with session:', newSessionId);
+      
+      // Notify service worker to start background tracking
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        // Get auth token from localStorage
+        const token = localStorage.getItem('token');
+        if (token) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'STORE_AUTH_TOKEN',
+            token: token
+          });
+        }
+        
+        navigator.serviceWorker.controller.postMessage({
+          type: 'START_LOCATION_TRACKING',
+          sessionId: newSessionId,
+          isActive: true
+        });
+        console.log('📡 Notified service worker to start background tracking');
+      }
 
       // Cleanup any duplicate sessions first
       try {
@@ -344,6 +394,14 @@ const useLocationTracking = (shouldTrack = false) => {
       // Clear localStorage
       localStorage.removeItem('location_tracking_active');
       localStorage.removeItem('location_tracking_session');
+
+      // Notify service worker to stop background tracking
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'STOP_LOCATION_TRACKING'
+        });
+        console.log('📡 Notified service worker to stop background tracking');
+      }
 
       toast.info('Location tracking stopped');
       console.log('✅ All tracking stopped successfully');
