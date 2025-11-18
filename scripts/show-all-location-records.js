@@ -1,13 +1,24 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import LocationTracking from '../models/LocationTracking.js';
 import Employee from '../models/Employee.js';
+import User from '../models/User.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    if (!mongoUri) {
+      console.error('❌ MONGODB_URI or MONGO_URI not found in environment variables');
+      process.exit(1);
+    }
+    await mongoose.connect(mongoUri);
     console.log('✅ MongoDB Connected');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
