@@ -232,10 +232,22 @@ const MyDashboard = () => {
   }
 
   const handleCheckOut = async () => {
-    if (!location) {
-      toast.error('Please enable location access')
-      getCurrentLocation()
+    // Request location permission if not already granted
+    const hasPermission = await requestLocationPermission()
+    if (!hasPermission) {
+      toast.error('Location permission is required for check-out. Please enable location access in your browser settings.')
       return
+    }
+
+    if (!location) {
+      toast.info('Getting your location...')
+      getCurrentLocation()
+      // Wait a bit for location to be fetched
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (!location) {
+        toast.error('Could not get your location. Please try again.')
+        return
+      }
     }
 
     console.log('📤 Dashboard - Check-out button clicked');
