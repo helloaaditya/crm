@@ -472,6 +472,49 @@ export const addFundsToEmployee = asyncHandler(async (req, res) => {
   });
 });
 
+// Helper function to deduct from employee funds (used by expense controller)
+export const deductEmployeeFunds = async (employeeId, amount, expenseId, userId, paymentMode, transactionReference, remarks) => {
+  const fund = await EmployeeFund.getOrCreateFund(employeeId);
+  
+  if (fund.availableFunds < amount) {
+    throw new Error(`Insufficient employee funds. Available: ₹${fund.availableFunds.toLocaleString()}, Required: ₹${amount.toLocaleString()}`);
+  }
+  
+  const previousBalance = fund.availableFunds;
+  const newBalance = previousBalance - amount;
+  
+  // Update fund
+  fund.availableFunds = newBalance;
+  fund.lastUpdated = new Date();
+  fund.lastUpdatedBy = userId;
+  await fund.save();
+  
+  // Get employee details for description
+  const employee = await Employee.findById(employeeId).select('name employeeId');
+  
+  // Create history record
+  await EmployeeFundHistory.create({
+    employee: employeeId,
+    transactionType: 'debit',
+    amount,
+    balanceAfter: newBalance,
+    description: `Expense payment - ₹${amount.toLocaleString()} for ${employee?.name || 'Employee'}`,
+    referenceType: 'expense',
+    referenceId: expenseId,
+    referenceModel: 'Expense',
+    performedBy: userId,
+    paymentMode: paymentMode || 'bank_transfer',
+    transactionReference: transactionReference || '',
+    remarks: remarks || ''
+  });
+  
+  return {
+    previousBalance,
+    newBalance,
+    amountDeducted: amount
+  };
+};
+
 export default {
   getFunds,
   addFunds,
@@ -483,6 +526,7 @@ export default {
   addEmployeeFunds,
   getEmployeeFundHistory,
   getAllEmployeesFunds,
-  addFundsToEmployee
+  addFundsToEmployee,
+  deductEmployeeFunds
 };
 

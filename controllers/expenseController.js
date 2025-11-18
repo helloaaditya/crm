@@ -3,7 +3,7 @@ import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { createNotification, NotificationTemplates } from './notificationController.js';
-import { deductFunds } from './fundController.js';
+import { deductFunds, deductEmployeeFunds } from './fundController.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -432,6 +432,86 @@ export const processExpensePayment = asyncHandler(async (req, res) => {
     success: true,
     data: updated,
     message: 'Payment processed successfully'
+  });
+});
+
+// @desc    Employee pays expense from own funds
+// @route   PUT /api/expenses/my-expense/:id/pay
+// @access  Private
+export const payExpenseFromOwnFunds = asyncHandler(async (req, res) => {
+  const expense = await Expense.findById(req.params.id)
+    .populate('employee')
+    .populate('submittedBy');
+  
+  if (!expense) {
+    return res.status(404).json({ message: 'Expense not found' });
+  }
+  
+  // Check if expense belongs to the logged-in employee
+  const employee = await Employee.findOne({ userId: req.user._id });
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+  
+  if (expense.employee.toString() !== employee._id.toString()) {
+    return res.status(403).json({ message: 'You can only pay your own expenses' });
+  }
+  
+  if (expense.status !== 'approved') {
+    return res.status(400).json({ message: 'Only approved expenses can be paid' });
+  }
+  
+  if (expense.paymentStatus === 'paid') {
+    return res.status(400).json({ message: 'Expense has already been paid' });
+  }
+  
+  const { paymentMode, transactionReference, remarks } = req.body;
+  const paidAmount = expense.amount; // Use the approved amount
+  
+  if (!paidAmount || paidAmount <= 0) {
+    return res.status(400).json({ message: 'Invalid expense amount' });
+  }
+  
+  // Deduct from employee's own funds
+  try {
+    const fundDeduction = await deductEmployeeFunds(
+      employee._id,
+      paidAmount,
+      expense._id,
+      req.user._id,
+      paymentMode || 'bank_transfer',
+      transactionReference || '',
+      remarks || `Expense payment: ${expense.expenseId} - ${expense.description}`
+    );
+    console.log(`💰 Employee funds deducted: ₹${paidAmount.toLocaleString()}, New balance: ₹${fundDeduction.newBalance.toLocaleString()}`);
+  } catch (fundError) {
+    console.error('⚠️ Employee fund deduction failed:', fundError.message);
+    return res.status(400).json({ 
+      message: fundError.message || 'Insufficient funds in your account' 
+    });
+  }
+  
+  // Update expense
+  expense.status = 'paid';
+  expense.paymentStatus = 'paid';
+  expense.paidAmount = paidAmount;
+  expense.paymentDate = new Date();
+  expense.paymentMode = paymentMode || 'bank_transfer';
+  expense.transactionReference = transactionReference || '';
+  expense.paidBy = req.user._id;
+  expense.remarks = remarks || expense.remarks;
+  expense.paidFromEmployeeFunds = true; // Mark that it was paid from employee funds
+  
+  await expense.save();
+  
+  const updated = await Expense.findById(expense._id)
+    .populate('employee', 'name employeeId')
+    .populate('paidBy', 'name');
+  
+  res.json({
+    success: true,
+    data: updated,
+    message: 'Expense paid successfully from your account'
   });
 });
 

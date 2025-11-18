@@ -280,6 +280,7 @@ export const expenseAPI = {
   approve: (id, data) => api.put(`/expenses/${id}/approve`, data),
   reject: (id, data) => api.put(`/expenses/${id}/reject`, data),
   pay: (id, data) => api.put(`/expenses/${id}/pay`, data),
+  payFromOwnFunds: (id, data) => api.put(`/expenses/my-expense/${id}/pay`, data), // Employee pays from own funds
   getStats: (params) => api.get('/expenses/stats', { params }),
   uploadDocuments: (formData) => api.post('/expenses/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

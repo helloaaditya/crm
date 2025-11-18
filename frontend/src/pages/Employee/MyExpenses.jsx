@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2, FiDollarSign, FiClock, FiRefreshCw, FiEdit } from 'react-icons/fi'
+import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2, FiDollarSign, FiClock, FiRefreshCw, FiCheck } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
@@ -30,15 +30,15 @@ function MyExpenses() {
   const [fundHistory, setFundHistory] = useState([])
   const [showFundHistory, setShowFundHistory] = useState(false)
   const [showFundModal, setShowFundModal] = useState(false)
-  const [showEditFundModal, setShowEditFundModal] = useState(false)
+  const [showPayModal, setShowPayModal] = useState(false)
+  const [selectedExpenseForPayment, setSelectedExpenseForPayment] = useState(null)
   const [fundData, setFundData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
     transactionReference: '',
     remarks: ''
   })
-  const [editFundData, setEditFundData] = useState({
-    amount: '',
+  const [paymentData, setPaymentData] = useState({
     paymentMode: 'bank_transfer',
     transactionReference: '',
     remarks: ''
@@ -145,62 +145,53 @@ function MyExpenses() {
     }
   }
 
-  const handleEditFunds = async (e) => {
+  const handlePayExpense = async (e) => {
     e.preventDefault()
     
-    const amount = Number(editFundData.amount)
-    
-    if (!amount || amount <= 0 || isNaN(amount)) {
-      toast.error('Please enter a valid amount')
+    if (!selectedExpenseForPayment) {
+      toast.error('No expense selected')
       return
     }
     
-    const currentAmount = Number(availableFunds) || 0
-    const newAmount = amount
-    const difference = newAmount - currentAmount
-    
-    if (difference === 0) {
-      toast.info('No change in amount')
+    if (Number(availableFunds) < Number(selectedExpenseForPayment.amount)) {
+      toast.error(`Insufficient funds. Available: ₹${availableFunds.toLocaleString('en-IN')}, Required: ₹${selectedExpenseForPayment.amount.toLocaleString('en-IN')}`)
       return
     }
     
     try {
-      if (difference > 0) {
-        await API.funds.addMyFunds({
-          amount: difference,
-          paymentMode: editFundData.paymentMode,
-          transactionReference: editFundData.transactionReference,
-          remarks: editFundData.remarks || `Manual adjustment: Set to ₹${newAmount.toLocaleString('en-IN')}`
-        })
-        toast.success(`Funds adjusted: Added ₹${difference.toLocaleString('en-IN')}`)
-      } else {
-        // For deduction, we'd need a deduct endpoint, but for now just show error
-        toast.error('Deduction not available. Please contact admin.')
-        return
-      }
-      
-      setShowEditFundModal(false)
-      setEditFundData({
-        amount: '',
+      const response = await API.expenses.payFromOwnFunds(selectedExpenseForPayment._id, {
+        paymentMode: paymentData.paymentMode,
+        transactionReference: paymentData.transactionReference,
+        remarks: paymentData.remarks
+      })
+      toast.success(response.data.message || 'Expense paid successfully')
+      setShowPayModal(false)
+      setSelectedExpenseForPayment(null)
+      setPaymentData({
         paymentMode: 'bank_transfer',
         transactionReference: '',
         remarks: ''
       })
+      fetchExpenses()
       fetchFunds()
       fetchFundHistory()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to edit funds')
+      toast.error(error.response?.data?.message || 'Failed to pay expense')
     }
   }
 
-  const openEditFundModal = () => {
-    setEditFundData({
-      amount: availableFunds.toString(),
+  const openPayModal = (expense) => {
+    if (Number(availableFunds) < Number(expense.amount)) {
+      toast.error(`Insufficient funds. Available: ₹${availableFunds.toLocaleString('en-IN')}, Required: ₹${expense.amount.toLocaleString('en-IN')}`)
+      return
+    }
+    setSelectedExpenseForPayment(expense)
+    setPaymentData({
       paymentMode: 'bank_transfer',
       transactionReference: '',
       remarks: ''
     })
-    setShowEditFundModal(true)
+    setShowPayModal(true)
   }
   
   const handleFileUpload = async (e) => {
@@ -340,14 +331,6 @@ function MyExpenses() {
               History
             </button>
             <button
-              onClick={openEditFundModal}
-              className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
-              title="Edit/Adjust Funds"
-            >
-              <FiEdit className="mr-2" />
-              Edit
-            </button>
-            <button
               onClick={() => setShowFundModal(true)}
               className="flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition"
             >
@@ -450,6 +433,15 @@ function MyExpenses() {
                             >
                               <FiEye size={16} />
                             </button>
+                            {expense.status === 'approved' && expense.paymentStatus !== 'paid' && (
+                              <button
+                                onClick={() => openPayModal(expense)}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded"
+                                title="Pay from My Funds"
+                              >
+                                <FiCheck size={16} />
+                              </button>
+                            )}
                             {expense.status === 'pending' && (
                               <button
                                 onClick={() => handleDelete(expense._id)}
@@ -498,6 +490,15 @@ function MyExpenses() {
                         <FiEye className="mr-2" size={14} />
                         View
                       </button>
+                      {expense.status === 'approved' && expense.paymentStatus !== 'paid' && (
+                        <button
+                          onClick={() => openPayModal(expense)}
+                          className="flex-1 flex items-center justify-center px-3 py-2 bg-green-500 text-white rounded-lg text-sm"
+                        >
+                          <FiCheck className="mr-2" size={14} />
+                          Pay
+                        </button>
+                      )}
                       {expense.status === 'pending' && (
                         <button
                           onClick={() => handleDelete(expense._id)}
@@ -923,6 +924,98 @@ function MyExpenses() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Expense Modal */}
+      {showPayModal && selectedExpenseForPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="p-6 border-b flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Pay Expense from My Funds</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedExpenseForPayment.expenseId} - {selectedExpenseForPayment.description}
+                </p>
+              </div>
+              <button onClick={() => setShowPayModal(false)} className="text-gray-500 hover:text-gray-700">
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handlePayExpense} className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Expense Amount:</strong> ₹{selectedExpenseForPayment.amount.toLocaleString('en-IN')}
+                </p>
+                <p className="text-sm text-blue-800 mt-1">
+                  <strong>Available Funds:</strong> ₹{availableFunds.toLocaleString('en-IN')}
+                </p>
+                <p className="text-sm text-blue-800 mt-1">
+                  <strong>Balance After Payment:</strong> ₹{(availableFunds - selectedExpenseForPayment.amount).toLocaleString('en-IN')}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={paymentData.paymentMode}
+                  onChange={(e) => setPaymentData({ ...paymentData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={paymentData.transactionReference}
+                  onChange={(e) => setPaymentData({ ...paymentData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Remarks
+                </label>
+                <textarea
+                  value={paymentData.remarks}
+                  onChange={(e) => setPaymentData({ ...paymentData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  rows="2"
+                  placeholder="Any additional notes about this payment..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPayModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                >
+                  Pay ₹{selectedExpenseForPayment.amount.toLocaleString('en-IN')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

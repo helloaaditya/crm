@@ -10,6 +10,7 @@ import {
   approveExpense,
   rejectExpense,
   processExpensePayment,
+  payExpenseFromOwnFunds,
   getMyExpenses,
   getExpenseStats,
   uploadExpenseDocuments
@@ -28,6 +29,7 @@ router.get('/my-expenses', getMyExpenses);
 router.post('/my-expense', createExpense);
 router.put('/my-expense/:id', updateExpense);
 router.delete('/my-expense/:id', deleteExpense);
+router.put('/my-expense/:id/pay', payExpenseFromOwnFunds); // Employee pays from own funds
 
 // Upload expense documents (Employee Self-Service)
 router.post('/upload', uploadMemory.array('files', 5), uploadExpenseDocuments);
