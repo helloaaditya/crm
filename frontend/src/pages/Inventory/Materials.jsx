@@ -38,6 +38,18 @@ const Materials = () => {
   const [outwardMaterial, setOutwardMaterial] = useState(null)
   const [showImportModal, setShowImportModal] = useState(false)
 
+  // Debounce search to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (search !== undefined) {
+        setPage(1) // Reset to first page when searching
+        fetchMaterials()
+      }
+    }, 500) // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timer)
+  }, [search])
+
   useEffect(() => {
     fetchMaterials()
     fetchStockSummary()
@@ -52,7 +64,7 @@ const Materials = () => {
 
     window.addEventListener('app-refresh', handleRefresh)
     return () => window.removeEventListener('app-refresh', handleRefresh)
-  }, [page, category, stockFilter, startDate, endDate])
+  }, [page, category, stockFilter, startDate, endDate, search])
 
   const fetchMaterials = async () => {
     try {
