@@ -5,7 +5,6 @@ import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
 import Confetti from 'react-confetti'
 import useLocationTracking from '../../hooks/useLocationTracking'
-import { requestLocationPermission, checkLocationPermission } from '../../utils/locationPermission'
 
 const MyDashboard = () => {
   const { user } = useAuth()
@@ -67,31 +66,7 @@ const MyDashboard = () => {
     
     fetchEmployeeProfile()
     fetchDashboardData()
-    // Request location permission on page load
-    // const requestPermission = async () => {
-    //   const permission = await checkLocationPermission()
-    //   if (permission === 'prompt' || permission === 'default') {
-    //     // Show info toast and request permission
-    //     toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
-    //       autoClose: 5000
-    //     })
-    //     await requestLocationPermission()
-    //   }
-    //   // Get location after permission check
-    //   getCurrentLocation()
-    // }
-    requestPermission()
-  }, [user])
-
-  // Listen for refresh event from Header
-  useEffect(() => {
-    const handleRefresh = () => {
-      fetchDashboardData()
-      fetchEmployeeProfile()
-    }
-
-    window.addEventListener('app-refresh', handleRefresh)
-    return () => window.removeEventListener('app-refresh', handleRefresh)
+    getCurrentLocation()
   }, [user])
 
   const getCurrentLocation = () => {
@@ -180,22 +155,10 @@ const MyDashboard = () => {
   }
 
   const handleCheckIn = async () => {
-    // Request location permission if not already granted
-    const hasPermission = await requestLocationPermission()
-    if (!hasPermission) {
-      toast.error('Location permission is required for check-in. Please enable location access in your browser settings.')
-      return
-    }
-
     if (!location) {
-      toast.info('Getting your location...')
+      toast.error('Please enable location access')
       getCurrentLocation()
-      // Wait a bit for location to be fetched
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      if (!location) {
-        toast.error('Could not get your location. Please try again.')
-        return
-      }
+      return
     }
 
     console.log('📥 Dashboard - Check-in button clicked');
@@ -232,22 +195,10 @@ const MyDashboard = () => {
   }
 
   const handleCheckOut = async () => {
-    // Request location permission if not already granted
-    const hasPermission = await requestLocationPermission()
-    if (!hasPermission) {
-      toast.error('Location permission is required for check-out. Please enable location access in your browser settings.')
-      return
-    }
-
     if (!location) {
-      toast.info('Getting your location...')
+      toast.error('Please enable location access')
       getCurrentLocation()
-      // Wait a bit for location to be fetched
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      if (!location) {
-        toast.error('Could not get your location. Please try again.')
-        return
-      }
+      return
     }
 
     console.log('📤 Dashboard - Check-out button clicked');
