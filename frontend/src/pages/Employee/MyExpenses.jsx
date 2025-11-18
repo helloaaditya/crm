@@ -1015,16 +1015,19 @@ function MyExpenses() {
 
       {/* Pay Expense Modal */}
       {showPayModal && selectedExpenseForPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg">
-            <div className="p-6 border-b flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Pay Expense from My Funds</h2>
-                <p className="text-sm text-gray-600 mt-1">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-lg my-4 max-h-[95vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sticky top-0 bg-white z-10">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Pay Expense from My Funds</h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">
                   {selectedExpenseForPayment.expenseId} - {selectedExpenseForPayment.description}
                 </p>
               </div>
-              <button onClick={() => setShowPayModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button 
+                onClick={() => setShowPayModal(false)} 
+                className="text-gray-500 hover:text-gray-700 self-end sm:self-auto"
+              >
                 <FiX size={24} />
               </button>
             </div>
