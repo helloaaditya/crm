@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiClock, FiRefreshCw, FiX } from 'react-icons/fi'
+import { FiClock, FiRefreshCw, FiX } from 'react-icons/fi'
 import API from '../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
@@ -10,17 +10,9 @@ const EmployeeFunds = () => {
   
   const [employeesFunds, setEmployeesFunds] = useState([])
   const [loading, setLoading] = useState(false)
-  const [showEmployeeFundModal, setShowEmployeeFundModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
-  const [selectedEmployeeForFund, setSelectedEmployeeForFund] = useState(null)
   const [selectedEmployeeHistory, setSelectedEmployeeHistory] = useState(null)
   const [employeeFundHistory, setEmployeeFundHistory] = useState([])
-  const [employeeFundData, setEmployeeFundData] = useState({
-    amount: '',
-    paymentMode: 'bank_transfer',
-    transactionReference: '',
-    remarks: ''
-  })
 
   useEffect(() => {
     if (hasEmployeeFundsAccess) {
@@ -61,47 +53,6 @@ const EmployeeFunds = () => {
       console.error('Error fetching employee fund history:', error)
       toast.error('Failed to load fund history')
     }
-  }
-
-  const handleAddEmployeeFunds = async (e) => {
-    e.preventDefault()
-    
-    const amount = Number(employeeFundData.amount)
-    
-    if (!amount || amount <= 0 || isNaN(amount)) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-    
-    try {
-      const response = await API.funds.addEmployeeFunds(selectedEmployeeForFund._id, {
-        ...employeeFundData,
-        amount: amount
-      })
-      toast.success(response.data.data.message || 'Funds added successfully')
-      setShowEmployeeFundModal(false)
-      setSelectedEmployeeForFund(null)
-      setEmployeeFundData({
-        amount: '',
-        paymentMode: 'bank_transfer',
-        transactionReference: '',
-        remarks: ''
-      })
-      fetchAllEmployeesFunds()
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add funds')
-    }
-  }
-
-  const openAddEmployeeFundModal = (employee) => {
-    setSelectedEmployeeForFund(employee)
-    setEmployeeFundData({
-      amount: '',
-      paymentMode: 'bank_transfer',
-      transactionReference: '',
-      remarks: ''
-    })
-    setShowEmployeeFundModal(true)
   }
 
   const openHistoryModal = async (employee) => {
@@ -178,22 +129,13 @@ const EmployeeFunds = () => {
                           <span className="font-bold text-green-600 text-lg">₹{emp.availableFunds.toLocaleString('en-IN')}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openHistoryModal(emp)}
-                              className="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
-                            >
-                              <FiClock className="mr-1" size={14} />
-                              History
-                            </button>
-                            <button
-                              onClick={() => openAddEmployeeFundModal(emp)}
-                              className="flex items-center px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
-                            >
-                              <FiPlus className="mr-1" size={14} />
-                              Add Funds
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => openHistoryModal(emp)}
+                            className="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                          >
+                            <FiClock className="mr-1" size={14} />
+                            History
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -203,110 +145,6 @@ const EmployeeFunds = () => {
           )}
         </div>
       </div>
-
-      {/* Add Employee Funds Modal */}
-      {showEmployeeFundModal && selectedEmployeeForFund && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg">
-            <div className="p-6 border-b flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Add Funds to Employee</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {selectedEmployeeForFund.name} ({selectedEmployeeForFund.employeeId})
-                </p>
-              </div>
-              <button onClick={() => setShowEmployeeFundModal(false)} className="text-gray-500 hover:text-gray-700">
-                <FiX size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddEmployeeFunds} className="p-6 space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm text-green-800">
-                  <strong>Current Balance:</strong> ₹{selectedEmployeeForFund.availableFunds.toLocaleString('en-IN')}
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount (₹) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={employeeFundData.amount}
-                  onChange={(e) => setEmployeeFundData({ ...employeeFundData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="Enter amount to add"
-                  min="0"
-                  step="0.01"
-                  required
-                  autoFocus
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Mode <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={employeeFundData.paymentMode}
-                  onChange={(e) => setEmployeeFundData({ ...employeeFundData, paymentMode: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  required
-                >
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="upi">UPI</option>
-                  <option value="cash">Cash</option>
-                  <option value="cheque">Cheque</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Transaction Reference
-                </label>
-                <input
-                  type="text"
-                  value={employeeFundData.transactionReference}
-                  onChange={(e) => setEmployeeFundData({ ...employeeFundData, transactionReference: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="UTR/Transaction ID (optional)"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for addition <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={employeeFundData.remarks}
-                  onChange={(e) => setEmployeeFundData({ ...employeeFundData, remarks: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  rows="2"
-                  placeholder="Any notes about this fund addition..."
-                  required
-                />
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEmployeeFundModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                >
-                  Add Funds
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Employee Fund History Modal */}
       {showHistoryModal && selectedEmployeeHistory && (
