@@ -821,7 +821,16 @@ const LiveTracking = () => {
                           <p><strong>Accuracy:</strong> {Math.round(loc.accuracy)}m</p>
                           {loc.speed && <p><strong>Speed:</strong> {(loc.speed * 3.6).toFixed(1)} km/h</p>}
                           {loc.batteryLevel && <p><strong>Battery:</strong> {loc.batteryLevel}%</p>}
-                          <p><strong>Last Update:</strong> {new Date(loc.createdAt).toLocaleTimeString()}</p>
+                          <p><strong>Last Update:</strong> {new Date(loc.createdAt).toLocaleString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit',
+                            month: 'short',
+                            day: 'numeric'
+                          })}</p>
+                          <p className="text-gray-500">
+                            {Math.floor((new Date() - new Date(loc.createdAt)) / 1000 / 60)} min ago
+                          </p>
                         </div>
                       </div>
                     </Popup>
