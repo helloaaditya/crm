@@ -41,10 +41,7 @@ const Materials = () => {
   // Debounce search to avoid too many API calls
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (search !== undefined) {
-        setPage(1) // Reset to first page when searching
-        fetchMaterials()
-      }
+      setPage(1) // Reset to first page when searching
     }, 500) // Wait 500ms after user stops typing
 
     return () => clearTimeout(timer)
@@ -53,7 +50,7 @@ const Materials = () => {
   useEffect(() => {
     fetchMaterials()
     fetchStockSummary()
-  }, [page, category, stockFilter, startDate, endDate])
+  }, [page, category, stockFilter, startDate, endDate, search])
 
   // Listen for refresh event from Header
   useEffect(() => {
