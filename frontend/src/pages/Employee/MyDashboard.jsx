@@ -73,23 +73,23 @@ const MyDashboard = () => {
       if (permission === 'prompt' || permission === 'default') {
         // Show info toast and request permission
         toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
-          autoClose: 5000
+          autoClose: 2000
         })
         const result = await requestLocationPermission()
         if (!result.granted) {
           if (result.reason === 'permission_denied') {
             toast.error('Location permission denied. Please enable location permission in your browser settings.', {
-              autoClose: 7000
+              autoClose: 5000
             })
           } else if (result.reason === 'location_disabled') {
             toast.error('Location services are disabled. Please enable location/GPS on your device.', {
-              autoClose: 7000
+              autoClose: 5000
             })
           }
         }
       } else if (permission === 'denied') {
         toast.error('Location permission denied. Please enable location permission in your browser settings.', {
-          autoClose: 7000
+          autoClose: 5000
         })
       }
       // Get location after permission check
