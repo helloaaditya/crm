@@ -35,15 +35,14 @@ const Header = () => {
 
   return (
     <header className="h-16 lg:h-20 bg-white shadow-sm flex items-center justify-between px-3 sm:px-4 lg:px-6">
-      {/* Mobile Menu Button - Handled by Sidebar component */}
-
-      {/* Page Title - Hidden on mobile, shown on larger screens */}
+      {/* Left Side - Empty on mobile, page title on desktop */}
       <div className="hidden lg:flex flex-1 max-w-lg">
         <h1 className="text-lg font-semibold text-gray-800"></h1>
       </div>
+      <div className="lg:hidden flex-1"></div>
 
-      {/* Right Side */}
-      <div className="flex items-center space-x-2 sm:space-x-4">
+      {/* Right Side - Notifications and Refresh (always on right) */}
+      <div className="flex items-center space-x-2 sm:space-x-4 ml-auto">
         {/* Notifications */}
         <NotificationBell />
         
