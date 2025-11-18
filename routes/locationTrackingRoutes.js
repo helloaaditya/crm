@@ -26,12 +26,38 @@ router.get('/my-status', getMyTrackingStatus);
 router.post('/cleanup', cleanupDuplicateSessions);
 
 // Admin routes - for viewing employee locations
-// Allow admin, main_admin, and users with 'all' module access
+// Allow admin, main_admin, users with 'all' module, or users with live-tracking module access
 router.get('/active', (req, res, next) => {
-  if (req.user.role === 'admin' || req.user.role === 'main_admin' || req.user.module === 'all') {
+  const userRole = req.user.role;
+  const userModule = req.user.module || '';
+  
+  // Check role
+  if (userRole === 'admin' || userRole === 'main_admin') {
     return next();
   }
-  return res.status(403).json({ message: 'You don\'t have access to this module. Required: admin role or all module access' });
+  
+  // Check for 'all' module
+  if (userModule === 'all') {
+    return next();
+  }
+  
+  // Check for live-tracking module access (supports both 'admin:live-tracking' and 'live-tracking')
+  const userModules = userModule.split(',').map(m => m.trim()).filter(m => m);
+  const hasLiveTrackingAccess = userModules.some(module => {
+    return module === 'all' || 
+           module === 'live-tracking' || 
+           module === 'admin:live-tracking' ||
+           module.startsWith('live-tracking:') ||
+           module.startsWith('admin:live-tracking:');
+  });
+  
+  if (hasLiveTrackingAccess) {
+    return next();
+  }
+  
+  return res.status(403).json({ 
+    message: 'You don\'t have access to this module. Required: admin role, all module, or live-tracking module access' 
+  });
 }, getActiveLocations);
 router.get('/history/:employeeId', authorize('admin', 'main_admin'), getLocationHistory);
 router.get('/stats', authorize('admin', 'main_admin'), getTrackingStats);
