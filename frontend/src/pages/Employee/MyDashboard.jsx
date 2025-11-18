@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
 import Confetti from 'react-confetti'
 import useLocationTracking from '../../hooks/useLocationTracking'
+import { requestLocationPermission, checkLocationPermission } from '../../utils/locationPermission'
 
 const MyDashboard = () => {
   const { user } = useAuth()
