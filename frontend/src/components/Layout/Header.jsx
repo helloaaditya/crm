@@ -3,14 +3,34 @@ import { useAuth } from '../../context/AuthContext'
 import { useState } from 'react'
 import NotificationBell from '../NotificationBell'
 import PushNotificationPrompt from '../PushNotificationPrompt'
+import { useNotifications } from '../../hooks/useNotifications'
+import { toast } from 'react-toastify'
 
 const Header = () => {
-  const { user } = useAuth()
+  const { user, loadUser } = useAuth()
+  const { refresh: refreshNotifications } = useNotifications()
   const [refreshing, setRefreshing] = useState(false)
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    window.location.reload()
+    
+    try {
+      // Refresh user data
+      await loadUser()
+      
+      // Refresh notifications
+      await refreshNotifications()
+      
+      // Dispatch custom event for pages to listen and refresh their data
+      window.dispatchEvent(new CustomEvent('app-refresh'))
+      
+      toast.success('Data refreshed successfully')
+    } catch (error) {
+      console.error('Refresh error:', error)
+      toast.error('Failed to refresh data')
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   return (
@@ -35,7 +55,7 @@ const Header = () => {
           onClick={handleRefresh}
           disabled={refreshing}
           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-          title="Refresh Page"
+          title="Refresh Data"
         >
           <FiRefreshCw className={refreshing ? 'animate-spin' : ''} size={20} />
         </button>

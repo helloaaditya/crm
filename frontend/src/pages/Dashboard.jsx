@@ -47,6 +47,18 @@ const Dashboard = () => {
     fetchPaymentReminders()
   }, [])
 
+  // Listen for refresh event from Header
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchDashboardData()
+      fetchDailyRevenueTrends()
+      fetchPaymentReminders()
+    }
+
+    window.addEventListener('app-refresh', handleRefresh)
+    return () => window.removeEventListener('app-refresh', handleRefresh)
+  }, [])
+
   useEffect(() => {
     fetchDailyRevenueTrends()
   }, [revenueStartDate, revenueEndDate])
