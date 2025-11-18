@@ -34,6 +34,15 @@ const Expenses = () => {
   const [showFundModal, setShowFundModal] = useState(false)
   const [showFundHistory, setShowFundHistory] = useState(false)
   const [showEditFundModal, setShowEditFundModal] = useState(false)
+  const [employeesFunds, setEmployeesFunds] = useState([])
+  const [showEmployeeFundModal, setShowEmployeeFundModal] = useState(false)
+  const [selectedEmployeeForFund, setSelectedEmployeeForFund] = useState(null)
+  const [employeeFundData, setEmployeeFundData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
   const [fundData, setFundData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
@@ -73,6 +82,7 @@ const Expenses = () => {
     if (hasExpenseAccess) {
       fetchStats()
       fetchFunds()
+      fetchAllEmployeesFunds()
     }
   }, [])
 
@@ -83,6 +93,7 @@ const Expenses = () => {
       if (hasExpenseAccess) {
         fetchStats()
         fetchFunds()
+        fetchAllEmployeesFunds()
       }
     }
 
@@ -131,6 +142,56 @@ const Expenses = () => {
       console.error('Error fetching fund history:', error)
       toast.error('Failed to load fund history')
     }
+  }
+
+  const fetchAllEmployeesFunds = async () => {
+    try {
+      const response = await API.funds.getAllEmployeesFunds()
+      setEmployeesFunds(response.data.data || [])
+    } catch (error) {
+      console.error('Error fetching employees funds:', error)
+    }
+  }
+
+  const handleAddEmployeeFunds = async (e) => {
+    e.preventDefault()
+    
+    const amount = Number(employeeFundData.amount)
+    
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    
+    try {
+      const response = await API.funds.addEmployeeFunds(selectedEmployeeForFund._id, {
+        ...employeeFundData,
+        amount: amount
+      })
+      toast.success(response.data.data.message || 'Funds added successfully')
+      setShowEmployeeFundModal(false)
+      setSelectedEmployeeForFund(null)
+      setEmployeeFundData({
+        amount: '',
+        paymentMode: 'bank_transfer',
+        transactionReference: '',
+        remarks: ''
+      })
+      fetchAllEmployeesFunds()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add funds')
+    }
+  }
+
+  const openAddEmployeeFundModal = (employee) => {
+    setSelectedEmployeeForFund(employee)
+    setEmployeeFundData({
+      amount: '',
+      paymentMode: 'bank_transfer',
+      transactionReference: '',
+      remarks: ''
+    })
+    setShowEmployeeFundModal(true)
   }
   
   const handleAddFunds = async (e) => {
@@ -480,6 +541,55 @@ const Expenses = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <p className="text-sm text-gray-600">Total Amount</p>
             <p className="text-2xl font-bold text-purple-600">₹{stats.totalAmount?.total?.toLocaleString() || 0}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Employee Funds Summary (Admin Only) */}
+      {hasExpenseAccess && employeesFunds.length > 0 && (
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">Employee Funds Summary</h2>
+            <p className="text-sm text-gray-600 mt-1">Available funds for each employee</p>
+          </div>
+          <div className="p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left py-3 px-4">Employee</th>
+                    <th className="text-left py-3 px-4">Available Funds</th>
+                    <th className="text-left py-3 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employeesFunds
+                    .sort((a, b) => b.availableFunds - a.availableFunds)
+                    .map((emp) => (
+                      <tr key={emp._id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{emp.name}</p>
+                            <p className="text-sm text-gray-500">{emp.employeeId}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-bold text-green-600 text-lg">₹{emp.availableFunds.toLocaleString('en-IN')}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => openAddEmployeeFundModal(emp)}
+                            className="flex items-center px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                          >
+                            <FiPlus className="mr-1" size={14} />
+                            Add Funds
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

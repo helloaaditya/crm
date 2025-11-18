@@ -288,11 +288,25 @@ export const expenseAPI = {
 
 // ============= FUNDS =============
 export const fundAPI = {
+  // Company funds
   getFunds: () => api.get('/funds'),
   addFunds: (data) => api.post('/funds/add', data),
   deductFunds: (data) => api.post('/funds/deduct', data),
   getHistory: (params) => api.get('/funds/history', { params }),
-  getStats: (params) => api.get('/funds/stats', { params })
+  getStats: (params) => api.get('/funds/stats', { params }),
+  
+  // Employee funds (my)
+  getMyFunds: () => api.get('/funds/employee/my'),
+  addMyFunds: (data) => api.post('/funds/employee/my/add', data),
+  getMyFundHistory: (params) => api.get('/funds/employee/my/history', { params }),
+  
+  // Employee funds (admin - all employees)
+  getAllEmployeesFunds: () => api.get('/funds/employees/all'),
+  
+  // Employee funds (admin - specific employee)
+  getEmployeeFunds: (employeeId) => api.get(`/funds/employee/${employeeId}`),
+  addEmployeeFunds: (employeeId, data) => api.post(`/funds/employee/${employeeId}/add`, data),
+  getEmployeeFundHistory: (employeeId, params) => api.get(`/funds/employee/${employeeId}/history`, { params })
 };
 
 // ============= LOCATION TRACKING =============

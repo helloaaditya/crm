@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2, FiDollarSign, FiClock, FiRefreshCw } from 'react-icons/fi'
+import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2, FiDollarSign, FiClock, FiRefreshCw, FiEdit } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
@@ -29,6 +29,20 @@ function MyExpenses() {
   const [availableFunds, setAvailableFunds] = useState(0)
   const [fundHistory, setFundHistory] = useState([])
   const [showFundHistory, setShowFundHistory] = useState(false)
+  const [showFundModal, setShowFundModal] = useState(false)
+  const [showEditFundModal, setShowEditFundModal] = useState(false)
+  const [fundData, setFundData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
+  const [editFundData, setEditFundData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
   
   const categories = [
     { value: 'petrol', label: '⛽ Petrol/Fuel' },
@@ -84,7 +98,7 @@ function MyExpenses() {
 
   const fetchFunds = async () => {
     try {
-      const response = await API.funds.getFunds()
+      const response = await API.funds.getMyFunds()
       setAvailableFunds(response.data.data.availableFunds || 0)
     } catch (error) {
       console.error('Error fetching funds:', error)
@@ -93,12 +107,100 @@ function MyExpenses() {
 
   const fetchFundHistory = async () => {
     try {
-      const response = await API.funds.getHistory({ limit: 100 })
+      const response = await API.funds.getMyFundHistory({ limit: 100 })
       setFundHistory(response.data.data || [])
     } catch (error) {
       console.error('Error fetching fund history:', error)
       toast.error('Failed to load fund history')
     }
+  }
+
+  const handleAddFunds = async (e) => {
+    e.preventDefault()
+    
+    const amount = Number(fundData.amount)
+    
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    
+    try {
+      const response = await API.funds.addMyFunds({
+        ...fundData,
+        amount: amount
+      })
+      toast.success(response.data.data.message || 'Funds added successfully')
+      setShowFundModal(false)
+      setFundData({
+        amount: '',
+        paymentMode: 'bank_transfer',
+        transactionReference: '',
+        remarks: ''
+      })
+      fetchFunds()
+      fetchFundHistory()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add funds')
+    }
+  }
+
+  const handleEditFunds = async (e) => {
+    e.preventDefault()
+    
+    const amount = Number(editFundData.amount)
+    
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    
+    const currentAmount = Number(availableFunds) || 0
+    const newAmount = amount
+    const difference = newAmount - currentAmount
+    
+    if (difference === 0) {
+      toast.info('No change in amount')
+      return
+    }
+    
+    try {
+      if (difference > 0) {
+        await API.funds.addMyFunds({
+          amount: difference,
+          paymentMode: editFundData.paymentMode,
+          transactionReference: editFundData.transactionReference,
+          remarks: editFundData.remarks || `Manual adjustment: Set to ₹${newAmount.toLocaleString('en-IN')}`
+        })
+        toast.success(`Funds adjusted: Added ₹${difference.toLocaleString('en-IN')}`)
+      } else {
+        // For deduction, we'd need a deduct endpoint, but for now just show error
+        toast.error('Deduction not available. Please contact admin.')
+        return
+      }
+      
+      setShowEditFundModal(false)
+      setEditFundData({
+        amount: '',
+        paymentMode: 'bank_transfer',
+        transactionReference: '',
+        remarks: ''
+      })
+      fetchFunds()
+      fetchFundHistory()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to edit funds')
+    }
+  }
+
+  const openEditFundModal = () => {
+    setEditFundData({
+      amount: availableFunds.toString(),
+      paymentMode: 'bank_transfer',
+      transactionReference: '',
+      remarks: ''
+    })
+    setShowEditFundModal(true)
   }
   
   const handleFileUpload = async (e) => {
@@ -222,20 +324,37 @@ function MyExpenses() {
       <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-6 mb-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-90 mb-1">Available Company Funds</p>
+            <p className="text-sm opacity-90 mb-1">My Available Funds</p>
             <p className="text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
-            <p className="text-xs opacity-75 mt-1">Funds available for expense payments</p>
+            <p className="text-xs opacity-75 mt-1">Your personal expense fund balance</p>
           </div>
-          <button
-            onClick={() => {
-              setShowFundHistory(true)
-              fetchFundHistory()
-            }}
-            className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
-          >
-            <FiClock className="mr-2" />
-            History
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setShowFundHistory(true)
+                fetchFundHistory()
+              }}
+              className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+            >
+              <FiClock className="mr-2" />
+              History
+            </button>
+            <button
+              onClick={openEditFundModal}
+              className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+              title="Edit/Adjust Funds"
+            >
+              <FiEdit className="mr-2" />
+              Edit
+            </button>
+            <button
+              onClick={() => setShowFundModal(true)}
+              className="flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition"
+            >
+              <FiPlus className="mr-2" />
+              Add Funds
+            </button>
+          </div>
         </div>
       </div>
 
