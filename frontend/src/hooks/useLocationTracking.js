@@ -140,8 +140,14 @@ const useLocationTracking = (shouldTrack = false) => {
           const response = await locationTrackingAPI.startTracking(locationData);
           console.log('✅ Tracking started:', response.data);
         } else {
-          const response = await locationTrackingAPI.updateLocation(locationData);
-          console.log('✅ Location updated:', response.data);
+          try {
+            const response = await locationTrackingAPI.updateLocation(locationData);
+            console.log('✅ Location updated:', response.data);
+          } catch (error) {
+            // If update fails, queue it for background sync
+            console.log('⚠️ Location update failed, queueing for background sync');
+            await queueLocationForBackgroundSync(locationData);
+          }
         }
 
         // Update local state
