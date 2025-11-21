@@ -268,7 +268,7 @@ export const customerBulkUpload = asyncHandler(async (req, res) => {
       }
       
       // Create new customer
-      customer = await Customer.create({
+      const customer = await Customer.create({
         name: row.name.trim(),
         contactNumber: phone,
         email: email,
