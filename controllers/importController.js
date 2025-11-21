@@ -153,8 +153,10 @@ export const employeeBulkUpload = asyncHandler(async (req, res) => {
 
 export const customerBulkSample = asyncHandler(async (req, res) => {
   const csv = [
-    'name,phone,email,address',
-    'Acme Corp,9988776655,info@acme.com,MG Road, Bangalore'
+    'name,contactNumber,email,address',
+    'Acme Corp,9988776655,info@acme.com,MG Road, Bangalore',
+    'John Doe,9876543210,john@example.com,123 Main St, Mumbai',
+    'Jane Smith,9876543211,jane@example.com,456 Park Ave, Delhi'
   ].join('\n')
   res.setHeader('Content-Type', 'text/csv; charset=utf-8')
   res.setHeader('Content-Disposition', 'attachment; filename="customers-sample.csv"')
@@ -170,36 +172,125 @@ export const customerBulkUpload = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Please upload a CSV file (not Excel). Save as CSV and retry.' })
   }
   const text = req.file.buffer.toString('utf-8')
-  const { rows } = parseCsv(text)
+  const { headers, rows } = parseCsv(text)
+  
+  // Validate headers
+  const requiredHeaders = ['name']
+  const hasPhoneColumn = headers.includes('phone') || headers.includes('contactNumber')
+  const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
+  
+  if (missingHeaders.length > 0) {
+    return res.status(400).json({ 
+      message: `Missing required columns: ${missingHeaders.join(', ')}. Required columns: ${requiredHeaders.join(', ')}` 
+    })
+  }
+  
+  if (!hasPhoneColumn) {
+    return res.status(400).json({ 
+      message: `Missing required column: 'phone' or 'contactNumber'. At least one is required.` 
+    })
+  }
+  
   let created = 0, updated = 0, errors = 0
-  for (const row of rows) {
+  const errorDetails = []
+  
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
     try {
-      const email = row.email?.toLowerCase()
-      if (!row.name) { errors++; continue }
-      const query = email ? { $or: [{ email }, { name: row.name }] } : { name: row.name }
-      let customer = await Customer.findOne(query)
-      if (!customer) {
-        customer = await Customer.create({
-          name: row.name,
-          email: email || undefined,
-          phone: row.phone || '',
-          address: row.address || ''
-        })
-        created++
-      } else {
-        customer.name = row.name
-        customer.phone = row.phone || customer.phone
-        customer.email = email || customer.email
-        customer.address = row.address || customer.address
-        await customer.save()
-        updated++
+      // Validate required fields
+      if (!row.name || row.name.trim() === '') {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Missing required field 'name'`)
+        continue
       }
+      
+      const email = row.email?.toLowerCase().trim() || undefined
+      // Support both 'phone' and 'contactNumber' column names
+      const phone = (row.contactNumber || row.phone)?.trim() || ''
+      
+      // Validate phone number format (must be 10 digits)
+      if (phone && !/^[0-9]{10}$/.test(phone)) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Invalid phone number '${phone}'. Must be exactly 10 digits.`)
+        continue
+      }
+      
+      // Validate email format if provided
+      if (email && !/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Invalid email format '${email}'.`)
+        continue
+      }
+      
+      // Phone number is required
+      if (!phone) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Missing required field 'contactNumber' (or 'phone').`)
+        continue
+      }
+      
+      // Check for duplicate contact number
+      const existingByPhone = await Customer.findOne({ contactNumber: phone })
+      if (existingByPhone) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Customer with phone number '${phone}' already exists`)
+        continue
+      }
+      
+      // Check for duplicate email if email is provided
+      if (email) {
+        const existingByEmail = await Customer.findOne({ email })
+        if (existingByEmail) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Customer with email '${email}' already exists`)
+          continue
+        }
+      }
+      
+      // Parse address - can be a simple string or structured
+      let addressData = {}
+      if (row.address) {
+        const addressStr = row.address.trim()
+        // Try to parse structured address (comma-separated: street, city, state, pincode)
+        const addressParts = addressStr.split(',').map(p => p.trim())
+        if (addressParts.length >= 2) {
+          addressData = {
+            street: addressParts[0] || '',
+            city: addressParts[1] || '',
+            state: addressParts[2] || '',
+            pincode: addressParts[3] || '',
+            country: 'India'
+          }
+        } else {
+          // Simple string address
+          addressData = { street: addressStr }
+        }
+      }
+      
+      // Create new customer
+      customer = await Customer.create({
+        name: row.name.trim(),
+        contactNumber: phone,
+        email: email,
+        address: Object.keys(addressData).length > 0 ? addressData : undefined,
+        createdBy: req.user?._id
+      })
+      created++
     } catch (e) {
       errors++
+      const errorMsg = e.message || 'Unknown error'
+      errorDetails.push(`Row ${i + 2}: ${errorMsg}`)
     }
   }
-  res.json({ success: true, message: `Customers import completed. Created: ${created}, Updated: ${updated}, Errors: ${errors}` })
+  
+  const message = `Customers import completed. Created: ${created}, Updated: ${updated}, Errors: ${errors}`
+  const response = { success: true, message }
+  if (errorDetails.length > 0) {
+    response.errorDetails = errorDetails
+  }
+  res.json(response)
 })
+
 
 
 

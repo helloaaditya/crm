@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2 } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiDownload, FiUpload } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import CustomerModal from '../../components/Modals/CustomerModal'
@@ -13,6 +13,8 @@ const Customers = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [downloading, setDownloading] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     fetchCustomers()
@@ -83,18 +85,135 @@ const Customers = () => {
     fetchCustomers()
   }
 
+  const handleDownloadSample = async () => {
+    setDownloading(true)
+    try {
+      const response = await API.customers.bulk.sample()
+      
+      // When responseType is 'text', res.data should be a string
+      let csvContent = response.data
+      
+      // Fallback handling if data is not a string
+      if (typeof csvContent !== 'string') {
+        console.warn('Response is not a string:', typeof csvContent, csvContent)
+        // Try to extract from object
+        if (response.data?.data) csvContent = response.data.data
+        else csvContent = String(csvContent)
+      }
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'customers-sample.csv'
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }, 100)
+      
+      toast.success('Sample file downloaded successfully')
+    } catch (error) {
+      console.error('Download error:', error)
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to download sample'
+      toast.error(errorMsg)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Validate file type
+    const validExtensions = ['.csv', '.xls', '.xlsx']
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase()
+    if (!validExtensions.includes(fileExtension)) {
+      toast.error('Please upload a CSV or Excel file')
+      e.target.value = ''
+      return
+    }
+    
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await API.customers.bulk.upload(formData)
+      
+      // Show success message
+      const message = response.data?.message || 'Bulk import completed successfully'
+      toast.success(message)
+      
+      // Show error details if any
+      if (response.data?.errorDetails && response.data.errorDetails.length > 0) {
+        const errorCount = response.data.errorDetails.length
+        const errorPreview = response.data.errorDetails.slice(0, 5).join('\n')
+        const moreErrors = errorCount > 5 ? `\n... and ${errorCount - 5} more errors` : ''
+        
+        // Show detailed error in console and as a warning toast
+        console.error('Import Errors:', response.data.errorDetails)
+        toast.warning(
+          `${errorCount} error(s) occurred:\n${errorPreview}${moreErrors}`,
+          { autoClose: 10000 }
+        )
+      }
+      
+      fetchCustomers() // Refresh the customer list
+    } catch (error) {
+      console.error('Upload error:', error)
+      const errorMsg = error.response?.data?.message || 'Bulk import failed'
+      toast.error(errorMsg)
+      
+      // Show error details if available
+      if (error.response?.data?.errorDetails) {
+        console.error('Error Details:', error.response.data.errorDetails)
+        toast.error(`Errors: ${error.response.data.errorDetails.join('; ')}`, { autoClose: 10000 })
+      }
+    } finally {
+      setUploading(false)
+      e.target.value = '' // Reset file input
+    }
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Customers</h1>
-        <button 
-          onClick={handleAdd}
-          className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-        >
-          <FiPlus className="mr-2" />
-          Add Customer
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <button 
+            onClick={handleDownloadSample}
+            disabled={downloading}
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+          >
+            <FiDownload className="mr-2" />
+            {downloading ? 'Downloading...' : 'Download Sample'}
+          </button>
+          <label className="w-full sm:w-auto">
+            <div className={`flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 cursor-pointer disabled:opacity-50 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <FiUpload className="mr-2" />
+              {uploading ? 'Uploading...' : 'Bulk Upload'}
+            </div>
+            <input 
+              type="file" 
+              accept=".csv,.xls,.xlsx" 
+              onChange={handleUpload} 
+              className="hidden" 
+              disabled={uploading} 
+            />
+          </label>
+          <button 
+            onClick={handleAdd}
+            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+          >
+            <FiPlus className="mr-2" />
+            Add Customer
+          </button>
+        </div>
       </div>
 
       {/* Search & Filter */}
