@@ -49,7 +49,7 @@ const AssignMachineryModal = ({ isOpen, onClose, onSuccess, machinery = null }) 
 
   const fetchProjects = async () => {
     try {
-      const response = await API.projects.getAll({ limit: 100, status: 'in_progress' })
+      const response = await API.projects.getAll({ limit: 100, status: 'planning,in_progress' })
       setProjects(response.data.data)
       setFilteredProjects(response.data.data)
     } catch (error) {

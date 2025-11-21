@@ -548,7 +548,7 @@ const Expenses = () => {
         </div>
       )}
 
-      {/* Employee Funds Summary (Admin Only) */}
+      {/* Employee Funds Summary (Admin Only)
       {hasExpenseAccess && employeesFunds.length > 0 && (
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-6 border-b">
@@ -605,7 +605,7 @@ const Expenses = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Employee Expense Summary (Admin Only)
       {hasExpenseAccess && expenses.length > 0 && (

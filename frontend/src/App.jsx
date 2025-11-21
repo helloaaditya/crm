@@ -59,68 +59,6 @@ const ProtectedRoute = ({ children }) => {
   return user ? children : <Navigate to="/login" replace />
 }
 
-// Module Protected Route Component - Checks if user has access to specific module
-const ModuleProtectedRoute = ({ children, requiredModule }) => {
-  const { user, loading } = useAuth()
-  
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-  
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
-  
-  // Parse user modules
-  let userModules = []
-  if (Array.isArray(user?.module)) {
-    userModules = user.module
-  } else if (user?.module) {
-    userModules = user.module.includes(',') 
-      ? user.module.split(',').map(m => m.trim())
-      : [user.module]
-  }
-  
-  // Check if user has 'all' access
-  if (userModules.includes('all')) {
-    return children
-  }
-  
-  // Check if user has the required module access
-  const hasAccess = userModules.some(userModule => {
-    if (userModule === requiredModule) return true
-    // If user has base module (e.g., 'crm'), grant access to all its pages (e.g., 'crm:payments')
-    if (requiredModule && requiredModule.startsWith(userModule + ':')) return true
-    return false
-  })
-  
-  if (!hasAccess) {
-    return (
-      <div className="p-4 sm:p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-red-800 mb-2">Access Denied</h2>
-          <p className="text-red-600">You don't have permission to access this page.</p>
-          <button
-            onClick={() => window.history.back()}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    )
-  }
-  
-  return children
-}
-
 // Dashboard Router - Shows different dashboard based on role
 const DashboardRouter = () => {
   const { user } = useAuth()
@@ -166,7 +104,7 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="projects" element={<Projects />} />
           <Route path="invoices" element={<Invoices />} />
-          <Route path="payments" element={<ModuleProtectedRoute requiredModule="crm:payments"><Payments /></ModuleProtectedRoute>} />
+          <Route path="payments" element={<Payments />} />
           <Route path="work-orders" element={<WorkOrders />} />
           
           {/* Inventory Routes */}
@@ -183,7 +121,7 @@ function App() {
           <Route path="employees/leave" element={<LeaveManagement />} />
           
           {/* Accounts Route (Admin Only) */}
-          <Route path="accounts" element={<ModuleProtectedRoute requiredModule="admin:accounts"><Accounts /></ModuleProtectedRoute>} />
+          <Route path="accounts" element={<Accounts />} />
           {/* Expenses (Main Admin Only UI; menu restricts visibility) */}
           <Route path="expenses" element={<Expenses />} />
           {/* Employee Funds (Module-based access) */}
@@ -191,7 +129,7 @@ function App() {
           {/* Bulk Import (Admin Only via menu visibility) */}
           <Route path="bulk-import" element={<BulkImport />} />
           {/* Live Tracking (Admin Only) */}
-          <Route path="live-tracking" element={<ModuleProtectedRoute requiredModule="admin:live-tracking"><LiveTracking /></ModuleProtectedRoute>} />
+          <Route path="live-tracking" element={<LiveTracking />} />
           
           {/* Employee Self-Service Routes */}
           <Route path="my-dashboard" element={<MyDashboard />} />
@@ -205,7 +143,7 @@ function App() {
           
           {/* Other Routes */}
           <Route path="reminders" element={<Reminders />} />
-          <Route path="company-documents" element={<ModuleProtectedRoute requiredModule="shared:documents"><CompanyDocuments /></ModuleProtectedRoute>} />
+          <Route path="company-documents" element={<CompanyDocuments />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 

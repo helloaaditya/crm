@@ -20,7 +20,14 @@ export const getProjects = asyncHandler(async (req, res) => {
     ];
   }
 
-  if (status) query.status = status;
+  if (status) {
+    // Support comma-separated status values (e.g., "planning,in_progress")
+    if (status.includes(',')) {
+      query.status = { $in: status.split(',').map(s => s.trim()) };
+    } else {
+      query.status = status;
+    }
+  }
   if (category) query.category = category;
 
   const projects = await Project.find(query)
