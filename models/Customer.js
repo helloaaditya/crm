@@ -82,8 +82,44 @@ const customerSchema = new mongoose.Schema({
 // Generate customer ID before saving
 customerSchema.pre('save', async function(next) {
   if (!this.customerId) {
-    const count = await mongoose.model('Customer').countDocuments();
-    this.customerId = `CUST${String(count + 1).padStart(6, '0')}`;
+    let customerId;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (!isUnique && attempts < maxAttempts) {
+      // Get the highest existing customerId number
+      const lastCustomer = await mongoose.model('Customer')
+        .findOne({ customerId: { $regex: /^CUST\d+$/ } })
+        .sort({ customerId: -1 });
+      
+      let nextNumber = 1;
+      if (lastCustomer && lastCustomer.customerId) {
+        const lastNumber = parseInt(lastCustomer.customerId.replace('CUST', ''), 10);
+        if (!isNaN(lastNumber)) {
+          nextNumber = lastNumber + 1;
+        }
+      }
+      
+      customerId = `CUST${String(nextNumber).padStart(6, '0')}`;
+      
+      // Check if this customerId already exists
+      const existing = await mongoose.model('Customer').findOne({ customerId });
+      if (!existing) {
+        isUnique = true;
+      } else {
+        attempts++;
+        // If exists, try with next number
+        nextNumber++;
+        customerId = `CUST${String(nextNumber).padStart(6, '0')}`;
+      }
+    }
+    
+    if (!isUnique) {
+      return next(new Error('Failed to generate unique customer ID'));
+    }
+    
+    this.customerId = customerId;
   }
   next();
 });

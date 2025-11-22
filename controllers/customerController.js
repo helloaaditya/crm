@@ -109,6 +109,11 @@ export const createCustomer = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Customer with this contact number already exists' });
   }
 
+  // Clean up empty strings for ObjectId fields
+  const cleanFollowUpPerson = followUpPerson && followUpPerson.trim() !== '' ? followUpPerson : undefined;
+  const cleanLeadFrom = leadFrom && leadFrom.trim() !== '' ? leadFrom : undefined;
+  const cleanAssignedTo = assignedTo && assignedTo.trim() !== '' ? assignedTo : undefined;
+
   const customer = await Customer.create({
     name,
     contactNumber,
@@ -118,10 +123,10 @@ export const createCustomer = asyncHandler(async (req, res) => {
     callType,
     dataSource,
     leadStatus,
-    assignedTo,
-    leadFrom,
+    assignedTo: cleanAssignedTo,
+    leadFrom: cleanLeadFrom,
     leadDate: leadDate ? new Date(leadDate) : undefined,
-    followUpPerson,
+    followUpPerson: cleanFollowUpPerson,
     notes,
     tags,
     createdBy: req.user._id

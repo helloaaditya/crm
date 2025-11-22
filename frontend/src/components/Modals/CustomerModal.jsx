@@ -126,8 +126,16 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
     setLoading(true)
 
     try {
+      // Clean up empty strings for ObjectId fields - convert to null/undefined
+      const cleanedData = { ...formData }
+      
+      // Convert empty strings to null for ObjectId fields
+      if (cleanedData.leadFrom === '') cleanedData.leadFrom = null
+      if (cleanedData.followUpPerson === '') cleanedData.followUpPerson = null
+      if (cleanedData.assignedTo === '') cleanedData.assignedTo = null
+      
       const submitData = {
-        ...formData,
+        ...cleanedData,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : []
       }
 
