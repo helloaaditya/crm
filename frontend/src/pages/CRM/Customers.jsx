@@ -355,6 +355,7 @@ const Customers = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead From</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Follow Up</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -371,6 +372,9 @@ const Customers = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {customer.leadDate ? new Date(customer.leadDate).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {customer.followUpPerson?.name || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${
@@ -449,6 +453,10 @@ const Customers = () => {
                     <div className="flex items-center text-sm text-gray-600">
                       <span className="font-medium w-20">Lead Date:</span>
                       <span>{customer.leadDate ? new Date(customer.leadDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <span className="font-medium w-20">Follow Up:</span>
+                      <span>{customer.followUpPerson?.name || 'N/A'}</span>
                     </div>
                   </div>
                   

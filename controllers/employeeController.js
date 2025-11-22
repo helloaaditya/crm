@@ -1443,11 +1443,11 @@ export const getMyProjects = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get my leads (customers where I am the leadFrom)
+// @desc    Get my leads (customers where I am the leadFrom or followUpPerson)
 // @route   GET /api/employees/my-leads
 // @access  Private (Employee)
 export const getMyLeads = asyncHandler(async (req, res) => {
-  const { search, leadStatus, page = 1, limit = 10 } = req.query;
+  const { search, leadStatus, leadType, page = 1, limit = 10 } = req.query;
 
   // Find employee record for the logged-in user
   const employee = await Employee.findOne({ userId: req.user._id });
@@ -1456,10 +1456,22 @@ export const getMyLeads = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee record not found' });
   }
 
-  // Build query - only customers where this employee is the leadFrom
-  let query = {
-    leadFrom: employee._id
-  };
+  // Build query based on leadType filter
+  let query = {};
+  
+  if (leadType === 'my_leads') {
+    // Only leads where I am the leadFrom
+    query.leadFrom = employee._id;
+  } else if (leadType === 'follow_up') {
+    // Only leads where I am the followUpPerson
+    query.followUpPerson = employee._id;
+  } else {
+    // All leads where I am either leadFrom OR followUpPerson
+    query.$or = [
+      { leadFrom: employee._id },
+      { followUpPerson: employee._id }
+    ];
+  }
 
   if (search) {
     query.$or = [

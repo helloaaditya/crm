@@ -10,10 +10,12 @@ const MyLeads = () => {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [leadStatus, setLeadStatus] = useState('')
+  const [leadType, setLeadType] = useState('all') // 'all', 'my_leads', 'follow_up'
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [viewLead, setViewLead] = useState(null) // For viewing lead details
 
   useEffect(() => {
     fetchEmployeeProfile()
@@ -23,7 +25,7 @@ const MyLeads = () => {
     if (employee?._id) {
       fetchLeads()
     }
-  }, [employee, page, leadStatus, search])
+  }, [employee, page, leadStatus, search, leadType])
 
   // Listen for refresh event from Header
   useEffect(() => {
@@ -56,6 +58,7 @@ const MyLeads = () => {
       }
       if (search) params.search = search
       if (leadStatus) params.leadStatus = leadStatus
+      if (leadType !== 'all') params.leadType = leadType
 
       const response = await API.employees.myLeads.get(params)
       setLeads(response.data.data)
@@ -203,6 +206,15 @@ const MyLeads = () => {
           </div>
           <div className="flex space-x-2 sm:space-x-4">
             <select 
+              value={leadType}
+              onChange={(e) => { setLeadType(e.target.value); setPage(1); }}
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
+            >
+              <option value="all">All Leads</option>
+              <option value="my_leads">My Leads</option>
+              <option value="follow_up">Follow Up</option>
+            </select>
+            <select 
               value={leadStatus}
               onChange={(e) => { setLeadStatus(e.target.value); setPage(1); }}
               className="flex-1 sm:flex-none px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
@@ -243,6 +255,7 @@ const MyLeads = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Follow Up</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -256,6 +269,9 @@ const MyLeads = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.email || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {lead.leadDate ? new Date(lead.leadDate).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {lead.followUpPerson?.name || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(lead.leadStatus)}`}>
@@ -305,6 +321,10 @@ const MyLeads = () => {
                     <div className="flex items-center text-sm text-gray-600">
                       <span className="font-medium w-20">Lead Date:</span>
                       <span>{lead.leadDate ? new Date(lead.leadDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <span className="font-medium w-20">Follow Up:</span>
+                      <span>{lead.followUpPerson?.name || 'N/A'}</span>
                     </div>
                   </div>
                   
