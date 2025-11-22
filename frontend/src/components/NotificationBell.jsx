@@ -39,10 +39,10 @@ const NotificationBell = () => {
     }
   }, [isOpen, filter]);
 
-  // Poll for unread count every 60 seconds (reduced from 30s)
+  // Poll for unread count every 2 minutes (120 seconds) to reduce server load
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000);
+    const interval = setInterval(fetchUnreadCount, 120000);
     return () => clearInterval(interval);
   }, []);
 

@@ -26,8 +26,8 @@ export const useNotifications = () => {
 
   useEffect(() => {
     fetchNotificationCounts();
-    // Refresh every 60 seconds (increased from 30s to reduce server load)
-    const interval = setInterval(fetchNotificationCounts, 60000);
+    // Refresh every 2 minutes (120 seconds) to reduce server load
+    const interval = setInterval(fetchNotificationCounts, 120000);
     return () => clearInterval(interval);
   }, []);
 

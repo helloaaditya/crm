@@ -4,12 +4,11 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import NotificationBell from '../NotificationBell'
 import PushNotificationPrompt from '../PushNotificationPrompt'
-import { useNotifications } from '../../hooks/useNotifications'
 import { toast } from 'react-toastify'
+import API from '../../api'
 
 const Header = () => {
   const { user, loadUser } = useAuth()
-  const { refresh: refreshNotifications } = useNotifications()
   const [refreshing, setRefreshing] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -21,8 +20,13 @@ const Header = () => {
       // Refresh user data
       await loadUser()
       
-      // Refresh notifications
-      await refreshNotifications()
+      // Refresh notifications (only on manual refresh, not polling)
+      try {
+        await API.dashboard.getNotificationCounts()
+      } catch (error) {
+        // Silently fail for notifications
+        console.error('Failed to refresh notifications:', error.message)
+      }
       
       // Dispatch custom event for pages to listen and refresh their data
       window.dispatchEvent(new CustomEvent('app-refresh', { 
