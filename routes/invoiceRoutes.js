@@ -25,6 +25,11 @@ router.use(protect);
 
 router.get('/', getInvoices);
 router.post('/', checkPermission('canCreate'), createInvoice);
+
+// Bulk import routes (must be before /:id routes)
+router.get('/bulk/sample', checkPermission('canCreate'), invoiceBulkSample);
+router.post('/bulk/upload', checkPermission('canCreate'), uploadMemory.single('file'), invoiceBulkUpload);
+
 router.get('/:id', getInvoice);
 router.get('/:id/pdf', generateInvoicePDFFile);
 router.get('/:id/download', (req, res) => {
@@ -42,9 +47,5 @@ router.put('/:id', checkPermission('canEdit'), updateInvoice);
 router.delete('/:id', checkPermission('canDelete'), deleteInvoice);
 router.post('/:id/send-email', sendInvoiceViaEmail);
 router.post('/:id/convert-to-invoice', checkPermission('canCreate'), convertQuotationToInvoice);
-
-// Bulk import routes
-router.get('/bulk/sample', checkPermission('canCreate'), invoiceBulkSample);
-router.post('/bulk/upload', checkPermission('canCreate'), uploadMemory.single('file'), invoiceBulkUpload);
 
 export default router;
