@@ -169,6 +169,11 @@ export const employeeAPI = {
     request: (data) => api.post('/employees/my-hold/request', data)
   },
   myProjects: () => api.get('/employees/my-projects'),
+  myLeads: {
+    get: (params) => api.get('/employees/my-leads', { params }),
+    create: (data) => api.post('/employees/my-leads', data),
+    update: (id, data) => api.put(`/employees/my-leads/${id}`, data)
+  },
   myWorkUpdate: (data) => api.post('/employees/my-work-update', data),
   uploadWorkUpdateFiles: (formData) => api.post('/employees/upload-work-files', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

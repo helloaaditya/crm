@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
+import { useAuth } from '../../context/AuthContext'
 
 const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
+  const { user } = useAuth()
   const [employees, setEmployees] = useState([])
   const [formData, setFormData] = useState({
     name: '',
@@ -57,6 +59,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
       })
     } else {
       // Reset form when adding new
+      // If customer object is passed with leadFrom/leadDate (from MyLeads), use those values
       setFormData({
         name: '',
         contactNumber: '',
@@ -71,8 +74,8 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
         callType: 'official',
         dataSource: 'other',
         leadStatus: 'new',
-        leadFrom: '',
-        leadDate: new Date().toISOString().split('T')[0], // Default to today's date
+        leadFrom: customer?.leadFrom || '',
+        leadDate: customer?.leadDate || new Date().toISOString().split('T')[0], // Default to today's date
         notes: '',
         tags: ''
       })
@@ -116,12 +119,49 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : []
       }
 
-      if (customer) {
-        await API.customers.update(customer._id, submitData)
-        toast.success('Customer updated successfully!')
+      // Check if this is from MyLeads (customer has leadFrom but no _id, or updating existing lead)
+      const isFromMyLeads = (customer && !customer._id && customer.leadFrom) || 
+                            (customer && customer._id && customer.leadFrom)
+      
+      // Use employee endpoints if from MyLeads, otherwise use customer endpoints
+      if (customer && customer._id) {
+        // Updating existing customer
+        if (isFromMyLeads) {
+          try {
+            await API.employees.myLeads.update(customer._id, submitData)
+            toast.success('Lead updated successfully!')
+          } catch (error) {
+            // Fallback to customer endpoint if employee endpoint fails
+            if (error.response?.status === 403) {
+              await API.customers.update(customer._id, submitData)
+              toast.success('Customer updated successfully!')
+            } else {
+              throw error
+            }
+          }
+        } else {
+          await API.customers.update(customer._id, submitData)
+          toast.success('Customer updated successfully!')
+        }
       } else {
-        await API.customers.create(submitData)
-        toast.success('Customer created successfully!')
+        // Creating new customer
+        if (isFromMyLeads && submitData.leadFrom) {
+          try {
+            await API.employees.myLeads.create(submitData)
+            toast.success('Lead created successfully!')
+          } catch (error) {
+            // Fallback to customer endpoint if employee endpoint fails
+            if (error.response?.status === 403) {
+              await API.customers.create(submitData)
+              toast.success('Customer created successfully!')
+            } else {
+              throw error
+            }
+          }
+        } else {
+          await API.customers.create(submitData)
+          toast.success('Customer created successfully!')
+        }
       }
       
       onSuccess()

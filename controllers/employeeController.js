@@ -1,6 +1,7 @@
 import Employee from '../models/Employee.js';
 import User from '../models/User.js';
 import Project from '../models/Project.js';
+import Customer from '../models/Customer.js';
 import CalendarReminder from '../models/CalendarReminder.js';
 import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -1413,6 +1414,153 @@ export const getMyProjects = asyncHandler(async (req, res) => {
       activeProjects,
       totalProjects: employee.assignedProjects.length
     }
+  });
+});
+
+// @desc    Get my leads (customers where I am the leadFrom)
+// @route   GET /api/employees/my-leads
+// @access  Private (Employee)
+export const getMyLeads = asyncHandler(async (req, res) => {
+  const { search, leadStatus, page = 1, limit = 10 } = req.query;
+
+  // Find employee record for the logged-in user
+  const employee = await Employee.findOne({ userId: req.user._id });
+
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+
+  // Build query - only customers where this employee is the leadFrom
+  let query = {
+    leadFrom: employee._id
+  };
+
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { contactNumber: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  if (leadStatus) {
+    query.leadStatus = leadStatus;
+  }
+
+  // Execute query with pagination
+  const customers = await Customer.find(query)
+    .populate('assignedTo', 'name email')
+    .populate('leadFrom', 'name employeeId')
+    .populate('createdBy', 'name')
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+
+  const count = await Customer.countDocuments(query);
+
+  res.json({
+    success: true,
+    data: customers,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    total: count
+  });
+});
+
+// @desc    Create my lead (customer with leadFrom set to current employee)
+// @route   POST /api/employees/my-leads
+// @access  Private (Employee)
+export const createMyLead = asyncHandler(async (req, res) => {
+  // Find employee record for the logged-in user
+  const employee = await Employee.findOne({ userId: req.user._id });
+
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+
+  const {
+    name,
+    contactNumber,
+    alternateContact,
+    email,
+    address,
+    callType,
+    dataSource,
+    leadStatus,
+    leadDate,
+    notes,
+    tags
+  } = req.body;
+
+  // Check if customer with same contact number exists
+  const customerExists = await Customer.findOne({ contactNumber });
+  if (customerExists) {
+    return res.status(400).json({ message: 'Customer with this contact number already exists' });
+  }
+
+  // Create customer with leadFrom automatically set to current employee
+  const customer = await Customer.create({
+    name,
+    contactNumber,
+    alternateContact,
+    email,
+    address,
+    callType,
+    dataSource,
+    leadStatus: leadStatus || 'new',
+    leadFrom: employee._id, // Automatically set to current employee
+    leadDate: leadDate ? new Date(leadDate) : new Date(),
+    notes,
+    tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(t => t)) : [],
+    createdBy: req.user._id
+  });
+
+  // Populate leadFrom for response
+  await customer.populate('leadFrom', 'name employeeId');
+
+  res.status(201).json({
+    success: true,
+    data: customer,
+    message: 'Lead created successfully'
+  });
+});
+
+// @desc    Update my lead (only if leadFrom matches current employee)
+// @route   PUT /api/employees/my-leads/:id
+// @access  Private (Employee)
+export const updateMyLead = asyncHandler(async (req, res) => {
+  // Find employee record for the logged-in user
+  const employee = await Employee.findOne({ userId: req.user._id });
+
+  if (!employee) {
+    return res.status(404).json({ message: 'Employee record not found' });
+  }
+
+  const customer = await Customer.findById(req.params.id);
+
+  if (!customer) {
+    return res.status(404).json({ message: 'Customer not found' });
+  }
+
+  // Verify that this lead belongs to the current employee
+  if (customer.leadFrom?.toString() !== employee._id.toString()) {
+    return res.status(403).json({ message: 'You can only update your own leads' });
+  }
+
+  // Update customer
+  const updatedCustomer = await Customer.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true, runValidators: true }
+  )
+    .populate('leadFrom', 'name employeeId')
+    .populate('assignedTo', 'name email')
+    .populate('createdBy', 'name');
+
+  res.json({
+    success: true,
+    data: updatedCustomer,
+    message: 'Lead updated successfully'
   });
 });
 

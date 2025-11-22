@@ -37,6 +37,9 @@ import {
   getMyHold,
   requestMyHoldWithdrawal,
   getMyProjects,
+  getMyLeads,
+  createMyLead,
+  updateMyLead,
   submitMyWorkUpdate,
   applyMyLeave,
   getMyLeaves,
@@ -79,6 +82,11 @@ router.post('/my-hold/request', requestMyHoldWithdrawal);
 
 // My Projects
 router.get('/my-projects', getMyProjects);
+
+// My Leads
+router.get('/my-leads', getMyLeads);
+router.post('/my-leads', createMyLead);
+router.put('/my-leads/:id', updateMyLead);
 
 // My Work Updates
 router.post('/my-work-update', submitMyWorkUpdate);
