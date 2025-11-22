@@ -255,6 +255,7 @@ const MyLeads = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead From</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Follow Up</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -269,6 +270,9 @@ const MyLeads = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.email || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {lead.leadDate ? new Date(lead.leadDate).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {lead.leadFrom?.name || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {lead.followUpPerson?.name || 'N/A'}
@@ -321,6 +325,10 @@ const MyLeads = () => {
                     <div className="flex items-center text-sm text-gray-600">
                       <span className="font-medium w-20">Lead Date:</span>
                       <span>{lead.leadDate ? new Date(lead.leadDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <span className="font-medium w-20">Lead From:</span>
+                      <span>{lead.leadFrom?.name || 'N/A'}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <span className="font-medium w-20">Follow Up:</span>
