@@ -295,11 +295,12 @@ export const customerBulkUpload = asyncHandler(async (req, res) => {
 // ============= INVOICE/QUOTATION BULK IMPORT =============
 
 export const invoiceBulkSample = asyncHandler(async (req, res) => {
+  // Simple format matching user's existing data
   const csv = [
-    'invoiceType,customerPhone,invoiceNumber,quotationNumber,invoiceDate,dueDate,subtotal,cgst,sgst,igst,discount,totalAmount,paidAmount,paymentStatus,status,items,notes',
-    'quotation,9876543210,,QUO24120001,2024-12-01,2024-12-31,10000,900,900,0,0,11800,0,unpaid,draft,"[{""description"":""Service 1"",""quantity"":1,""unit"":""Nos"",""rate"":10000,""amount"":10000,""gstRate"":18,""gstAmount"":1800}]",Old quotation',
-    'tax_invoice,9876543210,INV24120001,,2024-12-15,2025-01-15,20000,1800,1800,0,500,40600,20000,partial,partial,"[{""description"":""Product 1"",""quantity"":2,""unit"":""Nos"",""rate"":10000,""amount"":20000,""gstRate"":18,""gstAmount"":3600}]",Old invoice with partial payment',
-    'tax_invoice,9876543211,INV24120002,,2024-12-20,2025-01-20,15000,1350,1350,0,0,17700,17700,paid,paid,"[{""description"":""Service 2"",""quantity"":1,""unit"":""Nos"",""rate"":15000,""amount"":15000,""gstRate"":18,""gstAmount"":2700}]",Old paid invoice'
+    'Name,Address,Ph No,Quotation For,Amount,Status',
+    'John Doe,123 Main Street Bangalore,9876543210,Interior Design Work,50000,Won',
+    'Jane Smith,456 Park Avenue Mumbai,9876543211,Construction Materials,75000,Pending',
+    'Raj Kumar,789 MG Road Delhi,9876543212,Plumbing Services,30000,Lost'
   ].join('\n')
   res.setHeader('Content-Type', 'text/csv; charset=utf-8')
   res.setHeader('Content-Disposition', 'attachment; filename="invoices-sample.csv"')
@@ -317,15 +318,12 @@ export const invoiceBulkUpload = asyncHandler(async (req, res) => {
   const text = req.file.buffer.toString('utf-8')
   const { headers, rows } = parseCsv(text)
   
-  // Validate required headers
-  const requiredHeaders = ['invoiceType', 'customerPhone']
-  const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
-  
-  if (missingHeaders.length > 0) {
-    return res.status(400).json({ 
-      message: `Missing required columns: ${missingHeaders.join(', ')}. Required columns: ${requiredHeaders.join(', ')}` 
-    })
-  }
+  // Check for simple format (Name, Address, Ph No, Quotation For, Amount, Status)
+  const isSimpleFormat = headers.some(h => 
+    ['Name', 'name', 'Nmae', 'nmae'].includes(h.trim())
+  ) && headers.some(h => 
+    ['Ph No', 'ph no', 'PhNo', 'phno', 'Phone', 'phone', 'Contact', 'contact'].includes(h.trim())
+  )
   
   let created = 0, errors = 0
   const errorDetails = []
@@ -333,128 +331,269 @@ export const invoiceBulkUpload = asyncHandler(async (req, res) => {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
     try {
-      // Validate required fields
-      if (!row.invoiceType || !row.customerPhone) {
-        errors++
-        errorDetails.push(`Row ${i + 2}: Missing required fields 'invoiceType' or 'customerPhone'`)
-        continue
-      }
-      
-      // Validate invoiceType
-      const validTypes = ['quotation', 'proforma', 'tax_invoice', 'final', 'dc']
-      if (!validTypes.includes(row.invoiceType.toLowerCase())) {
-        errors++
-        errorDetails.push(`Row ${i + 2}: Invalid invoiceType '${row.invoiceType}'. Must be one of: ${validTypes.join(', ')}`)
-        continue
-      }
-      
-      // Find customer by phone
-      const customer = await Customer.findOne({ contactNumber: row.customerPhone.trim() })
-      if (!customer) {
-        errors++
-        errorDetails.push(`Row ${i + 2}: Customer with phone '${row.customerPhone}' not found. Please create customer first.`)
-        continue
-      }
-      
-      // Parse items (JSON string or empty)
-      let items = []
-      if (row.items && row.items.trim()) {
-        try {
-          items = JSON.parse(row.items)
-          if (!Array.isArray(items)) {
+      if (isSimpleFormat) {
+        // Handle simple format: Name, Address, Ph No, Quotation For, Amount, Status
+        const nameField = headers.find(h => ['Name', 'name', 'Nmae', 'nmae'].includes(h.trim()))
+        const addressField = headers.find(h => ['Address', 'address'].includes(h.trim()))
+        const phoneField = headers.find(h => ['Ph No', 'ph no', 'PhNo', 'phno', 'Phone', 'phone', 'Contact', 'contact', 'ContactNumber', 'contactNumber'].includes(h.trim()))
+        const quotationForField = headers.find(h => ['Quotation For', 'quotation for', 'QuotationFor', 'quotationFor', 'Description', 'description'].includes(h.trim()))
+        const amountField = headers.find(h => ['Amount', 'amount'].includes(h.trim()))
+        const statusField = headers.find(h => ['Status', 'status'].includes(h.trim()))
+        
+        // Validate required fields
+        if (!row[nameField] || !row[phoneField] || !row[amountField]) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Missing required fields (Name, Ph No, or Amount)`)
+          continue
+        }
+        
+        const name = row[nameField]?.trim()
+        const phone = row[phoneField]?.trim().replace(/\D/g, '') // Remove non-digits
+        const address = row[addressField]?.trim()
+        const quotationFor = row[quotationForField]?.trim() || 'Quotation'
+        const amount = parseFloat(row[amountField]?.toString().replace(/[^\d.-]/g, '')) || 0
+        const status = row[statusField]?.trim() || 'draft'
+        
+        // Validate phone number
+        if (!phone || phone.length !== 10) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Invalid phone number '${row[phoneField]}'. Must be 10 digits.`)
+          continue
+        }
+        
+        // Find or create customer
+        let customer = await Customer.findOne({ contactNumber: phone })
+        if (!customer) {
+          // Parse address
+          let addressData = {}
+          if (address) {
+            const addressParts = address.split(',').map(p => p.trim())
+            if (addressParts.length >= 2) {
+              addressData = {
+                street: addressParts[0] || '',
+                city: addressParts[1] || '',
+                state: addressParts[2] || '',
+                pincode: addressParts[3] || '',
+                country: 'India'
+              }
+            } else {
+              addressData = { street: address }
+            }
+          }
+          
+          // Create customer
+          customer = await Customer.create({
+            name: name,
+            contactNumber: phone,
+            address: Object.keys(addressData).length > 0 ? addressData : undefined,
+            leadStatus: 'new',
+            createdBy: req.user?._id
+          })
+        } else {
+          // Update customer name and address if provided
+          if (name && customer.name !== name) {
+            customer.name = name
+          }
+          if (address) {
+            const addressParts = address.split(',').map(p => p.trim())
+            if (addressParts.length >= 2) {
+              customer.address = {
+                street: addressParts[0] || '',
+                city: addressParts[1] || '',
+                state: addressParts[2] || '',
+                pincode: addressParts[3] || '',
+                country: 'India'
+              }
+            } else {
+              customer.address = { street: address }
+            }
+            await customer.save()
+          }
+        }
+        
+        // Calculate GST (assuming 18% GST on amount)
+        const subtotal = amount / 1.18 // Remove GST to get subtotal
+        const gstAmount = amount - subtotal
+        const cgst = gstAmount / 2
+        const sgst = gstAmount / 2
+        
+        // Create quotation item
+        const items = [{
+          description: quotationFor,
+          quantity: 1,
+          unit: 'Nos',
+          rate: subtotal,
+          amount: subtotal,
+          gstRate: 18,
+          gstAmount: gstAmount
+        }]
+        
+        // Map status
+        let invoiceStatus = 'draft'
+        if (status.toLowerCase() === 'won') {
+          invoiceStatus = 'sent'
+        } else if (status.toLowerCase() === 'lost') {
+          invoiceStatus = 'cancelled'
+        } else if (status.toLowerCase() === 'pending') {
+          invoiceStatus = 'sent'
+        }
+        
+        // Create quotation
+        const invoiceData = {
+          customer: customer._id,
+          invoiceType: 'quotation',
+          items: items,
+          subtotal: subtotal,
+          cgst: cgst,
+          sgst: sgst,
+          igst: 0,
+          discount: 0,
+          totalAmount: amount,
+          paidAmount: 0,
+          balanceAmount: amount,
+          invoiceDate: new Date(),
+          paymentStatus: 'unpaid',
+          status: invoiceStatus,
+          notes: `Imported from bulk upload - Status: ${status}`,
+          createdBy: req.user?._id
+        }
+        
+        const invoice = await Invoice.create(invoiceData)
+        created++
+      } else {
+        // Handle detailed format (original format)
+        const requiredHeaders = ['invoiceType', 'customerPhone']
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
+        
+        if (missingHeaders.length > 0) {
+          return res.status(400).json({ 
+            message: `Missing required columns: ${missingHeaders.join(', ')}. Required columns: ${requiredHeaders.join(', ')} or use simple format (Name, Address, Ph No, Quotation For, Amount, Status)` 
+          })
+        }
+        
+        // Validate required fields
+        if (!row.invoiceType || !row.customerPhone) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Missing required fields 'invoiceType' or 'customerPhone'`)
+          continue
+        }
+        
+        // Validate invoiceType
+        const validTypes = ['quotation', 'proforma', 'tax_invoice', 'final', 'dc']
+        if (!validTypes.includes(row.invoiceType.toLowerCase())) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Invalid invoiceType '${row.invoiceType}'. Must be one of: ${validTypes.join(', ')}`)
+          continue
+        }
+        
+        // Find customer by phone
+        const customer = await Customer.findOne({ contactNumber: row.customerPhone.trim() })
+        if (!customer) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Customer with phone '${row.customerPhone}' not found. Please create customer first.`)
+          continue
+        }
+        
+        // Parse items (JSON string or empty)
+        let items = []
+        if (row.items && row.items.trim()) {
+          try {
+            items = JSON.parse(row.items)
+            if (!Array.isArray(items)) {
+              errors++
+              errorDetails.push(`Row ${i + 2}: Items must be a JSON array`)
+              continue
+            }
+          } catch (e) {
             errors++
-            errorDetails.push(`Row ${i + 2}: Items must be a JSON array`)
+            errorDetails.push(`Row ${i + 2}: Invalid items JSON format: ${e.message}`)
             continue
           }
-        } catch (e) {
+        }
+        
+        // If no items, create a default item from description/amount
+        if (items.length === 0 && row.description && row.totalAmount) {
+          items = [{
+            description: row.description || 'Imported item',
+            quantity: parseFloat(row.quantity) || 1,
+            unit: row.unit || 'Nos',
+            rate: parseFloat(row.rate) || parseFloat(row.totalAmount),
+            amount: parseFloat(row.totalAmount),
+            gstRate: parseFloat(row.gstRate) || 0,
+            gstAmount: parseFloat(row.gstAmount) || 0
+          }]
+        }
+        
+        if (items.length === 0) {
           errors++
-          errorDetails.push(`Row ${i + 2}: Invalid items JSON format: ${e.message}`)
+          errorDetails.push(`Row ${i + 2}: No items found. Provide items as JSON array or description/amount fields.`)
           continue
         }
-      }
-      
-      // If no items, create a default item from description/amount
-      if (items.length === 0 && row.description && row.totalAmount) {
-        items = [{
-          description: row.description || 'Imported item',
-          quantity: parseFloat(row.quantity) || 1,
-          unit: row.unit || 'Nos',
-          rate: parseFloat(row.rate) || parseFloat(row.totalAmount),
-          amount: parseFloat(row.totalAmount),
-          gstRate: parseFloat(row.gstRate) || 0,
-          gstAmount: parseFloat(row.gstAmount) || 0
-        }]
-      }
-      
-      if (items.length === 0) {
-        errors++
-        errorDetails.push(`Row ${i + 2}: No items found. Provide items as JSON array or description/amount fields.`)
-        continue
-      }
-      
-      // Parse amounts
-      const subtotal = parseFloat(row.subtotal) || 0
-      const cgst = parseFloat(row.cgst) || 0
-      const sgst = parseFloat(row.sgst) || 0
-      const igst = parseFloat(row.igst) || 0
-      const discount = parseFloat(row.discount) || 0
-      const totalAmount = parseFloat(row.totalAmount) || subtotal + cgst + sgst + igst - discount
-      const paidAmount = parseFloat(row.paidAmount) || 0
-      
-      // Parse dates
-      const invoiceDate = row.invoiceDate ? new Date(row.invoiceDate) : new Date()
-      const dueDate = row.dueDate ? new Date(row.dueDate) : undefined
-      
-      // Create invoice data
-      const invoiceData = {
-        customer: customer._id,
-        invoiceType: row.invoiceType.toLowerCase(),
-        items: items,
-        subtotal: subtotal,
-        cgst: cgst,
-        sgst: sgst,
-        igst: igst,
-        discount: discount,
-        totalAmount: totalAmount,
-        paidAmount: paidAmount,
-        balanceAmount: totalAmount - paidAmount,
-        invoiceDate: invoiceDate,
-        dueDate: dueDate,
-        paymentStatus: row.paymentStatus?.toLowerCase() || (paidAmount >= totalAmount ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'),
-        status: row.status?.toLowerCase() || 'draft',
-        notes: row.notes || 'Imported from bulk upload',
-        createdBy: req.user?._id
-      }
-      
-      // Set invoice/quotation number if provided (otherwise will auto-generate)
-      if (row.invoiceNumber && row.invoiceType.toLowerCase() !== 'quotation') {
-        invoiceData.invoiceNumber = row.invoiceNumber.trim()
-      }
-      if (row.quotationNumber && row.invoiceType.toLowerCase() === 'quotation') {
-        invoiceData.quotationNumber = row.quotationNumber.trim()
-      }
-      
-      // Check for duplicate invoice/quotation number if provided
-      if (invoiceData.invoiceNumber) {
-        const existing = await Invoice.findOne({ invoiceNumber: invoiceData.invoiceNumber })
-        if (existing) {
-          errors++
-          errorDetails.push(`Row ${i + 2}: Invoice with number '${invoiceData.invoiceNumber}' already exists`)
-          continue
+        
+        // Parse amounts
+        const subtotal = parseFloat(row.subtotal) || 0
+        const cgst = parseFloat(row.cgst) || 0
+        const sgst = parseFloat(row.sgst) || 0
+        const igst = parseFloat(row.igst) || 0
+        const discount = parseFloat(row.discount) || 0
+        const totalAmount = parseFloat(row.totalAmount) || subtotal + cgst + sgst + igst - discount
+        const paidAmount = parseFloat(row.paidAmount) || 0
+        
+        // Parse dates
+        const invoiceDate = row.invoiceDate ? new Date(row.invoiceDate) : new Date()
+        const dueDate = row.dueDate ? new Date(row.dueDate) : undefined
+        
+        // Create invoice data
+        const invoiceData = {
+          customer: customer._id,
+          invoiceType: row.invoiceType.toLowerCase(),
+          items: items,
+          subtotal: subtotal,
+          cgst: cgst,
+          sgst: sgst,
+          igst: igst,
+          discount: discount,
+          totalAmount: totalAmount,
+          paidAmount: paidAmount,
+          balanceAmount: totalAmount - paidAmount,
+          invoiceDate: invoiceDate,
+          dueDate: dueDate,
+          paymentStatus: row.paymentStatus?.toLowerCase() || (paidAmount >= totalAmount ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'),
+          status: row.status?.toLowerCase() || 'draft',
+          notes: row.notes || 'Imported from bulk upload',
+          createdBy: req.user?._id
         }
-      }
-      if (invoiceData.quotationNumber) {
-        const existing = await Invoice.findOne({ quotationNumber: invoiceData.quotationNumber })
-        if (existing) {
-          errors++
-          errorDetails.push(`Row ${i + 2}: Quotation with number '${invoiceData.quotationNumber}' already exists`)
-          continue
+        
+        // Set invoice/quotation number if provided (otherwise will auto-generate)
+        if (row.invoiceNumber && row.invoiceType.toLowerCase() !== 'quotation') {
+          invoiceData.invoiceNumber = row.invoiceNumber.trim()
         }
+        if (row.quotationNumber && row.invoiceType.toLowerCase() === 'quotation') {
+          invoiceData.quotationNumber = row.quotationNumber.trim()
+        }
+        
+        // Check for duplicate invoice/quotation number if provided
+        if (invoiceData.invoiceNumber) {
+          const existing = await Invoice.findOne({ invoiceNumber: invoiceData.invoiceNumber })
+          if (existing) {
+            errors++
+            errorDetails.push(`Row ${i + 2}: Invoice with number '${invoiceData.invoiceNumber}' already exists`)
+            continue
+          }
+        }
+        if (invoiceData.quotationNumber) {
+          const existing = await Invoice.findOne({ quotationNumber: invoiceData.quotationNumber })
+          if (existing) {
+            errors++
+            errorDetails.push(`Row ${i + 2}: Quotation with number '${invoiceData.quotationNumber}' already exists`)
+            continue
+          }
+        }
+        
+        // Create invoice (will auto-generate number if not provided)
+        const invoice = await Invoice.create(invoiceData)
+        created++
       }
-      
-      // Create invoice (will auto-generate number if not provided)
-      const invoice = await Invoice.create(invoiceData)
-      created++
     } catch (e) {
       errors++
       const errorMsg = e.message || 'Unknown error'
