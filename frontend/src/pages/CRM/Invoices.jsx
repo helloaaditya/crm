@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck } from 'react-icons/fi'
+import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck, FiUpload } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import API from '../../api'
 import { toast } from 'react-toastify'
@@ -25,6 +25,8 @@ const Invoices = () => {
   const [totalCount, setTotalCount] = useState(0)
   const [summary, setSummary] = useState({ totalAmount: 0, paidAmount: 0, pendingAmount: 0 })
   const [downloadingPDF, setDownloadingPDF] = useState(null)
+  const [downloading, setDownloading] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     fetchInvoices()
@@ -395,6 +397,62 @@ Best Regards,
     toast.success('Invoices exported successfully')
   }
 
+  const handleDownloadSample = async () => {
+    setDownloading(true)
+    try {
+      const response = await API.invoices.bulk.sample()
+      const blob = new Blob([response.data], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'invoices-sample.csv'
+      a.click()
+      window.URL.revokeObjectURL(url)
+      toast.success('Sample file downloaded successfully')
+    } catch (error) {
+      console.error('Error downloading sample:', error)
+      toast.error('Failed to download sample file')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await API.invoices.bulk.upload(formData)
+      toast.success(response.data.message || 'Invoices imported successfully')
+      
+      // Show error details if available
+      if (response.data.errorDetails) {
+        console.error('Error Details:', response.data.errorDetails)
+        toast.error(`Errors: ${response.data.errorDetails.join('; ')}`, { autoClose: 10000 })
+      }
+      
+      // Refresh invoices list
+      fetchInvoices()
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      const errorMsg = error.response?.data?.message || 'Failed to upload invoices'
+      toast.error(errorMsg)
+      
+      // Show error details if available
+      if (error.response?.data?.errorDetails) {
+        console.error('Error Details:', error.response.data.errorDetails)
+        toast.error(`Errors: ${error.response.data.errorDetails.join('; ')}`, { autoClose: 10000 })
+      }
+    } finally {
+      setUploading(false)
+      e.target.value = '' // Reset file input
+    }
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -407,10 +465,31 @@ Best Regards,
             Pending: ₹{summary.pendingAmount?.toLocaleString() || '0'}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <button 
+            onClick={handleDownloadSample}
+            disabled={downloading}
+            className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+          >
+            <FiDownload className="mr-2" />
+            {downloading ? 'Downloading...' : 'Download Sample'}
+          </button>
+          <label className="w-full sm:w-auto">
+            <div className={`flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 cursor-pointer disabled:opacity-50 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <FiUpload className="mr-2" />
+              {uploading ? 'Uploading...' : 'Bulk Upload'}
+            </div>
+            <input 
+              type="file" 
+              accept=".csv,.xls,.xlsx" 
+              onChange={handleUpload} 
+              className="hidden" 
+              disabled={uploading} 
+            />
+          </label>
           <button 
             onClick={handleExportCSV}
-            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base"
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
             disabled={invoices.length === 0}
           >
             <FiDownload className="mr-2" />
@@ -418,7 +497,7 @@ Best Regards,
           </button>
           <button 
             onClick={handleAdd}
-            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
           >
             <FiPlus className="mr-2" />
             Create Invoice

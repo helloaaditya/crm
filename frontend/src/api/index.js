@@ -202,7 +202,11 @@ export const invoiceAPI = {
   delete: (id) => api.delete(`/invoices/${id}`),
   generatePDF: (id) => api.get(`/invoices/${id}/pdf`),
   sendEmail: (id) => api.post(`/invoices/${id}/send-email`),
-  convertToInvoice: (id) => api.post(`/invoices/${id}/convert-to-invoice`)
+  convertToInvoice: (id) => api.post(`/invoices/${id}/convert-to-invoice`),
+  bulk: {
+    sample: () => api.get('/invoices/bulk/sample', { responseType: 'text' }),
+    upload: (formData) => api.post('/invoices/bulk/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+  }
 };
 
 // ============= PAYMENTS =============

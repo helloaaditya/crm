@@ -13,6 +13,8 @@ import {
   sendInvoiceViaEmail,
   convertQuotationToInvoice
 } from '../controllers/invoicePaymentController.js';
+import { invoiceBulkSample, invoiceBulkUpload } from '../controllers/importController.js';
+import { uploadMemory } from '../middleware/upload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,5 +42,9 @@ router.put('/:id', checkPermission('canEdit'), updateInvoice);
 router.delete('/:id', checkPermission('canDelete'), deleteInvoice);
 router.post('/:id/send-email', sendInvoiceViaEmail);
 router.post('/:id/convert-to-invoice', checkPermission('canCreate'), convertQuotationToInvoice);
+
+// Bulk import routes
+router.get('/bulk/sample', checkPermission('canCreate'), invoiceBulkSample);
+router.post('/bulk/upload', checkPermission('canCreate'), uploadMemory.single('file'), invoiceBulkUpload);
 
 export default router;

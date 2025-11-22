@@ -2,6 +2,7 @@ import { asyncHandler } from '../middleware/errorHandler.js'
 import User from '../models/User.js'
 import Employee from '../models/Employee.js'
 import Customer from '../models/Customer.js'
+import Invoice from '../models/Invoice.js'
 
 // Helpers
 const parseCsv = (text) => {
@@ -284,6 +285,184 @@ export const customerBulkUpload = asyncHandler(async (req, res) => {
   }
   
   const message = `Customers import completed. Created: ${created}, Updated: ${updated}, Errors: ${errors}`
+  const response = { success: true, message }
+  if (errorDetails.length > 0) {
+    response.errorDetails = errorDetails
+  }
+  res.json(response)
+})
+
+// ============= INVOICE/QUOTATION BULK IMPORT =============
+
+export const invoiceBulkSample = asyncHandler(async (req, res) => {
+  const csv = [
+    'invoiceType,customerPhone,invoiceNumber,quotationNumber,invoiceDate,dueDate,subtotal,cgst,sgst,igst,discount,totalAmount,paidAmount,paymentStatus,status,items,notes',
+    'quotation,9876543210,,QUO24120001,2024-12-01,2024-12-31,10000,900,900,0,0,11800,0,unpaid,draft,"[{""description"":""Service 1"",""quantity"":1,""unit"":""Nos"",""rate"":10000,""amount"":10000,""gstRate"":18,""gstAmount"":1800}]",Old quotation',
+    'tax_invoice,9876543210,INV24120001,,2024-12-15,2025-01-15,20000,1800,1800,0,500,40600,20000,partial,partial,"[{""description"":""Product 1"",""quantity"":2,""unit"":""Nos"",""rate"":10000,""amount"":20000,""gstRate"":18,""gstAmount"":3600}]",Old invoice with partial payment',
+    'tax_invoice,9876543211,INV24120002,,2024-12-20,2025-01-20,15000,1350,1350,0,0,17700,17700,paid,paid,"[{""description"":""Service 2"",""quantity"":1,""unit"":""Nos"",""rate"":15000,""amount"":15000,""gstRate"":18,""gstAmount"":2700}]",Old paid invoice'
+  ].join('\n')
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+  res.setHeader('Content-Disposition', 'attachment; filename="invoices-sample.csv"')
+  res.send(csv)
+})
+
+export const invoiceBulkUpload = asyncHandler(async (req, res) => {
+  if (!req.file || !req.file.buffer) {
+    return res.status(400).json({ message: 'CSV file is required' })
+  }
+  const isCsv = /csv/i.test(req.file.mimetype) || /\.csv$/i.test(req.file.originalname)
+  if (!isCsv) {
+    return res.status(400).json({ message: 'Please upload a CSV file (not Excel). Save as CSV and retry.' })
+  }
+  const text = req.file.buffer.toString('utf-8')
+  const { headers, rows } = parseCsv(text)
+  
+  // Validate required headers
+  const requiredHeaders = ['invoiceType', 'customerPhone']
+  const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
+  
+  if (missingHeaders.length > 0) {
+    return res.status(400).json({ 
+      message: `Missing required columns: ${missingHeaders.join(', ')}. Required columns: ${requiredHeaders.join(', ')}` 
+    })
+  }
+  
+  let created = 0, errors = 0
+  const errorDetails = []
+  
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    try {
+      // Validate required fields
+      if (!row.invoiceType || !row.customerPhone) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Missing required fields 'invoiceType' or 'customerPhone'`)
+        continue
+      }
+      
+      // Validate invoiceType
+      const validTypes = ['quotation', 'proforma', 'tax_invoice', 'final', 'dc']
+      if (!validTypes.includes(row.invoiceType.toLowerCase())) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Invalid invoiceType '${row.invoiceType}'. Must be one of: ${validTypes.join(', ')}`)
+        continue
+      }
+      
+      // Find customer by phone
+      const customer = await Customer.findOne({ contactNumber: row.customerPhone.trim() })
+      if (!customer) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: Customer with phone '${row.customerPhone}' not found. Please create customer first.`)
+        continue
+      }
+      
+      // Parse items (JSON string or empty)
+      let items = []
+      if (row.items && row.items.trim()) {
+        try {
+          items = JSON.parse(row.items)
+          if (!Array.isArray(items)) {
+            errors++
+            errorDetails.push(`Row ${i + 2}: Items must be a JSON array`)
+            continue
+          }
+        } catch (e) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Invalid items JSON format: ${e.message}`)
+          continue
+        }
+      }
+      
+      // If no items, create a default item from description/amount
+      if (items.length === 0 && row.description && row.totalAmount) {
+        items = [{
+          description: row.description || 'Imported item',
+          quantity: parseFloat(row.quantity) || 1,
+          unit: row.unit || 'Nos',
+          rate: parseFloat(row.rate) || parseFloat(row.totalAmount),
+          amount: parseFloat(row.totalAmount),
+          gstRate: parseFloat(row.gstRate) || 0,
+          gstAmount: parseFloat(row.gstAmount) || 0
+        }]
+      }
+      
+      if (items.length === 0) {
+        errors++
+        errorDetails.push(`Row ${i + 2}: No items found. Provide items as JSON array or description/amount fields.`)
+        continue
+      }
+      
+      // Parse amounts
+      const subtotal = parseFloat(row.subtotal) || 0
+      const cgst = parseFloat(row.cgst) || 0
+      const sgst = parseFloat(row.sgst) || 0
+      const igst = parseFloat(row.igst) || 0
+      const discount = parseFloat(row.discount) || 0
+      const totalAmount = parseFloat(row.totalAmount) || subtotal + cgst + sgst + igst - discount
+      const paidAmount = parseFloat(row.paidAmount) || 0
+      
+      // Parse dates
+      const invoiceDate = row.invoiceDate ? new Date(row.invoiceDate) : new Date()
+      const dueDate = row.dueDate ? new Date(row.dueDate) : undefined
+      
+      // Create invoice data
+      const invoiceData = {
+        customer: customer._id,
+        invoiceType: row.invoiceType.toLowerCase(),
+        items: items,
+        subtotal: subtotal,
+        cgst: cgst,
+        sgst: sgst,
+        igst: igst,
+        discount: discount,
+        totalAmount: totalAmount,
+        paidAmount: paidAmount,
+        balanceAmount: totalAmount - paidAmount,
+        invoiceDate: invoiceDate,
+        dueDate: dueDate,
+        paymentStatus: row.paymentStatus?.toLowerCase() || (paidAmount >= totalAmount ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid'),
+        status: row.status?.toLowerCase() || 'draft',
+        notes: row.notes || 'Imported from bulk upload',
+        createdBy: req.user?._id
+      }
+      
+      // Set invoice/quotation number if provided (otherwise will auto-generate)
+      if (row.invoiceNumber && row.invoiceType.toLowerCase() !== 'quotation') {
+        invoiceData.invoiceNumber = row.invoiceNumber.trim()
+      }
+      if (row.quotationNumber && row.invoiceType.toLowerCase() === 'quotation') {
+        invoiceData.quotationNumber = row.quotationNumber.trim()
+      }
+      
+      // Check for duplicate invoice/quotation number if provided
+      if (invoiceData.invoiceNumber) {
+        const existing = await Invoice.findOne({ invoiceNumber: invoiceData.invoiceNumber })
+        if (existing) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Invoice with number '${invoiceData.invoiceNumber}' already exists`)
+          continue
+        }
+      }
+      if (invoiceData.quotationNumber) {
+        const existing = await Invoice.findOne({ quotationNumber: invoiceData.quotationNumber })
+        if (existing) {
+          errors++
+          errorDetails.push(`Row ${i + 2}: Quotation with number '${invoiceData.quotationNumber}' already exists`)
+          continue
+        }
+      }
+      
+      // Create invoice (will auto-generate number if not provided)
+      const invoice = await Invoice.create(invoiceData)
+      created++
+    } catch (e) {
+      errors++
+      const errorMsg = e.message || 'Unknown error'
+      errorDetails.push(`Row ${i + 2}: ${errorMsg}`)
+    }
+  }
+  
+  const message = `Invoices/Quotations import completed. Created: ${created}, Errors: ${errors}`
   const response = { success: true, message }
   if (errorDetails.length > 0) {
     response.errorDetails = errorDetails
