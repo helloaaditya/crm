@@ -57,6 +57,10 @@ const projectSchema = new mongoose.Schema({
     enum: ['planning', 'in_progress', 'on_hold', 'completed', 'cancelled'],
     default: 'planning'
   },
+  projectDate: {
+    type: Date,
+    default: Date.now
+  },
   startDate: Date,
   expectedEndDate: Date,
   actualEndDate: Date,

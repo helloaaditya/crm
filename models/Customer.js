@@ -45,12 +45,20 @@ const customerSchema = new mongoose.Schema({
   },
   leadStatus: {
     type: String,
-    enum: ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'],
+    enum: ['new', 'lead_attended', 'visited', 'quotation_sent', 'quotation_pending', 'in_progress', 'won', 'lost', 'no_information'],
     default: 'new'
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  leadFrom: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Employee'
+  },
+  leadDate: {
+    type: Date,
+    default: Date.now
   },
   notes: String,
   tags: [String],

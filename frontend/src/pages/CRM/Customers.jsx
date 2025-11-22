@@ -6,9 +6,13 @@ import CustomerModal from '../../components/Modals/CustomerModal'
 
 const Customers = () => {
   const [customers, setCustomers] = useState([])
+  const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [leadStatus, setLeadStatus] = useState('')
+  const [leadFrom, setLeadFrom] = useState('')
+  const [leadDateFrom, setLeadDateFrom] = useState('')
+  const [leadDateTo, setLeadDateTo] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
@@ -18,7 +22,11 @@ const Customers = () => {
 
   useEffect(() => {
     fetchCustomers()
-  }, [page, leadStatus])
+  }, [page, leadStatus, leadFrom, leadDateFrom, leadDateTo])
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
 
   // Listen for refresh event from Header
   useEffect(() => {
@@ -36,6 +44,9 @@ const Customers = () => {
       const params = { page, limit: 10 }
       if (search) params.search = search
       if (leadStatus) params.leadStatus = leadStatus
+      if (leadFrom) params.leadFrom = leadFrom
+      if (leadDateFrom) params.leadDateFrom = leadDateFrom
+      if (leadDateTo) params.leadDateTo = leadDateTo
 
       const response = await API.customers.getAll(params)
       setCustomers(response.data.data)
@@ -48,10 +59,28 @@ const Customers = () => {
     }
   }
 
+  const fetchEmployees = async () => {
+    try {
+      const response = await API.employees.getAll({ limit: 10000, page: 1 })
+      setEmployees(response.data.data || [])
+    } catch (error) {
+      console.error('Error fetching employees:', error)
+    }
+  }
+
   const handleSearch = (e) => {
     e.preventDefault()
     setPage(1)
     fetchCustomers()
+  }
+
+  const handleClearFilters = () => {
+    setSearch('')
+    setLeadStatus('')
+    setLeadFrom('')
+    setLeadDateFrom('')
+    setLeadDateTo('')
+    setPage(1)
   }
 
   const handleDelete = async (id) => {
@@ -218,33 +247,91 @@ const Customers = () => {
 
       {/* Search & Filter */}
       <div className="bg-white rounded-lg shadow p-4">
-        <form onSubmit={handleSearch} className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:space-x-4">
-          <div className="flex-1 relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search customers..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
-            />
-          </div>
-          <div className="flex space-x-2 sm:space-x-4">
-            <select 
-              value={leadStatus}
-              onChange={(e) => { setLeadStatus(e.target.value); setPage(1); }}
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
-            >
-              <option value="">All Status</option>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
-            </select>
+        <form onSubmit={handleSearch} className="space-y-4">
+          {/* Search Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 relative">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search customers..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
+              />
+            </div>
             <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base">
               Search
             </button>
+          </div>
+
+          {/* Filters Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Lead Status</label>
+              <select 
+                value={leadStatus}
+                onChange={(e) => { setLeadStatus(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              >
+                <option value="">All Status</option>
+                <option value="new">New</option>
+                <option value="lead_attended">Lead Attended</option>
+                <option value="visited">Visited</option>
+                <option value="quotation_sent">Quotation Sent</option>
+                <option value="quotation_pending">Quotation Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+                <option value="no_information">No Information</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Lead From (Employee)</label>
+              <select 
+                value={leadFrom}
+                onChange={(e) => { setLeadFrom(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              >
+                <option value="">All Employees</option>
+                {employees.map((employee) => (
+                  <option key={employee._id} value={employee._id}>
+                    {employee.name} {employee.employeeId ? `(${employee.employeeId})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+              <input
+                type="date"
+                value={leadDateFrom}
+                onChange={(e) => { setLeadDateFrom(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+              <input
+                type="date"
+                value={leadDateTo}
+                onChange={(e) => { setLeadDateTo(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm"
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -266,6 +353,8 @@ const Customers = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead From</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -277,14 +366,24 @@ const Customers = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.contactNumber}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.email || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {customer.leadFrom?.name || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {customer.leadDate ? new Date(customer.leadDate).toLocaleDateString() : 'N/A'}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           customer.leadStatus === 'won' ? 'bg-green-100 text-green-800' :
-                          customer.leadStatus === 'qualified' ? 'bg-blue-100 text-blue-800' :
+                          customer.leadStatus === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          customer.leadStatus === 'quotation_sent' ? 'bg-purple-100 text-purple-800' :
+                          customer.leadStatus === 'visited' ? 'bg-indigo-100 text-indigo-800' :
+                          customer.leadStatus === 'lead_attended' ? 'bg-cyan-100 text-cyan-800' :
                           customer.leadStatus === 'new' ? 'bg-yellow-100 text-yellow-800' :
+                          customer.leadStatus === 'lost' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {customer.leadStatus}
+                          {customer.leadStatus ? customer.leadStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -322,22 +421,34 @@ const Customers = () => {
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       customer.leadStatus === 'won' ? 'bg-green-100 text-green-800' :
-                      customer.leadStatus === 'qualified' ? 'bg-blue-100 text-blue-800' :
+                      customer.leadStatus === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                      customer.leadStatus === 'quotation_sent' ? 'bg-purple-100 text-purple-800' :
+                      customer.leadStatus === 'visited' ? 'bg-indigo-100 text-indigo-800' :
+                      customer.leadStatus === 'lead_attended' ? 'bg-cyan-100 text-cyan-800' :
                       customer.leadStatus === 'new' ? 'bg-yellow-100 text-yellow-800' :
+                      customer.leadStatus === 'lost' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {customer.leadStatus}
+                      {customer.leadStatus ? customer.leadStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'}
                     </span>
                   </div>
                   
                   <div className="space-y-2 mb-3">
                     <div className="flex items-center text-sm text-gray-600">
-                      <span className="font-medium w-16">Phone:</span>
+                      <span className="font-medium w-20">Phone:</span>
                       <span>{customer.contactNumber}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
-                      <span className="font-medium w-16">Email:</span>
+                      <span className="font-medium w-20">Email:</span>
                       <span className="truncate">{customer.email || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <span className="font-medium w-20">Lead From:</span>
+                      <span>{customer.leadFrom?.name || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <span className="font-medium w-20">Lead Date:</span>
+                      <span>{customer.leadDate ? new Date(customer.leadDate).toLocaleDateString() : 'N/A'}</span>
                     </div>
                   </div>
                   

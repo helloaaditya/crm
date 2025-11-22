@@ -6,7 +6,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 // @route   GET /api/customers
 // @access  Private
 export const getCustomers = asyncHandler(async (req, res) => {
-  const { search, leadStatus, page = 1, limit = 10 } = req.query;
+  const { search, leadStatus, leadFrom, leadDateFrom, leadDateTo, page = 1, limit = 10 } = req.query;
 
   // Build query
   let query = {};
@@ -23,9 +23,28 @@ export const getCustomers = asyncHandler(async (req, res) => {
     query.leadStatus = leadStatus;
   }
 
+  if (leadFrom) {
+    query.leadFrom = leadFrom;
+  }
+
+  // Date range filter for leadDate
+  if (leadDateFrom || leadDateTo) {
+    query.leadDate = {};
+    if (leadDateFrom) {
+      query.leadDate.$gte = new Date(leadDateFrom);
+    }
+    if (leadDateTo) {
+      // Set to end of day for inclusive range
+      const endDate = new Date(leadDateTo);
+      endDate.setHours(23, 59, 59, 999);
+      query.leadDate.$lte = endDate;
+    }
+  }
+
   // Execute query with pagination
   const customers = await Customer.find(query)
     .populate('assignedTo', 'name email')
+    .populate('leadFrom', 'name employeeId')
     .populate('createdBy', 'name')
     .sort({ createdAt: -1 })
     .limit(limit * 1)
@@ -48,6 +67,7 @@ export const getCustomers = asyncHandler(async (req, res) => {
 export const getCustomer = asyncHandler(async (req, res) => {
   const customer = await Customer.findById(req.params.id)
     .populate('assignedTo', 'name email phone')
+    .populate('leadFrom', 'name employeeId')
     .populate('createdBy', 'name');
 
   if (!customer) {

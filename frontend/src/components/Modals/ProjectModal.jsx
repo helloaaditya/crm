@@ -27,6 +27,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
       state: '',
       pincode: ''
     },
+    projectDate: new Date().toISOString().split('T')[0], // Default to today's date
     startDate: '',
     expectedEndDate: '',
     estimatedCost: '',
@@ -97,6 +98,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
           state: project.siteAddress?.state || '',
           pincode: project.siteAddress?.pincode || ''
         },
+        projectDate: project.projectDate ? new Date(project.projectDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         startDate: project.startDate?.split('T')[0] || '',
         expectedEndDate: project.expectedEndDate?.split('T')[0] || '',
         estimatedCost: project.estimatedCost || '',
@@ -124,6 +126,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
           state: '',
           pincode: ''
         },
+        projectDate: new Date().toISOString().split('T')[0], // Default to today's date
         startDate: '',
         expectedEndDate: '',
         estimatedCost: '',
@@ -142,10 +145,12 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
 
   const fetchCustomers = async () => {
     try {
-      const response = await API.customers.getAll({ limit: 100 })
+      // Fetch all customers with a high limit to get all records
+      const response = await API.customers.getAll({ limit: 10000, page: 1 })
       setCustomers(response.data.data)
     } catch (error) {
       console.error('Error fetching customers:', error)
+      toast.error('Failed to load customers')
     }
   }
 
@@ -419,6 +424,19 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
                 value={formData.estimatedCost}
                 onChange={handleChange}
                 min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Project Date
+              </label>
+              <input
+                type="date"
+                name="projectDate"
+                value={formData.projectDate}
+                onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>

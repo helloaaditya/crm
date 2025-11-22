@@ -4,6 +4,7 @@ import API from '../../api'
 import { toast } from 'react-toastify'
 
 const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
+  const [employees, setEmployees] = useState([])
   const [formData, setFormData] = useState({
     name: '',
     contactNumber: '',
@@ -18,10 +19,19 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
     callType: 'official',
     dataSource: 'other',
     leadStatus: 'new',
+    leadFrom: '',
+    leadDate: new Date().toISOString().split('T')[0], // Default to today's date
     notes: '',
     tags: ''
   })
   const [loading, setLoading] = useState(false)
+
+  // Fetch employees when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchEmployees()
+    }
+  }, [isOpen])
 
   // Load customer data when editing
   useEffect(() => {
@@ -40,6 +50,8 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
         callType: customer.callType || 'official',
         dataSource: customer.dataSource || 'other',
         leadStatus: customer.leadStatus || 'new',
+        leadFrom: customer.leadFrom?._id || customer.leadFrom || '',
+        leadDate: customer.leadDate ? new Date(customer.leadDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         notes: customer.notes || '',
         tags: customer.tags?.join(', ') || ''
       })
@@ -59,11 +71,24 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
         callType: 'official',
         dataSource: 'other',
         leadStatus: 'new',
+        leadFrom: '',
+        leadDate: new Date().toISOString().split('T')[0], // Default to today's date
         notes: '',
         tags: ''
       })
     }
   }, [customer, isOpen])
+
+  const fetchEmployees = async () => {
+    try {
+      // Fetch all employees with a high limit
+      const response = await API.employees.getAll({ limit: 10000, page: 1 })
+      setEmployees(response.data.data || [])
+    } catch (error) {
+      console.error('Error fetching employees:', error)
+      toast.error('Failed to load employees')
+    }
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -232,13 +257,47 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               >
                 <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="qualified">Qualified</option>
-                <option value="proposal">Proposal</option>
-                <option value="negotiation">Negotiation</option>
+                <option value="lead_attended">Lead Attended</option>
+                <option value="visited">Visited</option>
+                <option value="quotation_sent">Quotation Sent</option>
+                <option value="quotation_pending">Quotation Pending</option>
+                <option value="in_progress">In Progress</option>
                 <option value="won">Won</option>
                 <option value="lost">Lost</option>
+                <option value="no_information">No Information</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lead From
+              </label>
+              <select
+                name="leadFrom"
+                value={formData.leadFrom}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+              >
+                <option value="">Select Employee</option>
+                {employees.map((employee) => (
+                  <option key={employee._id} value={employee._id}>
+                    {employee.name} ({employee.employeeId || 'N/A'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lead Date
+              </label>
+              <input
+                type="date"
+                name="leadDate"
+                value={formData.leadDate}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+              />
             </div>
           </div>
 

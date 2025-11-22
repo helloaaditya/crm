@@ -305,6 +305,7 @@ const Projects = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cost</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -325,6 +326,9 @@ const Projects = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {project.projectType === 'new' ? 'New' : 'Rework'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {project.projectDate ? new Date(project.projectDate).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${
@@ -391,6 +395,10 @@ const Projects = () => {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Category:</span>
                       <span className="font-medium">{project.category.charAt(0).toUpperCase() + project.category.slice(1)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Project Date:</span>
+                      <span className="font-medium">{project.projectDate ? new Date(project.projectDate).toLocaleDateString() : 'N/A'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Type:</span>

@@ -87,10 +87,12 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
 
   const fetchCustomers = async () => {
     try {
-      const response = await API.customers.getAll({ limit: 100 })
+      // Fetch all customers with a high limit to get all records
+      const response = await API.customers.getAll({ limit: 10000, page: 1 })
       setCustomers(response.data.data)
     } catch (error) {
       console.error('Error fetching customers:', error)
+      toast.error('Failed to load customers')
     }
   }
 
@@ -105,11 +107,13 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
 
   const fetchProjects = async (customerId) => {
     try {
-      const response = await API.projects.getAll({ limit: 100 })
-      const customerProjects = response.data.data.filter(p => p.customer._id === customerId)
+      // Fetch all projects with a high limit to get all records
+      const response = await API.projects.getAll({ limit: 10000, page: 1 })
+      const customerProjects = response.data.data.filter(p => p.customer?._id === customerId)
       setProjects(customerProjects)
     } catch (error) {
       console.error('Error fetching projects:', error)
+      toast.error('Failed to load projects')
     }
   }
 
