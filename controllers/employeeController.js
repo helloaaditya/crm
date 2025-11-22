@@ -43,6 +43,32 @@ export const getEmployees = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get employees list for dropdowns (basic info only, accessible to all authenticated users)
+// @route   GET /api/employees/list
+// @access  Private (All authenticated users)
+export const getEmployeesList = asyncHandler(async (req, res) => {
+  const { search, limit = 10000 } = req.query;
+
+  let query = { isActive: true };
+
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { employeeId: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  const employees = await Employee.find(query)
+    .select('_id name employeeId') // Only return essential fields
+    .sort({ name: 1 })
+    .limit(limit * 1);
+
+  res.json({
+    success: true,
+    data: employees
+  });
+});
+
 // @desc    Get single employee
 // @route   GET /api/employees/:id
 // @access  Private

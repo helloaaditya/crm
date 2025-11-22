@@ -27,6 +27,7 @@ import {
   getEmployeeProjects,
   getEmployeesByRole,
   getSupervisorTeam,
+  getEmployeesList,
   getMyProfile,
   geocodeLocation,
   generateMyPayslip,
@@ -100,6 +101,9 @@ router.get('/my-reminders', getMyReminders);
 router.post('/my-reminder', createReminder);
 router.put('/my-reminder/:id', updateReminder);
 router.delete('/my-reminders/reset', resetMyReminders);
+
+// Get employees list for dropdowns (accessible to all authenticated users)
+router.get('/list', getEmployeesList);
 
 // Get employees by role (needed for project assignment)
 router.get('/by-role/:role', getEmployeesByRole);

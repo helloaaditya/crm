@@ -84,12 +84,20 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
 
   const fetchEmployees = async () => {
     try {
-      // Fetch all employees with a high limit
-      const response = await API.employees.getAll({ limit: 10000, page: 1 })
-      setEmployees(response.data.data || [])
+      // Use getList endpoint which is accessible to all authenticated users
+      // Falls back to getAll if getList fails (for backward compatibility)
+      try {
+        const response = await API.employees.getList({ limit: 10000 })
+        setEmployees(response.data.data || [])
+      } catch (listError) {
+        // Fallback to getAll if getList is not available
+        const response = await API.employees.getAll({ limit: 10000, page: 1 })
+        setEmployees(response.data.data || [])
+      }
     } catch (error) {
       console.error('Error fetching employees:', error)
-      toast.error('Failed to load employees')
+      // Don't show error toast - just log it, as this is not critical for the form
+      // Employees dropdown will just be empty
     }
   }
 

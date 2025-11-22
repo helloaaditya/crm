@@ -113,6 +113,7 @@ export const machineryAPI = {
 // ============= EMPLOYEES =============
 export const employeeAPI = {
   getAll: (params) => api.get('/employees', { params }),
+  getList: (params) => api.get('/employees/list', { params }), // Basic list for dropdowns (accessible to all)
   getById: (id) => api.get(`/employees/${id}`),
   getByRole: (role) => api.get(`/employees/by-role/${role}`),
   getProjects: (id) => api.get(`/employees/${id}/projects`),
