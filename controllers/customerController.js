@@ -45,6 +45,7 @@ export const getCustomers = asyncHandler(async (req, res) => {
   const customers = await Customer.find(query)
     .populate('assignedTo', 'name email')
     .populate('leadFrom', 'name employeeId')
+    .populate('followUpPerson', 'name employeeId')
     .populate('createdBy', 'name')
     .sort({ createdAt: -1 })
     .limit(limit * 1)
@@ -68,6 +69,7 @@ export const getCustomer = asyncHandler(async (req, res) => {
   const customer = await Customer.findById(req.params.id)
     .populate('assignedTo', 'name email phone')
     .populate('leadFrom', 'name employeeId')
+    .populate('followUpPerson', 'name employeeId')
     .populate('createdBy', 'name');
 
   if (!customer) {
@@ -94,6 +96,9 @@ export const createCustomer = asyncHandler(async (req, res) => {
     dataSource,
     leadStatus,
     assignedTo,
+    leadFrom,
+    leadDate,
+    followUpPerson,
     notes,
     tags
   } = req.body;
@@ -114,6 +119,9 @@ export const createCustomer = asyncHandler(async (req, res) => {
     dataSource,
     leadStatus,
     assignedTo,
+    leadFrom,
+    leadDate: leadDate ? new Date(leadDate) : undefined,
+    followUpPerson,
     notes,
     tags,
     createdBy: req.user._id

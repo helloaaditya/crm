@@ -60,6 +60,10 @@ const customerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  followUpPerson: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Employee'
+  },
   notes: String,
   tags: [String],
   createdBy: {

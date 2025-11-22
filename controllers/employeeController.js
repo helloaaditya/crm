@@ -1477,6 +1477,7 @@ export const getMyLeads = asyncHandler(async (req, res) => {
   const customers = await Customer.find(query)
     .populate('assignedTo', 'name email')
     .populate('leadFrom', 'name employeeId')
+    .populate('followUpPerson', 'name employeeId')
     .populate('createdBy', 'name')
     .sort({ createdAt: -1 })
     .limit(limit * 1)
@@ -1514,6 +1515,7 @@ export const createMyLead = asyncHandler(async (req, res) => {
     dataSource,
     leadStatus,
     leadDate,
+    followUpPerson,
     notes,
     tags
   } = req.body;
@@ -1536,13 +1538,15 @@ export const createMyLead = asyncHandler(async (req, res) => {
     leadStatus: leadStatus || 'new',
     leadFrom: employee._id, // Automatically set to current employee
     leadDate: leadDate ? new Date(leadDate) : new Date(),
+    followUpPerson,
     notes,
     tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(t => t)) : [],
     createdBy: req.user._id
   });
 
-  // Populate leadFrom for response
+  // Populate fields for response
   await customer.populate('leadFrom', 'name employeeId');
+  await customer.populate('followUpPerson', 'name employeeId');
 
   res.status(201).json({
     success: true,
@@ -1580,6 +1584,7 @@ export const updateMyLead = asyncHandler(async (req, res) => {
     { new: true, runValidators: true }
   )
     .populate('leadFrom', 'name employeeId')
+    .populate('followUpPerson', 'name employeeId')
     .populate('assignedTo', 'name email')
     .populate('createdBy', 'name');
 

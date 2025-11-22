@@ -23,6 +23,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
     leadStatus: 'new',
     leadFrom: '',
     leadDate: new Date().toISOString().split('T')[0], // Default to today's date
+    followUpPerson: '',
     notes: '',
     tags: ''
   })
@@ -54,6 +55,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
         leadStatus: customer.leadStatus || 'new',
         leadFrom: customer.leadFrom?._id || customer.leadFrom || '',
         leadDate: customer.leadDate ? new Date(customer.leadDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        followUpPerson: customer.followUpPerson?._id || customer.followUpPerson || '',
         notes: customer.notes || '',
         tags: customer.tags?.join(', ') || ''
       })
@@ -76,6 +78,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
         leadStatus: 'new',
         leadFrom: customer?.leadFrom || '',
         leadDate: customer?.leadDate || new Date().toISOString().split('T')[0], // Default to today's date
+        followUpPerson: customer?.followUpPerson || '',
         notes: '',
         tags: ''
       })
@@ -347,6 +350,25 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Follow Up Person
+              </label>
+              <select
+                name="followUpPerson"
+                value={formData.followUpPerson}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+              >
+                <option value="">Select Employee</option>
+                {employees.map((employee) => (
+                  <option key={employee._id} value={employee._id}>
+                    {employee.name} ({employee.employeeId || 'N/A'})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
