@@ -96,6 +96,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
       }
     } catch (error) {
       console.error('Error fetching employees:', error)
+      toast.error('Failed to fetch employees')
       // Don't show error toast - just log it, as this is not critical for the form
       // Employees dropdown will just be empty
     }
