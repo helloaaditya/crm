@@ -464,7 +464,7 @@ const Expenses = () => {
   })
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
         <div>
@@ -484,37 +484,37 @@ const Expenses = () => {
       
       {/* Available Funds Box (Admin Only) */}
       {hasExpenseAccess && (
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-6 mb-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90 mb-1">Available Funds</p>
-              <p className="text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-4 sm:p-6 mb-6 text-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm opacity-90 mb-1">Available Funds</p>
+              <p className="text-2xl sm:text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
               <p className="text-xs opacity-75 mt-1">Auto-deducted when expenses are paid</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
                   setShowFundHistory(true)
                   fetchFundHistory()
                 }}
-                className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+                className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm"
               >
-                <FiClock className="mr-2" />
-                History
+                <FiClock className="mr-1 sm:mr-2" size={16} />
+                <span className="hidden sm:inline">History</span>
               </button>
               <button
                 onClick={openEditFundModal}
-                className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+                className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm"
                 title="Edit/Adjust Funds"
               >
-                <FiEdit className="mr-2" />
-                Edit
+                <FiEdit className="mr-1 sm:mr-2" size={16} />
+                <span className="hidden sm:inline">Edit</span>
               </button>
               <button
                 onClick={() => setShowFundModal(true)}
-                className="flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition"
+                className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition text-sm"
               >
-                <FiPlus className="mr-2" />
+                <FiPlus className="mr-1 sm:mr-2" size={16} />
                 Add Funds
               </button>
             </div>
@@ -524,26 +524,26 @@ const Expenses = () => {
 
       {/* Statistics (Admin Only) */}
       {hasExpenseAccess && stats && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Total Expenses</p>
-            <p className="text-2xl font-bold text-gray-800">{stats.totalExpenses}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <p className="text-xs sm:text-sm text-gray-600">Total Expenses</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-800">{stats.totalExpenses}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600">{stats.pendingExpenses}</p>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <p className="text-xs sm:text-sm text-gray-600">Pending</p>
+            <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.pendingExpenses}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Approved</p>
-            <p className="text-2xl font-bold text-green-600">{stats.approvedExpenses}</p>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <p className="text-xs sm:text-sm text-gray-600">Approved</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.approvedExpenses}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Paid</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.paidExpenses}</p>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <p className="text-xs sm:text-sm text-gray-600">Paid</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats.paidExpenses}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Total Amount</p>
-            <p className="text-2xl font-bold text-purple-600">₹{stats.totalAmount?.total?.toLocaleString() || 0}</p>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 col-span-2 sm:col-span-1">
+            <p className="text-xs sm:text-sm text-gray-600">Total Amount</p>
+            <p className="text-xl sm:text-2xl font-bold text-purple-600">₹{stats.totalAmount?.total?.toLocaleString() || 0}</p>
           </div>
         </div>
       )}
@@ -690,22 +690,22 @@ const Expenses = () => {
       
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="Search expenses..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm sm:text-base"
             />
           </div>
           
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border rounded-lg"
+            className="px-3 sm:px-4 py-2 border rounded-lg text-sm sm:text-base"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -717,7 +717,7 @@ const Expenses = () => {
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-4 py-2 border rounded-lg"
+            className="px-3 sm:px-4 py-2 border rounded-lg text-sm sm:text-base"
           >
             <option value="all">All Categories</option>
             {categories.map(cat => (
@@ -735,102 +735,185 @@ const Expenses = () => {
           </h2>
         </div>
         
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
-            <p className="text-center text-gray-600">Loading...</p>
+            <p className="text-center text-gray-600 py-8">Loading...</p>
           ) : filteredExpenses.length === 0 ? (
             <div className="text-center py-12">
               <FiCreditCard className="mx-auto text-gray-400 mb-4" size={48} />
               <p className="text-gray-600">No expenses found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-4">Expense ID</th>
-                    {hasExpenseAccess && <th className="text-left py-3 px-4">Employee</th>}
-                    <th className="text-left py-3 px-4">Category</th>
-                    <th className="text-left py-3 px-4">Description</th>
-                    <th className="text-left py-3 px-4">Amount</th>
-                    <th className="text-left py-3 px-4">Date</th>
-                    <th className="text-left py-3 px-4">Status</th>
-                    <th className="text-left py-3 px-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredExpenses.map((expense) => (
-                    <tr key={expense._id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 font-medium text-gray-900">{expense.expenseId}</td>
-                      {hasExpenseAccess && (
+            <>
+              {/* Desktop Table */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Expense ID</th>
+                      {hasExpenseAccess && <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Employee</th>}
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Category</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Description</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Amount</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Date</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Status</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredExpenses.map((expense) => (
+                      <tr key={expense._id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4 font-medium text-gray-900 text-sm">{expense.expenseId}</td>
+                        {hasExpenseAccess && (
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{expense.employee?.name}</p>
+                              <p className="text-xs text-gray-500">{expense.employee?.employeeId}</p>
+                            </div>
+                          </td>
+                        )}
                         <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium text-gray-900">{expense.employee?.name}</p>
-                            <p className="text-sm text-gray-500">{expense.employee?.employeeId}</p>
+                          <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 capitalize">
+                            {expense.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 max-w-xs truncate text-sm">{expense.description}</td>
+                        <td className="py-3 px-4 font-semibold text-gray-900 text-sm">
+                          ₹{expense.amount?.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {new Date(expense.expenseDate).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(expense.status)}`}>
+                            {expense.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setViewModal(expense)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                              title="View Details"
+                            >
+                              <FiEye size={16} />
+                            </button>
+                            
+                            {hasExpenseAccess && expense.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => openApprovalModal(expense)}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded"
+                                  title="Approve"
+                                >
+                                  <FiCheck size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleReject(expense._id)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded"
+                                  title="Reject"
+                                >
+                                  <FiX size={16} />
+                                </button>
+                              </>
+                            )}
+                            
+                            {hasExpenseAccess && expense.status === 'approved' && expense.paymentStatus === 'unpaid' && (
+                              <button
+                                onClick={() => openPaymentModal(expense)}
+                                className="px-3 py-1 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                Pay
+                              </button>
+                            )}
                           </div>
                         </td>
-                      )}
-                      <td className="py-3 px-4">
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="lg:hidden space-y-4">
+                {filteredExpenses.map((expense) => (
+                  <div key={expense._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900 text-sm">{expense.expenseId}</p>
+                        {hasExpenseAccess && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {expense.employee?.name} ({expense.employee?.employeeId})
+                          </p>
+                        )}
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(expense.status)}`}>
+                        {expense.status}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600">Category:</span>
                         <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 capitalize">
                           {expense.category}
                         </span>
-                      </td>
-                      <td className="py-3 px-4 max-w-xs truncate">{expense.description}</td>
-                      <td className="py-3 px-4 font-semibold text-gray-900">
-                        ₹{expense.amount?.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        {new Date(expense.expenseDate).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(expense.status)}`}>
-                          {expense.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600">Amount:</span>
+                        <span className="font-semibold text-gray-900">₹{expense.amount?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600">Date:</span>
+                        <span className="text-sm text-gray-900">{new Date(expense.expenseDate).toLocaleDateString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-600 block mb-1">Description:</span>
+                        <p className="text-sm text-gray-900">{expense.description}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+                      <button
+                        onClick={() => setViewModal(expense)}
+                        className="flex-1 flex items-center justify-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm"
+                      >
+                        <FiEye className="mr-1" size={16} />
+                        View
+                      </button>
+                      
+                      {hasExpenseAccess && expense.status === 'pending' && (
+                        <>
                           <button
-                            onClick={() => setViewModal(expense)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                            title="View Details"
+                            onClick={() => openApprovalModal(expense)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg text-sm"
                           >
-                            <FiEye size={16} />
+                            <FiCheck className="mr-1" size={16} />
+                            Approve
                           </button>
-                          
-                          {hasExpenseAccess && expense.status === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => openApprovalModal(expense)}
-                                className="p-2 text-green-600 hover:bg-green-50 rounded"
-                                title="Approve"
-                              >
-                                <FiCheck size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleReject(expense._id)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded"
-                                title="Reject"
-                              >
-                                <FiX size={16} />
-                              </button>
-                            </>
-                          )}
-                          
-                          {hasExpenseAccess && expense.status === 'approved' && expense.paymentStatus === 'unpaid' && (
-                            <button
-                              onClick={() => openPaymentModal(expense)}
-                              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                            >
-                              Pay
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <button
+                            onClick={() => handleReject(expense._id)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm"
+                          >
+                            <FiX className="mr-1" size={16} />
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      
+                      {hasExpenseAccess && expense.status === 'approved' && expense.paymentStatus === 'unpaid' && (
+                        <button
+                          onClick={() => openPaymentModal(expense)}
+                          className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                        >
+                          Pay
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -838,16 +921,16 @@ const Expenses = () => {
       {/* Submit Expense Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
-              <h2 className="text-xl font-semibold text-gray-800">Submit New Expense</h2>
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center sticky top-0 bg-white">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Submit New Expense</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
                 <FiX size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category <span className="text-red-500">*</span>
@@ -995,16 +1078,16 @@ const Expenses = () => {
       {/* View Details Modal */}
       {viewModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
-              <h2 className="text-xl font-semibold text-gray-800">Expense Details</h2>
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center sticky top-0 bg-white">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Expense Details</h2>
               <button onClick={() => setViewModal(null)} className="text-gray-500 hover:text-gray-700">
                 <FiX size={24} />
               </button>
             </div>
             
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Expense ID</p>
                   <p className="font-semibold text-gray-900">{viewModal.expenseId}</p>
@@ -1046,7 +1129,7 @@ const Expenses = () => {
               {viewModal.documents && viewModal.documents.length > 0 && (
                 <div>
                   <p className="text-sm text-gray-600 mb-2">Attachments ({viewModal.documents.length})</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {viewModal.documents.map((url, idx) => (
                       <a
                         key={idx}
@@ -1072,9 +1155,9 @@ const Expenses = () => {
               
               {/* Bank Details for Payment Processing (Admin Only) */}
               {hasExpenseAccess && viewModal.employee?.bankDetails?.accountNumber && (
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-3">💳 Payment Information</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm font-semibold text-gray-800 mb-3">💳 Payment Information</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
                     <div>
                       <p className="text-gray-600">Account Holder</p>
                       <p className="font-semibold text-gray-900">{viewModal.employee.bankDetails.accountHolderName || viewModal.employee.name}</p>
@@ -1115,9 +1198,9 @@ const Expenses = () => {
               )}
               
               {viewModal.status === 'paid' && (
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-sm font-medium text-green-800 mb-2">Payment Details</p>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
+                  <p className="text-xs sm:text-sm font-medium text-green-800 mb-2">Payment Details</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                     <div>
                       <span className="text-green-700">Paid Amount:</span>
                       <span className="font-semibold ml-2">₹{viewModal.paidAmount?.toLocaleString()}</span>
@@ -1147,15 +1230,15 @@ const Expenses = () => {
       {/* Approval Modal */}
       {approvalModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-800">Approve Expense</h2>
-              <p className="text-sm text-gray-600 mt-1">
+          <div className="bg-white rounded-lg w-full max-w-lg mobile-modal">
+            <div className="p-4 sm:p-6 border-b">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Approve Expense</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
                 Expense ID: {approvalModal.expenseId} - {approvalModal.employee?.name}
               </p>
             </div>
             
-            <form onSubmit={handleApprove} className="p-6 space-y-4">
+            <form onSubmit={handleApprove} className="p-4 sm:p-6 space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-xs text-blue-800">
                   <strong>Category:</strong> {approvalModal.category} • 
@@ -1223,15 +1306,15 @@ const Expenses = () => {
       {/* Payment Modal */}
       {paymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-800">Process Payment</h2>
-              <p className="text-sm text-gray-600 mt-1">
+          <div className="bg-white rounded-lg w-full max-w-lg mobile-modal">
+            <div className="p-4 sm:p-6 border-b">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Process Payment</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
                 Expense ID: {paymentModal.expenseId} - {paymentModal.employee?.name}
               </p>
             </div>
             
-            <form onSubmit={handlePay} className="p-6 space-y-4">
+            <form onSubmit={handlePay} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Payment Amount (₹) <span className="text-red-500">*</span>
@@ -1318,15 +1401,15 @@ const Expenses = () => {
       {/* Add Funds Modal */}
       {showFundModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">Add Funds</h2>
+          <div className="bg-white rounded-lg w-full max-w-lg mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Add Funds</h2>
               <button onClick={() => setShowFundModal(false)} className="text-gray-500 hover:text-gray-700">
                 <FiX size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleAddFunds} className="p-6 space-y-4">
+            <form onSubmit={handleAddFunds} className="p-4 sm:p-6 space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <p className="text-sm text-green-800">
                   <strong>Current Balance:</strong> ₹{availableFunds.toLocaleString('en-IN')}
@@ -1416,15 +1499,15 @@ const Expenses = () => {
       {/* Edit Funds Modal */}
       {showEditFundModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">Edit/Adjust Funds</h2>
+          <div className="bg-white rounded-lg w-full max-w-lg mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Edit/Adjust Funds</h2>
               <button onClick={() => setShowEditFundModal(false)} className="text-gray-500 hover:text-gray-700">
                 <FiX size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleEditFunds} className="p-6 space-y-4">
+            <form onSubmit={handleEditFunds} className="p-4 sm:p-6 space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
                   <strong>Current Balance:</strong> ₹{availableFunds.toLocaleString('en-IN')}
@@ -1517,11 +1600,11 @@ const Expenses = () => {
       {/* Fund History Modal */}
       {showFundHistory && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sticky top-0 bg-white">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">Fund Transaction History</h2>
-                <p className="text-sm text-gray-600 mt-1">Complete log of all fund transactions</p>
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Fund Transaction History</h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">Complete log of all fund transactions</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1540,7 +1623,7 @@ const Expenses = () => {
               </div>
             </div>
             
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {fundHistory.length === 0 ? (
                 <div className="text-center py-12">
                   <FiClock className="mx-auto text-gray-400 mb-4" size={48} />
@@ -1557,9 +1640,9 @@ const Expenses = () => {
                           : 'border-red-500 bg-red-50'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span
                               className={`px-2 py-1 text-xs font-semibold rounded ${
                                 transaction.transactionType === 'credit'
@@ -1569,11 +1652,11 @@ const Expenses = () => {
                             >
                               {transaction.transactionType === 'credit' ? 'CREDIT' : 'DEBIT'}
                             </span>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-xs sm:text-sm text-gray-600">
                               {new Date(transaction.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <p className="font-semibold text-gray-900 mb-1">{transaction.description}</p>
+                          <p className="font-semibold text-sm sm:text-base text-gray-900 mb-1">{transaction.description}</p>
                           {transaction.referenceType === 'expense' && transaction.referenceId && (
                             <p className="text-xs text-gray-600 mb-1">
                               Expense: {typeof transaction.referenceId === 'object' && transaction.referenceId.expenseId 
@@ -1595,9 +1678,9 @@ const Expenses = () => {
                             </p>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                           <p
-                            className={`text-lg font-bold ${
+                            className={`text-base sm:text-lg font-bold ${
                               transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
                             }`}
                           >
@@ -1621,11 +1704,11 @@ const Expenses = () => {
       {/* Employee Fund History Modal */}
       {showHistoryModal && selectedEmployeeHistory && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sticky top-0 bg-white">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">Fund Transaction History</h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Fund Transaction History</h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">
                   {selectedEmployeeHistory.name} ({selectedEmployeeHistory.employeeId})
                 </p>
               </div>
@@ -1651,7 +1734,7 @@ const Expenses = () => {
               </div>
             </div>
             
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {employeeFundHistory.length === 0 ? (
                 <div className="text-center py-12">
                   <FiClock className="mx-auto text-gray-400 mb-4" size={48} />
@@ -1662,15 +1745,15 @@ const Expenses = () => {
                   {employeeFundHistory.map((transaction, idx) => (
                     <div
                       key={idx}
-                      className={`border-l-4 rounded-lg p-4 ${
+                      className={`border-l-4 rounded-lg p-3 sm:p-4 ${
                         transaction.transactionType === 'credit'
                           ? 'border-green-500 bg-green-50'
                           : 'border-red-500 bg-red-50'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span
                               className={`px-2 py-1 text-xs font-semibold rounded ${
                                 transaction.transactionType === 'credit'
@@ -1680,11 +1763,11 @@ const Expenses = () => {
                             >
                               {transaction.transactionType === 'credit' ? 'CREDIT' : 'DEBIT'}
                             </span>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-xs sm:text-sm text-gray-600">
                               {new Date(transaction.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <p className="font-semibold text-gray-900 mb-1">{transaction.description}</p>
+                          <p className="font-semibold text-sm sm:text-base text-gray-900 mb-1">{transaction.description}</p>
                           {transaction.referenceType === 'expense' && transaction.referenceId && (
                             <p className="text-xs text-gray-600 mb-1">
                               Expense: {typeof transaction.referenceId === 'object' && transaction.referenceId.expenseId 
@@ -1706,9 +1789,9 @@ const Expenses = () => {
                             </p>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                           <p
-                            className={`text-lg font-bold ${
+                            className={`text-base sm:text-lg font-bold ${
                               transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
                             }`}
                           >
