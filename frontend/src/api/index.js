@@ -306,6 +306,7 @@ export const fundAPI = {
   deductFunds: (data) => api.post('/funds/deduct', data),
   getHistory: (params) => api.get('/funds/history', { params }),
   getStats: (params) => api.get('/funds/stats', { params }),
+  deleteTransaction: (id) => api.delete(`/funds/history/${id}`),
   
   // Employee funds (my)
   getMyFunds: () => api.get('/funds/employee/my'),
@@ -318,7 +319,9 @@ export const fundAPI = {
   // Employee funds (admin - specific employee)
   getEmployeeFunds: (employeeId) => api.get(`/funds/employee/${employeeId}`),
   addEmployeeFunds: (employeeId, data) => api.post(`/funds/employee/${employeeId}/add`, data),
-  getEmployeeFundHistory: (employeeId, params) => api.get(`/funds/employee/${employeeId}/history`, { params })
+  getEmployeeFundHistory: (employeeId, params) => api.get(`/funds/employee/${employeeId}/history`, { params }),
+  deleteEmployeeTransaction: (employeeId, id) => api.delete(`/funds/employee/${employeeId}/history/${id}`),
+  deleteMyTransaction: (id) => api.delete(`/funds/employee/my/history/${id}`)
 };
 
 // ============= LOCATION TRACKING =============

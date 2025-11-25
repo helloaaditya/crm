@@ -40,8 +40,8 @@ const customerSchema = new mongoose.Schema({
   },
   dataSource: {
     type: String,
-    enum: ['website', 'referral', 'cold_call', 'social_media', 'existing_customer', 'other'],
-    default: 'other'
+    enum: ['just_dial', 'google', 'old_cust', 'website', 'referral', 'others'],
+    default: 'others'
   },
   leadStatus: {
     type: String,

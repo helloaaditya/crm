@@ -19,7 +19,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
       pincode: ''
     },
     callType: 'official',
-    dataSource: 'other',
+    dataSource: 'others',
     leadStatus: 'new',
     leadFrom: '',
     leadDate: new Date().toISOString().split('T')[0], // Default to today's date
@@ -74,7 +74,7 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
           pincode: ''
         },
         callType: 'official',
-        dataSource: 'other',
+        dataSource: 'others',
         leadStatus: 'new',
         leadFrom: customer?.leadFrom || '',
         leadDate: customer?.leadDate || new Date().toISOString().split('T')[0], // Default to today's date
@@ -297,12 +297,12 @@ const CustomerModal = ({ isOpen, onClose, onSuccess, customer = null }) => {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
               >
+                <option value="just_dial">Just Dial</option>
+                <option value="google">Google</option>
+                <option value="old_cust">Old Cust</option>
                 <option value="website">Website</option>
                 <option value="referral">Referral</option>
-                <option value="cold_call">Cold Call</option>
-                <option value="social_media">Social Media</option>
-                <option value="existing_customer">Existing Customer</option>
-                <option value="other">Other</option>
+                <option value="others">Others</option>
               </select>
             </div>
 

@@ -472,6 +472,129 @@ export const addFundsToEmployee = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Delete fund transaction (company funds)
+// @route   DELETE /api/funds/history/:id
+// @access  Private (expense module + canHandleAccounts)
+export const deleteFundTransaction = asyncHandler(async (req, res) => {
+  const transaction = await FundHistory.findById(req.params.id);
+  
+  if (!transaction) {
+    return res.status(404).json({ message: 'Transaction not found' });
+  }
+  
+  // Only allow deletion of manual transactions (not expense-related)
+  if (transaction.referenceType === 'expense') {
+    return res.status(400).json({ 
+      message: 'Cannot delete expense-related transactions. Delete the expense instead.' 
+    });
+  }
+  
+  const fund = await Fund.getFund();
+  const transactionAmount = transaction.amount;
+  const transactionType = transaction.transactionType;
+  
+  // Reverse the transaction
+  if (transactionType === 'credit') {
+    // If it was a credit, deduct it
+    if (fund.availableFunds < transactionAmount) {
+      return res.status(400).json({ 
+        message: 'Cannot delete transaction. Insufficient funds to reverse.' 
+      });
+    }
+    fund.availableFunds -= transactionAmount;
+  } else {
+    // If it was a debit, add it back
+    fund.availableFunds += transactionAmount;
+  }
+  
+  fund.lastUpdated = new Date();
+  fund.lastUpdatedBy = req.user._id;
+  await fund.save();
+  
+  // Delete the transaction
+  await FundHistory.findByIdAndDelete(req.params.id);
+  
+  res.json({
+    success: true,
+    message: 'Transaction deleted successfully',
+    data: {
+      previousBalance: transaction.balanceAfter,
+      newBalance: fund.availableFunds,
+      deletedAmount: transactionAmount,
+      transactionType
+    }
+  });
+});
+
+// @desc    Delete employee fund transaction
+// @route   DELETE /api/funds/employee/:employeeId/history/:id
+// @route   DELETE /api/funds/employee/my/history/:id
+// @access  Private (expense module + canHandleAccounts)
+export const deleteEmployeeFundTransaction = asyncHandler(async (req, res) => {
+  let employeeId = req.params.employeeId;
+  
+  // If route is /my, get employee from logged-in user
+  if (req.path.includes('/my')) {
+    const employee = await Employee.findOne({ userId: req.user._id });
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee record not found' });
+    }
+    employeeId = employee._id;
+  }
+  
+  const transaction = await EmployeeFundHistory.findOne({
+    _id: req.params.id,
+    employee: employeeId
+  });
+  
+  if (!transaction) {
+    return res.status(404).json({ message: 'Transaction not found' });
+  }
+  
+  // Only allow deletion of manual transactions (not expense-related)
+  if (transaction.referenceType === 'expense') {
+    return res.status(400).json({ 
+      message: 'Cannot delete expense-related transactions. Delete the expense instead.' 
+    });
+  }
+  
+  const fund = await EmployeeFund.getOrCreateFund(employeeId);
+  const transactionAmount = transaction.amount;
+  const transactionType = transaction.transactionType;
+  
+  // Reverse the transaction
+  if (transactionType === 'credit') {
+    // If it was a credit, deduct it
+    if (fund.availableFunds < transactionAmount) {
+      return res.status(400).json({ 
+        message: 'Cannot delete transaction. Insufficient funds to reverse.' 
+      });
+    }
+    fund.availableFunds -= transactionAmount;
+  } else {
+    // If it was a debit, add it back
+    fund.availableFunds += transactionAmount;
+  }
+  
+  fund.lastUpdated = new Date();
+  fund.lastUpdatedBy = req.user._id;
+  await fund.save();
+  
+  // Delete the transaction
+  await EmployeeFundHistory.findByIdAndDelete(req.params.id);
+  
+  res.json({
+    success: true,
+    message: 'Transaction deleted successfully',
+    data: {
+      previousBalance: transaction.balanceAfter,
+      newBalance: fund.availableFunds,
+      deletedAmount: transactionAmount,
+      transactionType
+    }
+  });
+});
+
 // Helper function to deduct from employee funds (used by expense controller)
 export const deductEmployeeFunds = async (employeeId, amount, expenseId, userId, paymentMode, transactionReference, remarks) => {
   const fund = await EmployeeFund.getOrCreateFund(employeeId);
@@ -522,11 +645,13 @@ export default {
   getFundHistory,
   getFundStats,
   deductFunds,
+  deleteFundTransaction,
   getEmployeeFunds,
   addEmployeeFunds,
   getEmployeeFundHistory,
   getAllEmployeesFunds,
   addFundsToEmployee,
-  deductEmployeeFunds
+  deductEmployeeFunds,
+  deleteEmployeeFundTransaction
 };
 

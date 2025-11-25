@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiCreditCard, FiPlus, FiCheck, FiX, FiDollarSign, FiSearch, FiFilter, FiFileText, FiUpload, FiDownload, FiEye, FiTrendingUp, FiClock, FiRefreshCw, FiEdit } from 'react-icons/fi'
+import { FiCreditCard, FiPlus, FiCheck, FiX, FiDollarSign, FiSearch, FiFilter, FiFileText, FiUpload, FiDownload, FiEye, FiTrendingUp, FiClock, FiRefreshCw, FiEdit, FiTrash2 } from 'react-icons/fi'
 import API from '../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
@@ -1678,18 +1678,40 @@ const Expenses = () => {
                             </p>
                           )}
                         </div>
-                        <div className="text-left sm:text-right">
-                          <p
-                            className={`text-base sm:text-lg font-bold ${
-                              transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {transaction.transactionType === 'credit' ? '+' : '-'}₹
-                            {transaction.amount.toLocaleString('en-IN')}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            Balance: ₹{transaction.balanceAfter.toLocaleString('en-IN')}
-                          </p>
+                        <div className="text-left sm:text-right flex flex-col sm:flex-row sm:items-end gap-2">
+                          <div>
+                            <p
+                              className={`text-base sm:text-lg font-bold ${
+                                transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              {transaction.transactionType === 'credit' ? '+' : '-'}₹
+                              {transaction.amount.toLocaleString('en-IN')}
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Balance: ₹{transaction.balanceAfter.toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                          {transaction.referenceType !== 'expense' && hasExpenseAccess && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+                                  try {
+                                    await API.funds.deleteTransaction(transaction._id)
+                                    toast.success('Transaction deleted successfully')
+                                    fetchFundHistory()
+                                    fetchFunds()
+                                  } catch (error) {
+                                    toast.error(error.response?.data?.message || 'Failed to delete transaction')
+                                  }
+                                }
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                              title="Delete transaction"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1789,17 +1811,40 @@ const Expenses = () => {
                             </p>
                           )}
                         </div>
-                        <div className="text-left sm:text-right">
-                          <p
-                            className={`text-base sm:text-lg font-bold ${
-                              transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {transaction.transactionType === 'credit' ? '+' : '-'}₹{transaction.amount?.toLocaleString('en-IN')}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Balance: ₹{transaction.balanceAfter?.toLocaleString('en-IN')}
-                          </p>
+                        <div className="text-left sm:text-right flex flex-col sm:flex-row sm:items-end gap-2">
+                          <div>
+                            <p
+                              className={`text-base sm:text-lg font-bold ${
+                                transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              {transaction.transactionType === 'credit' ? '+' : '-'}₹{transaction.amount?.toLocaleString('en-IN')}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Balance: ₹{transaction.balanceAfter?.toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                          {transaction.referenceType !== 'expense' && hasExpenseAccess && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+                                  try {
+                                    await API.funds.deleteEmployeeTransaction(selectedEmployeeHistory._id, transaction._id)
+                                    toast.success('Transaction deleted successfully')
+                                    const response = await API.funds.getEmployeeFundHistory(selectedEmployeeHistory._id, { limit: 100 })
+                                    setEmployeeFundHistory(response.data.data || [])
+                                    fetchAllEmployeesFunds()
+                                  } catch (error) {
+                                    toast.error(error.response?.data?.message || 'Failed to delete transaction')
+                                  }
+                                }
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                              title="Delete transaction"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
