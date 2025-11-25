@@ -40,6 +40,13 @@ const Expenses = () => {
   const [selectedEmployeeForFund, setSelectedEmployeeForFund] = useState(null)
   const [selectedEmployeeHistory, setSelectedEmployeeHistory] = useState(null)
   const [employeeFundHistory, setEmployeeFundHistory] = useState([])
+  const [editingTransaction, setEditingTransaction] = useState(null)
+  const [editTransactionData, setEditTransactionData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
   const [employeeFundData, setEmployeeFundData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
@@ -1693,24 +1700,41 @@ const Expenses = () => {
                             </p>
                           </div>
                           {transaction.referenceType !== 'expense' && hasExpenseAccess && (
-                            <button
-                              onClick={async () => {
-                                if (window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
-                                  try {
-                                    await API.funds.deleteTransaction(transaction._id)
-                                    toast.success('Transaction deleted successfully')
-                                    fetchFundHistory()
-                                    fetchFunds()
-                                  } catch (error) {
-                                    toast.error(error.response?.data?.message || 'Failed to delete transaction')
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingTransaction({ ...transaction, type: 'company' })
+                                  setEditTransactionData({
+                                    amount: transaction.amount.toString(),
+                                    paymentMode: transaction.paymentMode || 'bank_transfer',
+                                    transactionReference: transaction.transactionReference || '',
+                                    remarks: transaction.remarks || ''
+                                  })
+                                }}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                                title="Edit transaction"
+                              >
+                                <FiEdit size={16} />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+                                    try {
+                                      await API.funds.deleteTransaction(transaction._id)
+                                      toast.success('Transaction deleted successfully')
+                                      fetchFundHistory()
+                                      fetchFunds()
+                                    } catch (error) {
+                                      toast.error(error.response?.data?.message || 'Failed to delete transaction')
+                                    }
                                   }
-                                }
-                              }}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded transition"
-                              title="Delete transaction"
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
+                                }}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                                title="Delete transaction"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1719,6 +1743,187 @@ const Expenses = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Edit Transaction</h2>
+              <button onClick={() => setEditingTransaction(null)} className="text-gray-500 hover:text-gray-700">
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              
+              const amount = Number(editTransactionData.amount)
+              if (!amount || amount <= 0) {
+                toast.error('Please enter a valid amount')
+                return
+              }
+              
+              try {
+                // Delete the old transaction
+                if (editingTransaction.type === 'company') {
+                  await API.funds.deleteTransaction(editingTransaction._id)
+                  // Create new transaction with updated data
+                  if (editingTransaction.transactionType === 'credit') {
+                    await API.funds.addFunds({
+                      amount,
+                      paymentMode: editTransactionData.paymentMode,
+                      transactionReference: editTransactionData.transactionReference,
+                      remarks: editTransactionData.remarks || `Edited transaction - originally: ${editingTransaction.description}`
+                    })
+                  } else {
+                    await API.funds.deductFunds({
+                      amount,
+                      paymentMode: editTransactionData.paymentMode,
+                      transactionReference: editTransactionData.transactionReference,
+                      remarks: editTransactionData.remarks || `Edited transaction - originally: ${editingTransaction.description}`
+                    })
+                  }
+                  fetchFundHistory()
+                  fetchFunds()
+                } else {
+                  // For employee funds, delete old and recreate
+                  await API.funds.deleteEmployeeTransaction(editingTransaction.employeeId, editingTransaction._id)
+                  
+                  // Recreate transaction with updated data
+                  // For credits, use addEmployeeFunds; for debits, we need to manually adjust
+                  if (editingTransaction.transactionType === 'credit') {
+                    await API.funds.addEmployeeFunds(editingTransaction.employeeId, {
+                      amount,
+                      paymentMode: editTransactionData.paymentMode,
+                      transactionReference: editTransactionData.transactionReference,
+                      remarks: editTransactionData.remarks || `Edited transaction - originally: ${editingTransaction.description}`
+                    })
+                  } else {
+                    // For debits, we need to manually adjust the balance
+                    // Get current funds first
+                    const currentFunds = await API.funds.getEmployeeFunds(editingTransaction.employeeId)
+                    const currentBalance = currentFunds.data.data.availableFunds
+                    const originalAmount = editingTransaction.amount
+                    const newAmount = amount
+                    const difference = originalAmount - newAmount // How much to add back
+                    
+                    // Add the difference back (since we deleted the debit)
+                    if (difference !== 0) {
+                      await API.funds.addEmployeeFunds(editingTransaction.employeeId, {
+                        amount: difference,
+                        paymentMode: editTransactionData.paymentMode,
+                        transactionReference: editTransactionData.transactionReference,
+                        remarks: editTransactionData.remarks || `Edited debit transaction - adjusted by ₹${difference.toLocaleString('en-IN')}`
+                      })
+                    }
+                  }
+                  
+                  const response = await API.funds.getEmployeeFundHistory(editingTransaction.employeeId, { limit: 100 })
+                  setEmployeeFundHistory(response.data.data || [])
+                  fetchAllEmployeesFunds()
+                }
+                
+                toast.success('Transaction updated successfully')
+                setEditingTransaction(null)
+                setEditTransactionData({
+                  amount: '',
+                  paymentMode: 'bank_transfer',
+                  transactionReference: '',
+                  remarks: ''
+                })
+              } catch (error) {
+                toast.error(error.response?.data?.message || 'Failed to update transaction')
+              }
+            }} className="p-4 sm:p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Transaction Type:</strong> {editingTransaction.transactionType === 'credit' ? 'Credit' : 'Debit'}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Original Amount: ₹{editingTransaction.amount?.toLocaleString('en-IN')}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={editTransactionData.amount}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter amount"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={editTransactionData.paymentMode}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={editTransactionData.transactionReference}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Remarks
+                </label>
+                <textarea
+                  value={editTransactionData.remarks}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="2"
+                  placeholder="Transaction remarks..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Update Transaction
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1825,25 +2030,42 @@ const Expenses = () => {
                             </p>
                           </div>
                           {transaction.referenceType !== 'expense' && hasExpenseAccess && (
-                            <button
-                              onClick={async () => {
-                                if (window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
-                                  try {
-                                    await API.funds.deleteEmployeeTransaction(selectedEmployeeHistory._id, transaction._id)
-                                    toast.success('Transaction deleted successfully')
-                                    const response = await API.funds.getEmployeeFundHistory(selectedEmployeeHistory._id, { limit: 100 })
-                                    setEmployeeFundHistory(response.data.data || [])
-                                    fetchAllEmployeesFunds()
-                                  } catch (error) {
-                                    toast.error(error.response?.data?.message || 'Failed to delete transaction')
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingTransaction({ ...transaction, type: 'employee', employeeId: selectedEmployeeHistory._id })
+                                  setEditTransactionData({
+                                    amount: transaction.amount.toString(),
+                                    paymentMode: transaction.paymentMode || 'bank_transfer',
+                                    transactionReference: transaction.transactionReference || '',
+                                    remarks: transaction.remarks || ''
+                                  })
+                                }}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                                title="Edit transaction"
+                              >
+                                <FiEdit size={16} />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+                                    try {
+                                      await API.funds.deleteEmployeeTransaction(selectedEmployeeHistory._id, transaction._id)
+                                      toast.success('Transaction deleted successfully')
+                                      const response = await API.funds.getEmployeeFundHistory(selectedEmployeeHistory._id, { limit: 100 })
+                                      setEmployeeFundHistory(response.data.data || [])
+                                      fetchAllEmployeesFunds()
+                                    } catch (error) {
+                                      toast.error(error.response?.data?.message || 'Failed to delete transaction')
+                                    }
                                   }
-                                }
-                              }}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded transition"
-                              title="Delete transaction"
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
+                                }}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                                title="Delete transaction"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
