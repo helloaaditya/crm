@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2, FiDollarSign, FiClock, FiRefreshCw, FiCheck } from 'react-icons/fi'
+import { FiCreditCard, FiPlus, FiX, FiFileText, FiUpload, FiEye, FiTrash2, FiDollarSign, FiClock, FiRefreshCw, FiCheck, FiEdit } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
@@ -34,6 +34,13 @@ function MyExpenses() {
   const [selectedExpenseForPayment, setSelectedExpenseForPayment] = useState(null)
   const [showDirectPayModal, setShowDirectPayModal] = useState(false) // Direct pay modal (create and pay)
   const [fundData, setFundData] = useState({
+    amount: '',
+    paymentMode: 'bank_transfer',
+    transactionReference: '',
+    remarks: ''
+  })
+  const [editingTransaction, setEditingTransaction] = useState(null)
+  const [editTransactionData, setEditTransactionData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
     transactionReference: '',
@@ -986,17 +993,56 @@ function MyExpenses() {
                             </p>
                           )}
                         </div>
-                        <div className="text-right">
-                          <p
-                            className={`text-lg font-bold ${
-                              transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {transaction.transactionType === 'credit' ? '+' : '-'}₹{transaction.amount?.toLocaleString('en-IN')}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Balance: ₹{transaction.balanceAfter?.toLocaleString('en-IN')}
-                          </p>
+                        <div className="text-right flex flex-col sm:flex-row sm:items-end gap-2">
+                          <div>
+                            <p
+                              className={`text-lg font-bold ${
+                                transaction.transactionType === 'credit' ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              {transaction.transactionType === 'credit' ? '+' : '-'}₹{transaction.amount?.toLocaleString('en-IN')}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Balance: ₹{transaction.balanceAfter?.toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                          {transaction.referenceType !== 'expense' && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingTransaction(transaction)
+                                  setEditTransactionData({
+                                    amount: transaction.amount.toString(),
+                                    paymentMode: transaction.paymentMode || 'bank_transfer',
+                                    transactionReference: transaction.transactionReference || '',
+                                    remarks: transaction.remarks || ''
+                                  })
+                                }}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                                title="Edit transaction"
+                              >
+                                <FiEdit size={16} />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+                                    try {
+                                      await API.funds.deleteMyTransaction(transaction._id)
+                                      toast.success('Transaction deleted successfully')
+                                      fetchFundHistory()
+                                      fetchFunds()
+                                    } catch (error) {
+                                      toast.error(error.response?.data?.message || 'Failed to delete transaction')
+                                    }
+                                  }
+                                }}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                                title="Delete transaction"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1249,6 +1295,159 @@ function MyExpenses() {
                   disabled={!directPayData.amount || Number(directPayData.amount) <= 0 || Number(availableFunds) < Number(directPayData.amount)}
                 >
                   Pay ₹{directPayData.amount ? Number(directPayData.amount).toLocaleString('en-IN') : '0'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg mobile-modal">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Edit Transaction</h2>
+              <button onClick={() => setEditingTransaction(null)} className="text-gray-500 hover:text-gray-700">
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              
+              const amount = Number(editTransactionData.amount)
+              if (!amount || amount <= 0) {
+                toast.error('Please enter a valid amount')
+                return
+              }
+              
+              try {
+                // Delete the old transaction
+                await API.funds.deleteMyTransaction(editingTransaction._id)
+                
+                // Recreate transaction with updated data
+                if (editingTransaction.transactionType === 'credit') {
+                  await API.funds.addMyFunds({
+                    amount,
+                    paymentMode: editTransactionData.paymentMode,
+                    transactionReference: editTransactionData.transactionReference,
+                    remarks: editTransactionData.remarks || `Edited transaction - originally: ${editingTransaction.description}`
+                  })
+                } else {
+                  // For debits, we need to handle differently
+                  // Since we deleted the debit, we need to add back the difference
+                  const originalAmount = editingTransaction.amount
+                  const newAmount = amount
+                  const difference = originalAmount - newAmount
+                  
+                  if (difference !== 0) {
+                    // Add the difference back (since deleting a debit adds funds back)
+                    await API.funds.addMyFunds({
+                      amount: difference,
+                      paymentMode: editTransactionData.paymentMode,
+                      transactionReference: editTransactionData.transactionReference,
+                      remarks: editTransactionData.remarks || `Edited debit transaction - adjusted by ₹${difference.toLocaleString('en-IN')}`
+                    })
+                  }
+                }
+                
+                toast.success('Transaction updated successfully')
+                setEditingTransaction(null)
+                setEditTransactionData({
+                  amount: '',
+                  paymentMode: 'bank_transfer',
+                  transactionReference: '',
+                  remarks: ''
+                })
+                fetchFundHistory()
+                fetchFunds()
+              } catch (error) {
+                toast.error(error.response?.data?.message || 'Failed to update transaction')
+              }
+            }} className="p-4 sm:p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Transaction Type:</strong> {editingTransaction.transactionType === 'credit' ? 'Credit' : 'Debit'}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Original Amount: ₹{editingTransaction.amount?.toLocaleString('en-IN')}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={editTransactionData.amount}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter amount"
+                  min="0"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={editTransactionData.paymentMode}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, paymentMode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={editTransactionData.transactionReference}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, transactionReference: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="UTR/Transaction ID (optional)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Remarks
+                </label>
+                <textarea
+                  value={editTransactionData.remarks}
+                  onChange={(e) => setEditTransactionData({ ...editTransactionData, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="2"
+                  placeholder="Transaction remarks..."
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Update Transaction
                 </button>
               </div>
             </form>
