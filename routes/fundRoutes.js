@@ -26,20 +26,20 @@ router.get('/stats', protect, moduleAccess('expense', 'all'), getFundStats);
 router.delete('/history/:id', protect, moduleAccess('expense', 'all'), checkPermission('canHandleAccounts'), deleteFundTransaction);
 
 // Employee funds routes
-// Get my funds (employee)
+// Get my funds (employee) - MUST come before /employee/:employeeId routes
 router.get('/employee/my', protect, getEmployeeFunds);
 router.post('/employee/my/add', protect, addEmployeeFunds);
 router.get('/employee/my/history', protect, getEmployeeFundHistory);
+router.delete('/employee/my/history/:id', protect, deleteEmployeeFundTransaction);
 
 // Get all employees' funds (admin)
 router.get('/employees/all', protect, moduleAccess('employee_funds', 'expense', 'all'), getAllEmployeesFunds);
 
-// Manage specific employee funds (admin)
+// Manage specific employee funds (admin) - MUST come after /employee/my routes
 router.get('/employee/:employeeId', protect, moduleAccess('employee_funds', 'expense', 'all'), getEmployeeFunds);
 router.post('/employee/:employeeId/add', protect, moduleAccess('employee_funds', 'expense', 'all'), checkPermission('canHandleAccounts'), addFundsToEmployee);
 router.get('/employee/:employeeId/history', protect, moduleAccess('employee_funds', 'expense', 'all'), getEmployeeFundHistory);
 router.delete('/employee/:employeeId/history/:id', protect, moduleAccess('employee_funds', 'expense', 'all'), checkPermission('canHandleAccounts'), deleteEmployeeFundTransaction);
-router.delete('/employee/my/history/:id', protect, deleteEmployeeFundTransaction);
 
 export default router;
 
