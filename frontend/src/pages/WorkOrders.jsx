@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
+import { FiEye, FiX } from 'react-icons/fi';
 
 const WorkOrders = () => {
   const [workOrders, setWorkOrders] = useState([]);
@@ -22,6 +23,8 @@ const WorkOrders = () => {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingOrder, setViewingOrder] = useState(null);
 
   useEffect(() => {
     fetchWorkOrders();
@@ -128,6 +131,11 @@ const WorkOrders = () => {
       console.error('Error saving work order:', error);
       toast.error(error.response?.data?.message || 'Failed to save work order');
     }
+  };
+
+  const handleView = (order) => {
+    setViewingOrder(order);
+    setShowViewModal(true);
   };
 
   const handleEdit = (order) => {
@@ -290,6 +298,12 @@ const WorkOrders = () => {
               )}
 
               <div className="flex space-x-2">
+                <button
+                  onClick={() => handleView(wo)}
+                  className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                >
+                  👁️ View
+                </button>
                 <button
                   onClick={() => handleEdit(wo)}
                   className="flex-1 bg-green-50 text-green-600 px-3 py-2 rounded-lg hover:bg-green-100 text-sm font-medium"
@@ -480,6 +494,95 @@ const WorkOrders = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Work Order Modal */}
+      {showViewModal && viewingOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">Work Order Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <p className="text-gray-900">{viewingOrder.title || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <p className="text-gray-900 capitalize">{viewingOrder.type || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingOrder.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    viewingOrder.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                    viewingOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {viewingOrder.status ? viewingOrder.status.replace('_', ' ') : 'N/A'}
+                  </span>
+                </div>
+                {viewingOrder.startDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <p className="text-gray-900">{format(new Date(viewingOrder.startDate), 'MMM dd, yyyy')}</p>
+                  </div>
+                )}
+                {viewingOrder.expectedCompletionDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Expected Completion Date</label>
+                    <p className="text-gray-900">{format(new Date(viewingOrder.expectedCompletionDate), 'MMM dd, yyyy')}</p>
+                  </div>
+                )}
+                {viewingOrder.estimatedCost && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Cost</label>
+                    <p className="text-gray-900">₹{viewingOrder.estimatedCost.toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingOrder.description && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingOrder.description}</p>
+                </div>
+              )}
+
+              {viewingOrder.terms && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Terms</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingOrder.terms}</p>
+                </div>
+              )}
+
+              {viewingOrder.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingOrder.notes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

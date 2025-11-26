@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2 } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import VendorModal from '../../components/Modals/VendorModal'
@@ -13,6 +13,8 @@ const Vendors = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
   const [selectedVendor, setSelectedVendor] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingVendor, setViewingVendor] = useState(null)
 
   useEffect(() => {
     fetchVendors()
@@ -52,6 +54,11 @@ const Vendors = () => {
     } catch (error) {
       toast.error('Failed to delete vendor')
     }
+  }
+
+  const handleView = (vendor) => {
+    setViewingVendor(vendor)
+    setShowViewModal(true)
   }
 
   const handleEdit = (vendor) => {
@@ -169,6 +176,13 @@ const Vendors = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex space-x-2">
                           <button 
+                            onClick={() => handleView(vendor)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Details"
+                          >
+                            <FiEye />
+                          </button>
+                          <button 
                             onClick={() => handleEdit(vendor)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title="Edit"
@@ -222,7 +236,14 @@ const Vendors = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button 
+                      onClick={() => handleView(vendor)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiEye className="mr-1" size={12} />
+                      View
+                    </button>
                     <button 
                       onClick={() => handleEdit(vendor)}
                       className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"

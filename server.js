@@ -32,6 +32,7 @@ import locationTrackingRoutes from './routes/locationTrackingRoutes.js';
 import vendorPaymentRoutes from './routes/vendorPaymentRoutes.js';
 import workOrderRoutes from './routes/workOrderRoutes.js';
 import companyDocumentRoutes from './routes/companyDocumentRoutes.js';
+import todoRoutes from './routes/todoRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -168,6 +169,10 @@ app.use('/api/location-tracking', locationTrackingRoutes);
 app.use('/api/vendor-payments', vendorPaymentRoutes);
 app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/company-documents', companyDocumentRoutes);
+app.use('/api/todos', todoRoutes);
+
+// Log route registration for debugging
+console.log('✅ Todo routes registered at /api/todos');
 
 // Keep-alive endpoint (super lightweight, no DB checks)
 // Support both /ping and /api/ping for flexibility

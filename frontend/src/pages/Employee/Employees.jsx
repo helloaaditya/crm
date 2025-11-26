@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiEdit, FiTrash2, FiUsers, FiUserCheck, FiBriefcase, FiFileText, FiX } from 'react-icons/fi'
+import { FiPlus, FiEdit, FiTrash2, FiUsers, FiUserCheck, FiBriefcase, FiFileText, FiX, FiEye } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import EmployeeModal from '../../components/Modals/EmployeeModal'
@@ -16,6 +16,8 @@ const Employees = () => {
   const [showDocumentsModal, setShowDocumentsModal] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [documentEmployee, setDocumentEmployee] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingEmployee, setViewingEmployee] = useState(null)
   const [filterRole, setFilterRole] = useState('')
 
   useEffect(() => {
@@ -49,6 +51,11 @@ const Employees = () => {
     } catch (error) {
       toast.error('Failed to deactivate employee')
     }
+  }
+
+  const handleView = (employee) => {
+    setViewingEmployee(employee)
+    setShowViewModal(true)
   }
 
   const handleEdit = (employee) => {
@@ -222,6 +229,13 @@ const Employees = () => {
                             <FiFileText />
                           </button>
                           <button 
+                            onClick={() => handleView(employee)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Details"
+                          >
+                            <FiEye />
+                          </button>
+                          <button 
                             onClick={() => handleEdit(employee)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title="Edit"
@@ -288,7 +302,14 @@ const Employees = () => {
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                    <button 
+                      onClick={() => handleView(employee)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiEye className="mr-1" size={12} />
+                      View
+                    </button>
                     <button 
                       onClick={() => handleDocuments(employee)}
                       className="flex items-center justify-center px-2 py-2 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"
@@ -386,6 +407,80 @@ const Employees = () => {
                 employee={documentEmployee}
                 onSuccess={handleDocumentSuccess}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Employee Modal */}
+      {showViewModal && viewingEmployee && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">Employee Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+                  <p className="text-gray-900">{viewingEmployee.employeeId || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <p className="text-gray-900">{viewingEmployee.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <p className="text-gray-900">{viewingEmployee.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <p className="text-gray-900">{viewingEmployee.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                  <p className="text-gray-900 capitalize">{viewingEmployee.designation || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                  <p className="text-gray-900 capitalize">{viewingEmployee.department || 'N/A'}</p>
+                </div>
+                {viewingEmployee.dateOfJoining && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Joining</label>
+                    <p className="text-gray-900">{new Date(viewingEmployee.dateOfJoining).toLocaleDateString()}</p>
+                  </div>
+                )}
+                {viewingEmployee.salary && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Salary</label>
+                    <p className="text-gray-900">₹{viewingEmployee.salary.toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingEmployee.address && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingEmployee.address}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

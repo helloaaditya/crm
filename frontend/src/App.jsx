@@ -35,6 +35,8 @@ import WorkUpdates from './pages/Employee/WorkUpdates'
 import CalendarReminders from './pages/Employee/CalendarReminders'
 import MyExpenses from './pages/Employee/MyExpenses'
 import MyLeads from './pages/Employee/MyLeads'
+import MyTodos from './pages/Employee/MyTodos'
+import Todos from './pages/Todos'
 
 // Layout
 import Layout from './components/Layout/Layout'
@@ -119,6 +121,7 @@ function App() {
           <Route path="employees/attendance" element={<Attendance />} />
           <Route path="employees/salary" element={<Salary />} />
           <Route path="employees/leave" element={<LeaveManagement />} />
+          <Route path="todos" element={<Todos />} />
           
           {/* Accounts Route (Admin Only) */}
           <Route path="accounts" element={<Accounts />} />
@@ -141,6 +144,7 @@ function App() {
           <Route path="calendar-reminders" element={<CalendarReminders />} />
           <Route path="my-expenses" element={<MyExpenses />} />
           <Route path="my-leads" element={<MyLeads />} />
+          <Route path="my-todos" element={<MyTodos />} />
           
           {/* Other Routes */}
           <Route path="reminders" element={<Reminders />} />

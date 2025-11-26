@@ -338,6 +338,17 @@ export const locationTrackingAPI = {
   adminCleanup: () => api.post('/location-tracking/admin-cleanup')
 };
 
+// ============= TODOS =============
+export const todoAPI = {
+  getAll: (params) => api.get('/todos', { params }),
+  getMy: (params) => api.get('/todos/my', { params }),
+  getById: (id) => api.get(`/todos/${id}`),
+  create: (data) => api.post('/todos', data),
+  update: (id, data) => api.put(`/todos/${id}`, data),
+  delete: (id) => api.delete(`/todos/${id}`),
+  getPerformanceStats: (params) => api.get('/todos/stats/performance', { params })
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -355,5 +366,6 @@ export default {
   notifications: notificationAPI,
   expenses: expenseAPI,
   locationTracking: locationTrackingAPI,
-  funds: fundAPI
+  funds: fundAPI,
+  todos: todoAPI
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck, FiUpload } from 'react-icons/fi'
+import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck, FiUpload, FiEye, FiX } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import API from '../../api'
 import { toast } from 'react-toastify'
@@ -15,6 +15,8 @@ const Invoices = () => {
   const [selectedPaymentInvoice, setSelectedPaymentInvoice] = useState(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingInvoice, setViewingInvoice] = useState(null)
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -230,6 +232,11 @@ Sanjana Enterprises`;
     // Open email client
     window.location.href = mailtoLink;
     toast.success(`Email client opened with ${docType} details!`);
+  }
+
+  const handleView = (invoice) => {
+    setViewingInvoice(invoice)
+    setShowViewModal(true)
   }
 
   const handleAdd = () => {
@@ -677,6 +684,13 @@ Best Regards,
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleView(invoice)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Details"
+                          >
+                            <FiEye />
+                          </button>
                           {/* Convert to Invoice button - Only for quotations that haven't been converted */}
                           {invoice.invoiceType === 'quotation' && !invoice.isConvertedToInvoice && (
                             <button 
@@ -805,7 +819,14 @@ Best Regards,
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button 
+                      onClick={() => handleView(invoice)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiEye className="mr-1" size={12} />
+                      View
+                    </button>
                     <button 
                       onClick={() => handleRecordPayment(invoice)}
                       className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
@@ -912,6 +933,135 @@ Best Regards,
         onSuccess={handleModalSuccess}
         invoice={selectedInvoice}
       />
+
+      {/* View Invoice Modal */}
+      {showViewModal && viewingInvoice && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {viewingInvoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} Details
+              </h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {viewingInvoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} Number
+                  </label>
+                  <p className="text-gray-900">
+                    {viewingInvoice.invoiceType === 'quotation' 
+                      ? (viewingInvoice.quotationNumber || 'N/A')
+                      : (viewingInvoice.invoiceNumber || 'N/A')
+                    }
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                  <p className="text-gray-900">{viewingInvoice.customer?.name || 'N/A'}</p>
+                  {viewingInvoice.customer?.contactNumber && (
+                    <p className="text-sm text-gray-600">{viewingInvoice.customer.contactNumber}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <p className="text-gray-900 capitalize">{viewingInvoice.invoiceType?.replace('_', ' ') || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <p className="text-gray-900">
+                    {viewingInvoice.invoiceDate ? new Date(viewingInvoice.invoiceDate).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                  <p className="text-gray-900 font-semibold">₹{viewingInvoice.totalAmount?.toLocaleString() || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                  <p className="text-gray-900">₹{viewingInvoice.paidAmount?.toLocaleString() || '0'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Amount</label>
+                  <p className="text-gray-900">
+                    ₹{((viewingInvoice.totalAmount || 0) - (viewingInvoice.paidAmount || 0)).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingInvoice.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                    viewingInvoice.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {viewingInvoice.paymentStatus || 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingInvoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                    viewingInvoice.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {viewingInvoice.status || 'N/A'}
+                  </span>
+                </div>
+                {viewingInvoice.project && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                    <p className="text-gray-900">{viewingInvoice.project?.name || viewingInvoice.projectId || 'N/A'}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingInvoice.items && viewingInvoice.items.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="space-y-2">
+                      {viewingInvoice.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm border-b pb-2 last:border-b-0">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{item.name || item.description || 'Item'}</p>
+                            {item.quantity && (
+                              <p className="text-xs text-gray-600">Qty: {item.quantity} × ₹{item.rate?.toLocaleString()}</p>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-900">₹{item.amount?.toLocaleString() || '0'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {viewingInvoice.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingInvoice.notes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

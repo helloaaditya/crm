@@ -90,6 +90,11 @@ const Projects = () => {
     }
   }
 
+  const handleView = (project) => {
+    setViewingProject(project)
+    setShowViewModal(true)
+  }
+
   const handleEdit = async (project) => {
     try {
       // Fetch full project details with populated materialRequirements

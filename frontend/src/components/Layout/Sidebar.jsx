@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut, FiEye 
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut, FiEye, FiCheckSquare, FiList
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -26,7 +26,7 @@ const Sidebar = () => {
     { name: 'Customers', icon: FiUsers, path: '/customers', module: 'crm' },
     { name: 'Projects', icon: FiBriefcase, path: '/projects', module: 'crm' },
     { name: 'Invoices', icon: FiFileText, path: '/invoices', module: 'crm', notificationCount: counts.invoices },
-    { name: 'Payments', icon: FiDollarSign, path: '/payments', module: 'crm:payments' },
+    { name: 'Customer Payments', icon: FiDollarSign, path: '/payments', module: 'crm:payments' },
     
     // Inventory Section
     { name: 'Materials', icon: FiPackage, path: '/inventory/materials', module: 'inventory', notificationCount: counts.lowStock },
@@ -40,6 +40,7 @@ const Sidebar = () => {
     { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee' },
     { name: 'Leave Management', icon: FiEye, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
     { name: 'Employee Planning', icon: FiUsers, path: '/employees/management', module: 'employee' },
+    { name: 'Todos', icon: FiCheckSquare, path: '/todos', module: 'todo' },
 
     
     // Employee Self-Service (Non-Admin) - Show separately for easy access
@@ -50,6 +51,7 @@ const Sidebar = () => {
     { name: 'My Salary', icon: FiDollarSign, path: '/my-salary', module: 'all', employeeOnly: true },
     { name: 'My Leave', icon: FiCalendar, path: '/my-leave', module: 'all', employeeOnly: true },
     { name: 'My Expenses', icon: FiCreditCard, path: '/my-expenses', module: 'all', employeeOnly: true },
+    { name: 'My Todos', icon: FiList, path: '/my-todos', module: 'all', employeeOnly: true },
     { name: 'Calendar', icon: FiBell, path: '/calendar-reminders', module: 'all', notificationCount: counts.reminders },
     
     // Accounts Section

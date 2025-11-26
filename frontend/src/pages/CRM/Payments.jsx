@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiEdit, FiTrash2, FiDollarSign, FiFilter, FiDownload, FiSearch, FiCalendar } from 'react-icons/fi'
+import { FiPlus, FiEdit, FiTrash2, FiDollarSign, FiFilter, FiDownload, FiSearch, FiCalendar, FiEye, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import PaymentModal from '../../components/Modals/PaymentModal'
@@ -11,6 +11,8 @@ const Payments = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingPayment, setViewingPayment] = useState(null)
   
   // Pagination
   const [page, setPage] = useState(1)
@@ -85,6 +87,11 @@ const Payments = () => {
   const handleAdd = () => {
     setSelectedPayment(null)
     setShowModal(true)
+  }
+
+  const handleView = (payment) => {
+    setViewingPayment(payment)
+    setShowViewModal(true)
   }
 
   const handleEdit = (payment) => {
@@ -360,6 +367,13 @@ const Payments = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex space-x-2">
                         <button 
+                          onClick={() => handleView(payment)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                          title="View Details"
+                        >
+                          <FiEye />
+                        </button>
+                        <button 
                           onClick={() => handleEdit(payment)}
                           className="p-2 text-green-600 hover:bg-green-50 rounded"
                           title="Edit"
@@ -434,6 +448,12 @@ const Payments = () => {
 
                   <div className="flex gap-2 mt-3 pt-3 border-t">
                     <button 
+                      onClick={() => handleView(payment)}
+                      className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm"
+                    >
+                      View
+                    </button>
+                    <button 
                       onClick={() => handleEdit(payment)}
                       className="flex-1 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-medium text-sm"
                     >
@@ -498,6 +518,103 @@ const Payments = () => {
         payment={selectedPayment}
         invoices={invoices}
       />
+
+      {/* View Payment Modal */}
+      {showViewModal && viewingPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">Payment Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
+                  <p className="text-gray-900">{viewingPayment.invoice?.invoiceNumber || viewingPayment.invoiceId || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                  <p className="text-gray-900">{viewingPayment.invoice?.customer?.name || viewingPayment.customer?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
+                  <p className="text-gray-900">
+                    {viewingPayment.paymentDate ? new Date(viewingPayment.paymentDate).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                  <p className="text-gray-900 font-semibold">₹{viewingPayment.amount?.toLocaleString() || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <p className="text-gray-900 capitalize">{viewingPayment.paymentMethod || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingPayment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    viewingPayment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    viewingPayment.status === 'failed' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {viewingPayment.status || 'N/A'}
+                  </span>
+                </div>
+                {viewingPayment.paymentMethod === 'cheque' && viewingPayment.chequeDetails && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cheque Number</label>
+                      <p className="text-gray-900">{viewingPayment.chequeDetails.chequeNumber || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cheque Date</label>
+                      <p className="text-gray-900">
+                        {viewingPayment.chequeDetails.chequeDate ? new Date(viewingPayment.chequeDetails.chequeDate).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                      <p className="text-gray-900">{viewingPayment.chequeDetails.bankName || 'N/A'}</p>
+                    </div>
+                  </>
+                )}
+                {(viewingPayment.transactionId || viewingPayment.referenceNumber) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {viewingPayment.paymentMethod === 'cheque' ? 'Reference Number' : 'Transaction ID'}
+                    </label>
+                    <p className="text-gray-900">{viewingPayment.transactionId || viewingPayment.referenceNumber || 'N/A'}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingPayment.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingPayment.notes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

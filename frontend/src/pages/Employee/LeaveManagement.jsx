@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FiCheckCircle, FiXCircle, FiClock, FiFilter, FiChevronDown } from 'react-icons/fi'
+import { FiCheckCircle, FiXCircle, FiClock, FiFilter, FiChevronDown, FiEye, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 
@@ -12,6 +12,8 @@ const LeaveManagement = () => {
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false)
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('')
   const employeeDropdownRef = useRef(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingLeave, setViewingLeave] = useState(null)
 
   useEffect(() => {
     fetchLeaveRequests()
@@ -97,6 +99,11 @@ const LeaveManagement = () => {
     }
   }
 
+  const handleView = (leaveRequest) => {
+    setViewingLeave(leaveRequest)
+    setShowViewModal(true)
+  }
+
   const handleReject = async (leaveId, employeeId, reason = '') => {
     const rejectionReason = reason || prompt('Enter rejection reason:')
     if (!rejectionReason) return
@@ -150,7 +157,7 @@ const LeaveManagement = () => {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div className="relative z-[10000]" ref={employeeDropdownRef}>
+          <div className="relative z-[150]" ref={employeeDropdownRef}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Employee</label>
             <button
               type="button"
@@ -158,7 +165,7 @@ const LeaveManagement = () => {
                 setEmployeeDropdownOpen(!employeeDropdownOpen)
                 setEmployeeSearchTerm('')
               }}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-left flex items-center justify-between relative z-[10001]"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-left flex items-center justify-between relative z-[151]"
             >
               <span className={filterEmployee ? 'text-gray-900' : 'text-gray-500'}>
                 {filterEmployee 
@@ -169,9 +176,9 @@ const LeaveManagement = () => {
             </button>
             
             {employeeDropdownOpen && (
-              <div className="absolute z-[10000] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '60vh' }}>
+              <div className="absolute z-[150] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden" style={{ maxHeight: '60vh' }}>
                 {/* Search Input */}
-                <div className="p-2 border-b sticky top-0 bg-white z-10">
+                <div className="p-2 border-b sticky top-0 bg-white z-[151]">
                   <input
                     type="text"
                     placeholder="Search employee..."
@@ -351,28 +358,33 @@ const LeaveManagement = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {request.status === 'pending' ? (
-                            <div className="flex space-x-2">
-                              <button 
-                                onClick={() => handleApprove(request._id, request.employee._id)}
-                                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center"
-                              >
-                                <FiCheckCircle className="mr-1" size={14} />
-                                Approve
-                              </button>
-                              <button 
-                                onClick={() => handleReject(request._id, request.employee._id)}
-                                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
-                              >
-                                <FiXCircle className="mr-1" size={14} />
+                          <div className="flex space-x-2">
+                            <button 
+                              onClick={() => handleView(request)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                              title="View Details"
+                            >
+                              <FiEye />
+                            </button>
+                            {request.status === 'pending' && (
+                              <>
+                                <button 
+                                  onClick={() => handleApprove(request._id, request.employee._id)}
+                                  className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center"
+                                >
+                                  <FiCheckCircle className="mr-1" size={14} />
+                                  Approve
+                                </button>
+                                <button 
+                                  onClick={() => handleReject(request._id, request.employee._id)}
+                                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
+                                >
+                                  <FiXCircle className="mr-1" size={14} />
                                 Reject
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-gray-500 text-sm">
-                              {request.status === 'approved' ? 'Approved' : 'Rejected'}
-                            </span>
-                          )}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -425,24 +437,34 @@ const LeaveManagement = () => {
                       </div>
                     </div>
                     
-                    {request.status === 'pending' ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <button 
-                          onClick={() => handleApprove(request._id, request.employee._id)}
-                          className="flex items-center justify-center px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xs"
-                        >
-                          <FiCheckCircle className="mr-1" size={12} />
-                          Approve
-                        </button>
-                        <button 
-                          onClick={() => handleReject(request._id, request.employee._id)}
-                          className="flex items-center justify-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs"
-                        >
-                          <FiXCircle className="mr-1" size={12} />
-                          Reject
-                        </button>
-                      </div>
-                    ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      <button 
+                        onClick={() => handleView(request)}
+                        className="flex items-center justify-center px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-xs"
+                      >
+                        <FiEye className="mr-1" size={12} />
+                        View
+                      </button>
+                      {request.status === 'pending' && (
+                        <>
+                          <button 
+                            onClick={() => handleApprove(request._id, request.employee._id)}
+                            className="flex items-center justify-center px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xs"
+                          >
+                            <FiCheckCircle className="mr-1" size={12} />
+                            Approve
+                          </button>
+                          <button 
+                            onClick={() => handleReject(request._id, request.employee._id)}
+                            className="flex items-center justify-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs"
+                          >
+                            <FiXCircle className="mr-1" size={12} />
+                            Reject
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {request.status !== 'pending' && (
                       <div className="text-center py-2">
                         <span className="text-gray-500 text-sm">
                           {request.status === 'approved' ? 'Approved' : 'Rejected'}
@@ -461,6 +483,104 @@ const LeaveManagement = () => {
           </div>
         )}
       </div>
+
+      {/* View Leave Request Modal */}
+      {showViewModal && viewingLeave && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">Leave Request Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                  <p className="text-gray-900">{viewingLeave.employee?.name || 'N/A'}</p>
+                  {viewingLeave.employee?.employeeId && (
+                    <p className="text-sm text-gray-600">{viewingLeave.employee.employeeId}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    getLeaveTypeColor(viewingLeave.leaveType) === 'blue' ? 'bg-blue-100 text-blue-800' :
+                    getLeaveTypeColor(viewingLeave.leaveType) === 'green' ? 'bg-green-100 text-green-800' :
+                    getLeaveTypeColor(viewingLeave.leaveType) === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {leaveTypes.find(lt => lt.value === viewingLeave.leaveType)?.label || viewingLeave.leaveType}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                  <p className="text-gray-900">
+                    {viewingLeave.startDate ? new Date(viewingLeave.startDate).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                  <p className="text-gray-900">
+                    {viewingLeave.endDate ? new Date(viewingLeave.endDate).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Number of Days</label>
+                  <p className="text-gray-900 font-semibold">
+                    {viewingLeave.numberOfDays || 0} day{(viewingLeave.numberOfDays || 0) > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingLeave.status === 'approved' ? 'bg-green-100 text-green-800' :
+                    viewingLeave.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {viewingLeave.status ? viewingLeave.status.charAt(0).toUpperCase() + viewingLeave.status.slice(1) : 'N/A'}
+                  </span>
+                </div>
+                {viewingLeave.appliedDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Applied Date</label>
+                    <p className="text-gray-900">
+                      {new Date(viewingLeave.appliedDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+                {viewingLeave.rejectionReason && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rejection Reason</label>
+                    <p className="text-gray-900 bg-red-50 p-3 rounded-lg">{viewingLeave.rejectionReason}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingLeave.reason && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingLeave.reason}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

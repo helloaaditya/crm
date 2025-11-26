@@ -27,6 +27,8 @@ const Machinery = () => {
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showReturnModal, setShowReturnModal] = useState(false)
   const [selectedMachinery, setSelectedMachinery] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingMachinery, setViewingMachinery] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -132,6 +134,11 @@ const Machinery = () => {
     setSearch('')
     setDebouncedSearch('')
     setPage(1)
+  }
+
+  const handleView = (machinery) => {
+    setViewingMachinery(machinery)
+    setShowViewModal(true)
   }
 
   const handleEdit = (machinery) => {
@@ -422,8 +429,15 @@ const Machinery = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex space-x-2">
                             <button 
-                              onClick={() => handleEdit(item)}
+                              onClick={() => handleView(item)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                              title="View Details"
+                            >
+                              <FiEye size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleEdit(item)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded"
                               title="Edit"
                             >
                               <FiEdit size={16} />
@@ -510,8 +524,15 @@ const Machinery = () => {
                     
                     <div className="grid grid-cols-2 gap-2">
                       <button 
-                        onClick={() => handleEdit(item)}
+                        onClick={() => handleView(item)}
                         className="flex items-center justify-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-medium min-h-44"
+                      >
+                        <FiEye className="mr-1" size={14} />
+                        View
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(item)}
+                        className="flex items-center justify-center px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs font-medium min-h-44"
                       >
                         <FiEdit className="mr-1" size={14} />
                         Edit
@@ -620,6 +641,91 @@ const Machinery = () => {
           }}
           machinery={selectedMachinery}
         />
+      )}
+
+      {/* View Machinery Modal */}
+      {showViewModal && viewingMachinery && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">Machinery Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <p className="text-gray-900">{viewingMachinery.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <p className="text-gray-900 capitalize">{viewingMachinery.category || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Quantity</label>
+                  <p className="text-gray-900">{viewingMachinery.quantity || 0} {viewingMachinery.unit || ''}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Available Quantity</label>
+                  <p className="text-gray-900 font-semibold">{viewingMachinery.availableQuantity || 0} {viewingMachinery.unit || ''}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Quantity</label>
+                  <p className="text-gray-900">{(viewingMachinery.quantity || 0) - (viewingMachinery.availableQuantity || 0)} {viewingMachinery.unit || ''}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingMachinery.condition === 'excellent' ? 'bg-green-100 text-green-800' :
+                    viewingMachinery.condition === 'good' ? 'bg-blue-100 text-blue-800' :
+                    viewingMachinery.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {viewingMachinery.condition ? viewingMachinery.condition.charAt(0).toUpperCase() + viewingMachinery.condition.slice(1) : 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingMachinery.status === 'available' ? 'bg-green-100 text-green-800' :
+                    viewingMachinery.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {viewingMachinery.status ? viewingMachinery.status.charAt(0).toUpperCase() + viewingMachinery.status.slice(1) : 'N/A'}
+                  </span>
+                </div>
+                {viewingMachinery.location && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <p className="text-gray-900">{viewingMachinery.location}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingMachinery.description && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingMachinery.description}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
