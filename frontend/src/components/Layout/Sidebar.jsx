@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut 
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut, FiEye 
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -38,7 +38,7 @@ const Sidebar = () => {
     { name: 'Employees', icon: FiUserCheck, path: '/employees', module: 'employee' },
     { name: 'Attendance', icon: FiCalendar, path: '/employees/attendance', module: 'employee', notificationCount: counts.attendance },
     { name: 'Salary', icon: FiDollarSign, path: '/employees/salary', module: 'employee' },
-    { name: 'Leave Management', icon: FiCalendar, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
+    { name: 'Leave Management', icon: FiEye, path: '/employees/leave', module: 'employee', notificationCount: counts.leaves },
     { name: 'Employee Planning', icon: FiUsers, path: '/employees/management', module: 'employee' },
 
     
@@ -57,7 +57,7 @@ const Sidebar = () => {
     
     // Expense Section
     { name: 'Expenses', icon: FiCreditCard, path: '/expenses', module: 'expense' },
-    { name: 'Employee Expense Funds', icon: FiDollarSign, path: '/employee-funds', module: 'employee_funds' },
+    // { name: 'Employee Expense Funds', icon: FiDollarSign, path: '/expenses', module: 'employee_funds' },
     
     // Live Tracking - admin/main_admin only
     { name: 'Live Tracking', icon: FiNavigation, path: '/live-tracking', module: 'admin:live-tracking'},

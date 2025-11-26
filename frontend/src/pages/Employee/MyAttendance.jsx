@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiClock, FiMapPin, FiCalendar, FiCheckCircle, FiNavigation } from 'react-icons/fi'
+import { FiClock, FiMapPin, FiCalendar, FiCheckCircle, FiNavigation, FiEye, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../context/AuthContext'
@@ -15,6 +15,7 @@ function MyAttendance() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [todayAttendance, setTodayAttendance] = useState(null)
   const [location, setLocation] = useState(null)
+  const [viewingEntry, setViewingEntry] = useState(null)
   const [stats, setStats] = useState({
     totalPresent: 0,
     totalAbsent: 0,
@@ -490,6 +491,7 @@ function MyAttendance() {
                     <th className="text-left py-3 px-4">Work Hours</th>
                     <th className="text-left py-3 px-4">Location</th>
                     <th className="text-left py-3 px-4">Note</th>
+                    <th className="text-left py-3 px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -546,6 +548,15 @@ function MyAttendance() {
                             <span className="text-xs text-gray-400">-</span>
                           )}
                         </td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => setViewingEntry(record)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="View Details"
+                          >
+                            <FiEye size={16} />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -562,6 +573,94 @@ function MyAttendance() {
           <div className="flex items-center text-green-600">
             <FiMapPin className="mr-2" />
             <span className="text-sm">GPS Location Active: {location.address}</span>
+          </div>
+        </div>
+      )}
+
+      {/* View Attendance Details Modal */}
+      {viewingEntry && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-800">Attendance Details</h2>
+              <button
+                onClick={() => setViewingEntry(null)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <p className="text-gray-900">{new Date(viewingEntry.date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+                  <p className="text-gray-900">{new Date(viewingEntry.date).toLocaleDateString('en-US', { weekday: 'long' })}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${getStatusBadge(viewingEntry.status)}`}>
+                    {viewingEntry.status}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Work Hours</label>
+                  <p className="text-gray-900">{viewingEntry.workHours ? `${viewingEntry.workHours.toFixed(2)} hrs` : '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
+                  <p className="text-gray-900">
+                    {viewingEntry.checkInTime ? new Date(viewingEntry.checkInTime).toLocaleString() : '-'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
+                  <p className="text-gray-900">
+                    {viewingEntry.checkOutTime ? new Date(viewingEntry.checkOutTime).toLocaleString() : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {viewingEntry.checkInLocation && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <div className="flex items-start text-sm text-gray-600">
+                    <FiMapPin className="mr-1 mt-0.5 flex-shrink-0" size={16} />
+                    <span>
+                      {viewingEntry.checkInLocation.address && viewingEntry.checkInLocation.address !== 'Location not provided'
+                        ? viewingEntry.checkInLocation.address
+                        : formatCoordinates(viewingEntry.checkInLocation.coordinates) || 'Not available'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {viewingEntry.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                    {viewingEntry.notes.includes('Auto-generated') ? (
+                      <span className="text-blue-600 italic">🤖 {viewingEntry.notes}</span>
+                    ) : (
+                      viewingEntry.notes
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setViewingEntry(null)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

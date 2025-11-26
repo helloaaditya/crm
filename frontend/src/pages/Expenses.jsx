@@ -35,6 +35,8 @@ const Expenses = () => {
   const [showFundHistory, setShowFundHistory] = useState(false)
   const [showEditFundModal, setShowEditFundModal] = useState(false)
   const [employeesFunds, setEmployeesFunds] = useState([])
+  const [loadingEmployeesFunds, setLoadingEmployeesFunds] = useState(false)
+  const [showEmployeeFundsSummary, setShowEmployeeFundsSummary] = useState(false)
   const [showEmployeeFundModal, setShowEmployeeFundModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [selectedEmployeeForFund, setSelectedEmployeeForFund] = useState(null)
@@ -92,7 +94,7 @@ const Expenses = () => {
     if (hasExpenseAccess) {
       fetchStats()
       fetchFunds()
-      fetchAllEmployeesFunds()
+      // Employee funds are fetched on-demand when user clicks "Show All Employee Funds"
     }
   }, [])
 
@@ -103,13 +105,16 @@ const Expenses = () => {
       if (hasExpenseAccess) {
         fetchStats()
         fetchFunds()
-        fetchAllEmployeesFunds()
+        // Only refresh employee funds if the summary is currently visible
+        if (showEmployeeFundsSummary) {
+          fetchAllEmployeesFunds()
+        }
       }
     }
 
     window.addEventListener('app-refresh', handleRefresh)
     return () => window.removeEventListener('app-refresh', handleRefresh)
-  }, [hasExpenseAccess])
+  }, [hasExpenseAccess, showEmployeeFundsSummary])
   
   const fetchExpenses = async () => {
     try {
@@ -156,11 +161,31 @@ const Expenses = () => {
 
   const fetchAllEmployeesFunds = async () => {
     try {
+      setLoadingEmployeesFunds(true)
       const response = await API.funds.getAllEmployeesFunds()
       setEmployeesFunds(response.data.data || [])
     } catch (error) {
       console.error('Error fetching employees funds:', error)
+      toast.error('Failed to load employee funds')
+    } finally {
+      setLoadingEmployeesFunds(false)
     }
+  }
+
+  const fetchEmployeeFundHistory = async (employeeId) => {
+    try {
+      const response = await API.funds.getEmployeeFundHistory(employeeId, { limit: 100 })
+      setEmployeeFundHistory(response.data.data || [])
+    } catch (error) {
+      console.error('Error fetching employee fund history:', error)
+      toast.error('Failed to load fund history')
+    }
+  }
+
+  const openHistoryModal = async (employee) => {
+    setSelectedEmployeeHistory(employee)
+    setShowHistoryModal(true)
+    await fetchEmployeeFundHistory(employee._id)
   }
 
   const handleAddEmployeeFunds = async (e) => {
@@ -555,64 +580,116 @@ const Expenses = () => {
         </div>
       )}
 
-      {/* Employee Funds Summary (Admin Only)
-      {hasExpenseAccess && employeesFunds.length > 0 && (
+      {/* Employee Funds Summary (Admin Only) */}
+      {hasExpenseAccess && (
         <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold text-gray-800">Employee Funds Summary</h2>
-            <p className="text-sm text-gray-600 mt-1">Available funds for each employee</p>
-          </div>
-          <div className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-4">Employee</th>
-                    <th className="text-left py-3 px-4">Available Funds</th>
-                    <th className="text-left py-3 px-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employeesFunds
-                    .sort((a, b) => b.availableFunds - a.availableFunds)
-                    .map((emp) => (
-                      <tr key={emp._id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium text-gray-900">{emp.name}</p>
-                            <p className="text-sm text-gray-500">{emp.employeeId}</p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="font-bold text-green-600 text-lg">₹{emp.availableFunds.toLocaleString('en-IN')}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <button
-                            onClick={async () => {
-                              setSelectedEmployeeHistory(emp)
-                              setShowHistoryModal(true)
-                              try {
-                                const response = await API.funds.getEmployeeFundHistory(emp._id, { limit: 100 })
-                                setEmployeeFundHistory(response.data.data || [])
-                              } catch (error) {
-                                console.error('Error fetching employee fund history:', error)
-                                toast.error('Failed to load fund history')
-                              }
-                            }}
-                            className="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
-                          >
-                            <FiClock className="mr-1" size={14} />
-                            History
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+          <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Employee Funds Summary</h2>
+              <p className="text-sm text-gray-600 mt-1">Available funds for each employee</p>
             </div>
+            <button
+              onClick={() => {
+                setShowEmployeeFundsSummary(!showEmployeeFundsSummary)
+                if (!showEmployeeFundsSummary && employeesFunds.length === 0) {
+                  fetchAllEmployeesFunds()
+                }
+              }}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            >
+              {showEmployeeFundsSummary ? (
+                <>
+                  <FiX className="mr-2" size={16} />
+                  Hide
+                </>
+              ) : (
+                <>
+                  <FiDollarSign className="mr-2" size={16} />
+                  Show All Employee Funds
+                </>
+              )}
+            </button>
           </div>
+          {showEmployeeFundsSummary && (
+            <div className="p-4 sm:p-6">
+              {loadingEmployeesFunds ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              ) : employeesFunds.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No employee funds found</p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Employee</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Available Funds</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employeesFunds
+                          .sort((a, b) => b.availableFunds - a.availableFunds)
+                          .map((emp) => (
+                            <tr key={emp._id} className="border-b hover:bg-gray-50">
+                              <td className="py-3 px-4">
+                                <div>
+                                  <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
+                                  <p className="text-xs text-gray-500">{emp.employeeId}</p>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="font-bold text-green-600 text-lg">₹{emp.availableFunds.toLocaleString('en-IN')}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <button
+                                  onClick={() => openHistoryModal(emp)}
+                                  className="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                                >
+                                  <FiClock className="mr-1" size={14} />
+                                  History
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="lg:hidden space-y-4">
+                    {employeesFunds
+                      .sort((a, b) => b.availableFunds - a.availableFunds)
+                      .map((emp) => (
+                        <div key={emp._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900 text-sm">{emp.name}</p>
+                              <p className="text-xs text-gray-500 mt-1">{emp.employeeId}</p>
+                            </div>
+                            <span className="font-bold text-green-600 text-lg">₹{emp.availableFunds.toLocaleString('en-IN')}</span>
+                          </div>
+                          <button
+                            onClick={() => openHistoryModal(emp)}
+                            className="w-full flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                          >
+                            <FiClock className="mr-2" size={16} />
+                            View History
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      )} */}
+      )}
 
       {/* Employee Expense Summary (Admin Only)
       {hasExpenseAccess && expenses.length > 0 && (
@@ -1941,14 +2018,8 @@ const Expenses = () => {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={async () => {
-                    try {
-                      const response = await API.funds.getEmployeeFundHistory(selectedEmployeeHistory._id, { limit: 100 })
-                      setEmployeeFundHistory(response.data.data || [])
-                    } catch (error) {
-                      console.error('Error fetching employee fund history:', error)
-                      toast.error('Failed to load fund history')
-                    }
+                  onClick={() => {
+                    fetchEmployeeFundHistory(selectedEmployeeHistory._id)
                   }}
                   className="p-2 text-gray-600 hover:bg-gray-100 rounded"
                   title="Refresh"

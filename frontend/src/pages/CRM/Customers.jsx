@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiDownload, FiUpload } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiDownload, FiUpload, FiEye, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import CustomerModal from '../../components/Modals/CustomerModal'
@@ -16,7 +16,9 @@ const Customers = () => {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [showModal, setShowModal] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [viewingCustomer, setViewingCustomer] = useState(null)
   const [downloading, setDownloading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -98,6 +100,11 @@ const Customers = () => {
   const handleEdit = (customer) => {
     setSelectedCustomer(customer)
     setShowModal(true)
+  }
+
+  const handleView = (customer) => {
+    setViewingCustomer(customer)
+    setShowViewModal(true)
   }
 
   const handleAdd = () => {
@@ -393,6 +400,13 @@ const Customers = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         <div className="flex space-x-2">
                           <button 
+                            onClick={() => handleView(customer)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Details"
+                          >
+                            <FiEye />
+                          </button>
+                          <button 
                             onClick={() => handleEdit(customer)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title="Edit"
@@ -462,6 +476,13 @@ const Customers = () => {
                   
                   <div className="flex space-x-2">
                     <button 
+                      onClick={() => handleView(customer)}
+                      className="flex-1 flex items-center justify-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm"
+                    >
+                      <FiEye className="mr-1" size={14} />
+                      View
+                    </button>
+                    <button 
                       onClick={() => handleEdit(customer)}
                       className="flex-1 flex items-center justify-center px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg text-sm"
                     >
@@ -517,6 +538,107 @@ const Customers = () => {
         onSuccess={handleModalSuccess}
         customer={selectedCustomer}
       />
+
+      {/* View Customer Modal */}
+      {showViewModal && viewingCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">Customer Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
+                  <p className="text-gray-900">{viewingCustomer.customerId || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <p className="text-gray-900">{viewingCustomer.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                  <p className="text-gray-900">{viewingCustomer.contactNumber || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Alternate Contact</label>
+                  <p className="text-gray-900">{viewingCustomer.alternateContact || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <p className="text-gray-900">{viewingCustomer.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Call Type</label>
+                  <p className="text-gray-900 capitalize">{viewingCustomer.callType || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Data Source</label>
+                  <p className="text-gray-900 capitalize">{viewingCustomer.dataSource?.replace(/_/g, ' ') || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lead Status</label>
+                  <p className="text-gray-900 capitalize">
+                    {viewingCustomer.leadStatus ? viewingCustomer.leadStatus.replace(/_/g, ' ') : 'N/A'}
+                  </p>
+                </div>
+                {viewingCustomer.leadDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lead Date</label>
+                    <p className="text-gray-900">{new Date(viewingCustomer.leadDate).toLocaleDateString()}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingCustomer.address && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-gray-900">
+                      {[
+                        viewingCustomer.address.street,
+                        viewingCustomer.address.city,
+                        viewingCustomer.address.state,
+                        viewingCustomer.address.pincode
+                      ].filter(Boolean).join(', ') || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {viewingCustomer.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingCustomer.notes}</p>
+                </div>
+              )}
+
+              {viewingCustomer.tags && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                  <p className="text-gray-900">{viewingCustomer.tags}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

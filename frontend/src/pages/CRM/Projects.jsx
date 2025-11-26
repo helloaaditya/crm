@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiClock, FiUpload, FiUsers, FiDownload, FiFilter, FiCalendar, FiDollarSign } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiClock, FiUpload, FiUsers, FiDownload, FiFilter, FiCalendar, FiDollarSign, FiEye, FiX } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import ProjectModal from '../../components/Modals/ProjectModal'
@@ -20,6 +20,8 @@ const Projects = () => {
   const [summary, setSummary] = useState({ totalProjects: 0, activeProjects: 0, completedProjects: 0 })
   const [showModal, setShowModal] = useState(false)
   const [selectedProject, setSelectedProject] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingProject, setViewingProject] = useState(null)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [historyProjectId, setHistoryProjectId] = useState(null)
   const [showTeamModal, setShowTeamModal] = useState(false)
@@ -353,6 +355,13 @@ const Projects = () => {
                             <FiClock />
                           </button>
                           <button 
+                            onClick={() => handleView(project)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Details"
+                          >
+                            <FiEye />
+                          </button>
+                          <button 
                             onClick={() => handleManageTeam(project)}
                             className="p-2 text-indigo-600 hover:bg-indigo-50 rounded"
                             title="Manage Team"
@@ -410,7 +419,14 @@ const Projects = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button 
+                      onClick={() => handleView(project)}
+                      className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
+                    >
+                      <FiEye className="mr-1" size={12} />
+                      View
+                    </button>
                     <button 
                       onClick={() => handleViewHistory(project)}
                       className="flex items-center justify-center px-2 py-2 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"
@@ -501,6 +517,92 @@ const Projects = () => {
         onClose={() => { setShowTeamModal(false); setTeamProject(null); }}
         project={teamProject}
       />
+
+      {/* View Project Modal */}
+      {showViewModal && viewingProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto mobile-modal">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-xl font-semibold text-gray-800">Project Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project ID</label>
+                  <p className="text-gray-900">{viewingProject.projectId || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+                  <p className="text-gray-900">{viewingProject.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                  <p className="text-gray-900">{viewingProject.customer?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <p className="text-gray-900 capitalize">{viewingProject.category || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Type</label>
+                  <p className="text-gray-900 capitalize">{viewingProject.projectType === 'new' ? 'New' : 'Rework'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    viewingProject.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    viewingProject.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                    viewingProject.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {viewingProject.status?.replace('_', ' ') || 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Date</label>
+                  <p className="text-gray-900">
+                    {viewingProject.projectDate ? new Date(viewingProject.projectDate).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Cost</label>
+                  <p className="text-gray-900">₹{viewingProject.estimatedCost?.toLocaleString() || 'N/A'}</p>
+                </div>
+              </div>
+
+              {viewingProject.description && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingProject.description}</p>
+                </div>
+              )}
+
+              {viewingProject.location && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <p className="text-gray-900">{viewingProject.location}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
