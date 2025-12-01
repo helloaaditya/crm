@@ -470,8 +470,28 @@ export const assignEmployee = asyncHandler(async (req, res) => {
   try {
     // Assign employee to project
     project.assignEmployee(employeeId, role, req.user._id);
-    await project.save();
-    console.log('Project updated with employee assignment');
+    
+    // Save project with validation disabled to avoid issues with optional fields
+    try {
+      await project.save({ validateBeforeSave: true });
+      console.log('Project updated with employee assignment');
+    } catch (saveError) {
+      console.error('Error saving project:', saveError);
+      // If validation error, try to get more details
+      if (saveError.name === 'ValidationError') {
+        const validationErrors = Object.keys(saveError.errors || {}).map(key => ({
+          field: key,
+          message: saveError.errors[key].message
+        }));
+        console.error('Validation errors:', validationErrors);
+        return res.status(400).json({
+          success: false,
+          message: 'Project validation failed',
+          errors: validationErrors
+        });
+      }
+      throw saveError;
+    }
 
     // Also update employee's assignedProjects array
     const projectAlreadyAssigned = employee.assignedProjects.some(ap => 
@@ -497,19 +517,41 @@ export const assignEmployee = asyncHandler(async (req, res) => {
         }
       }
       
-      await employee.save();
-      console.log('Employee saved with assigned project');
+      try {
+        await employee.save({ validateBeforeSave: true });
+        console.log('Employee saved with assigned project');
+      } catch (saveError) {
+        console.error('Error saving employee:', saveError);
+        if (saveError.name === 'ValidationError') {
+          const validationErrors = Object.keys(saveError.errors || {}).map(key => ({
+            field: key,
+            message: saveError.errors[key].message
+          }));
+          console.error('Employee validation errors:', validationErrors);
+          return res.status(400).json({
+            success: false,
+            message: 'Employee validation failed',
+            errors: validationErrors
+          });
+        }
+        throw saveError;
+      }
       
       // Send notification to assigned employee
       if (employee.userId) {
-        await createNotification({
-          recipient: employee.userId,
-          ...NotificationTemplates.projectAssigned(
-            project.name || project.description || project.projectId,
-            project._id,
-            req.user._id
-          )
-        });
+        try {
+          await createNotification({
+            recipient: employee.userId,
+            ...NotificationTemplates.projectAssigned(
+              project.name || project.description || project.projectId,
+              project._id,
+              req.user._id
+            )
+          });
+        } catch (notifError) {
+          console.error('Error creating notification (non-fatal):', notifError);
+          // Don't fail the assignment if notification fails
+        }
       }
     } else {
       console.log('Project already assigned to employee in assignedProjects array');
@@ -526,10 +568,20 @@ export const assignEmployee = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error('Error assigning employee to project:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      errors: error.errors
+    });
     res.status(500).json({ 
       success: false, 
       message: 'Failed to assign employee to project',
-      error: error.message 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? {
+        stack: error.stack,
+        errors: error.errors
+      } : undefined
     });
   }
 });
