@@ -141,7 +141,7 @@ export const createProject = asyncHandler(async (req, res) => {
     await sendToMultipleUsers(
       assignedEmployees,
       NotificationTemplates.projectAssigned(
-        `${project.projectId} - ${project.description}`,
+        project.name ? `${project.projectId} - ${project.name}` : `${project.projectId} - ${project.description}`,
         project._id,
         req.user._id
       )
@@ -505,7 +505,7 @@ export const assignEmployee = asyncHandler(async (req, res) => {
         await createNotification({
           recipient: employee.userId,
           ...NotificationTemplates.projectAssigned(
-            project.description || project.projectId,
+            project.name || project.description || project.projectId,
             project._id,
             req.user._id
           )

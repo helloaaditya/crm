@@ -7,8 +7,9 @@ const projectSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    required: true,
-    trim: true
+    required: false,
+    trim: true,
+    default: ''
   },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
