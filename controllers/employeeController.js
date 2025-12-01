@@ -899,7 +899,7 @@ export const addWorkUpdate = asyncHandler(async (req, res) => {
 // @access  Private
 export const getWorkUpdates = asyncHandler(async (req, res) => {
   const employee = await Employee.findById(req.params.id)
-    .populate('workUpdates.project', 'projectId description')
+    .populate('workUpdates.project', 'projectId name description')
     .populate('workUpdates.submittedBy', 'name');
 
   if (!employee) {
@@ -999,7 +999,7 @@ export const assignProjectToEmployee = asyncHandler(async (req, res) => {
   console.log('Project updated with employee assignment');
 
   const populated = await Employee.findById(employee._id)
-    .populate('assignedProjects.project', 'projectId description status');
+    .populate('assignedProjects.project', 'projectId name description status');
 
   console.log('Populated employee data:', JSON.stringify(populated.assignedProjects, null, 2));
 
@@ -1015,7 +1015,7 @@ export const assignProjectToEmployee = asyncHandler(async (req, res) => {
 // @access  Private
 export const getEmployeeProjects = asyncHandler(async (req, res) => {
   const employee = await Employee.findById(req.params.id)
-    .populate('assignedProjects.project', 'projectId description status customer category')
+    .populate('assignedProjects.project', 'projectId name description status customer category')
     .populate('assignedProjects.assignedBy', 'name');
 
   if (!employee) {
@@ -1068,7 +1068,7 @@ export const getSupervisorTeam = asyncHandler(async (req, res) => {
     reportingTo: req.params.id,
     isActive: true 
   })
-    .populate('assignedProjects.project', 'projectId description status')
+    .populate('assignedProjects.project', 'projectId name description status')
     .select('employeeId name phone role designation assignedProjects');
 
   res.json({
@@ -1459,7 +1459,7 @@ export const getMyProjects = asyncHandler(async (req, res) => {
   console.log('Any employee with this userId:', anyEmployee ? anyEmployee._id : 'None found');
   
   const employee = await Employee.findOne({ userId: req.user._id })
-    .populate('assignedProjects.project', 'projectId description status category customer startDate expectedEndDate')
+    .populate('assignedProjects.project', 'projectId name description status category customer startDate expectedEndDate')
     .populate('assignedProjects.assignedBy', 'name');
 
   if (!employee) {
