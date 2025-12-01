@@ -335,9 +335,11 @@ projectSchema.methods.assignEmployee = function(employeeId, role, assignedBy) {
     role
   };
   
+  // Supervisors go to supervisors array, all other roles go to workers array
   if (role === 'supervisor') {
     this.supervisors.push(assignment);
   } else {
+    // All other roles (worker, engineer, helper, technician, manager, admin, driver) go to workers
     this.workers.push(assignment);
   }
   

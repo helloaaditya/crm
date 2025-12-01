@@ -439,8 +439,10 @@ export const assignEmployee = asyncHandler(async (req, res) => {
   if (!role) {
     return res.status(400).json({ message: 'Role is required' });
   }
-  if (!['supervisor', 'worker', 'engineer', 'helper', 'technician'].includes(role)) {
-    return res.status(400).json({ message: 'Invalid role. Must be supervisor, worker, engineer, helper, or technician' });
+  // Accept all valid employee roles
+  const validRoles = ['supervisor', 'worker', 'engineer', 'helper', 'technician', 'manager', 'admin', 'driver'];
+  if (!validRoles.includes(role)) {
+    return res.status(400).json({ message: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
   }
 
   console.log('Assigning employee to project:', { projectId: req.params.id, employeeId, role });
