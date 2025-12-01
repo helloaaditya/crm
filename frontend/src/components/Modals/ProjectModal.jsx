@@ -8,6 +8,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
   const [supervisors, setSupervisors] = useState([])
   const [materials, setMaterials] = useState([])
   const [formData, setFormData] = useState({
+    name: '',
     customer: '',
     projectType: 'new',
     category: 'residential',
@@ -79,6 +80,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
       }
 
       setFormData({
+        name: project.name || '',
         customer: project.customer?._id || '',
         projectType: project.projectType || 'new',
         category: project.category || 'residential',
@@ -107,6 +109,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
     } else {
       // Reset form when adding new
       setFormData({
+        name: '',
         customer: '',
         projectType: 'new',
         category: 'residential',
@@ -242,7 +245,19 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
 
       // Prepare project data
       const projectData = {
-        ...formData,
+        name: formData.name,
+        customer: formData.customer,
+        projectType: formData.projectType,
+        category: formData.category,
+        subCategory: formData.subCategory,
+        description: formData.description,
+        siteAddress: formData.siteAddress,
+        billingAddress: formData.billingAddress,
+        projectDate: formData.projectDate,
+        startDate: formData.startDate || undefined,
+        expectedEndDate: formData.expectedEndDate || undefined,
+        estimatedCost: formData.estimatedCost ? parseFloat(formData.estimatedCost) : undefined,
+        clientGstNumber: formData.clientGstNumber || undefined,
         materialRequirements: materialRequirements.length > 0 ? materialRequirements : undefined,
         // Store first item's details in old fields for backward compatibility
         itemsToBeUsed: formData.materialItems[0]?.itemName || '',
@@ -251,8 +266,12 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
         units: formData.materialItems[0]?.unit || ''
       }
 
-      // Remove materialItems from the data sent to backend (we use materialRequirements instead)
-      delete projectData.materialItems
+      // Remove undefined fields (but keep empty strings and 0 values)
+      Object.keys(projectData).forEach(key => {
+        if (projectData[key] === undefined) {
+          delete projectData[key]
+        }
+      })
 
       console.log('🚀 Sending to backend:', projectData)
 
@@ -313,6 +332,22 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, project = null }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 mobile-modal-content">
+          {/* Project Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Project Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              placeholder="Enter project name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
           {/* Customer Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

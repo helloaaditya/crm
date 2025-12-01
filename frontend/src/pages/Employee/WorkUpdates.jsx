@@ -539,6 +539,11 @@ function WorkUpdates() {
                       <h3 className="font-semibold text-gray-800">
                         {assignment.project?.projectId}
                       </h3>
+                      {assignment.project?.name && (
+                        <p className="text-sm font-semibold text-gray-700 mt-1">
+                          {assignment.project.name}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-600 mt-1">
                         {assignment.project?.description}
                       </p>
@@ -609,7 +614,7 @@ function WorkUpdates() {
                     <option value="">-- Select Project --</option>
                     {projects.map((assignment) => (
                       <option key={assignment._id} value={assignment.project._id}>
-                        {assignment.project.projectId} - {assignment.project.description}
+                        {assignment.project.projectId} {assignment.project.name ? `- ${assignment.project.name}` : ''} - {assignment.project.description}
                       </option>
                     ))}
                   </select>

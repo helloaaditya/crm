@@ -346,6 +346,7 @@ const MyDashboard = () => {
       const term = searchTerm.toLowerCase()
       result = result.filter(p => 
         (p.project?.projectId && p.project.projectId.toLowerCase().includes(term)) ||
+        (p.project?.name && p.project.name.toLowerCase().includes(term)) ||
         (p.project?.description && p.project.description.toLowerCase().includes(term))
       )
     }
@@ -589,6 +590,9 @@ const MyDashboard = () => {
                   <div key={ap._id} className="flex items-center justify-between p-4 bg-gray-50 rounded">
                     <div>
                       <h3 className="font-medium text-gray-800">{ap.project?.projectId}</h3>
+                      {ap.project?.name && (
+                        <p className="text-sm font-semibold text-gray-700">{ap.project.name}</p>
+                      )}
                       <p className="text-sm text-gray-600">{ap.project?.description}</p>
                       <p className="text-xs text-gray-500 mt-1">Role: {ap.role}</p>
                     </div>

@@ -303,6 +303,11 @@ const MyProjects = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-lg text-gray-800">{project.project?.projectId}</h3>
+                      {project.project?.name && (
+                        <p className="text-sm font-semibold text-gray-700 mt-1">
+                          {project.project.name}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                         {project.project?.description}
                       </p>

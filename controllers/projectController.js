@@ -79,30 +79,7 @@ export const createProject = asyncHandler(async (req, res) => {
   console.log('📥 Received project data:', JSON.stringify(req.body, null, 2));
 
   const {
-    customer,
-    projectType,
-    category,
-    subCategory,
-    description,
-    siteAddress,
-    billingAddress,
-    startDate,
-    expectedEndDate,
-    supervisors,
-    workers,
-    estimatedCost,
-    materialRequirements,
-    itemsToBeUsed,
-    brand,
-    thickness,
-    units,
-    clientGstNumber
-  } = req.body;
-
-  console.log('📦 Material Requirements:', materialRequirements);
-  console.log('📝 Item Details:', { itemsToBeUsed, brand, thickness, units });
-
-  const project = await Project.create({
+    name,
     customer,
     projectType,
     category,
@@ -121,6 +98,33 @@ export const createProject = asyncHandler(async (req, res) => {
     thickness,
     units,
     clientGstNumber,
+    projectDate
+  } = req.body;
+
+  console.log('📦 Material Requirements:', materialRequirements);
+  console.log('📝 Item Details:', { itemsToBeUsed, brand, thickness, units });
+
+  const project = await Project.create({
+    name,
+    customer,
+    projectType,
+    category,
+    subCategory,
+    description,
+    siteAddress,
+    billingAddress,
+    startDate,
+    expectedEndDate,
+    supervisors,
+    workers,
+    estimatedCost,
+    materialRequirements,
+    itemsToBeUsed,
+    brand,
+    thickness,
+    units,
+    clientGstNumber,
+    projectDate,
     createdBy: req.user._id
   });
 

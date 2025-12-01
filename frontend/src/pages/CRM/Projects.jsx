@@ -309,8 +309,9 @@ const Projects = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category / Sub Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -324,12 +325,16 @@ const Projects = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {project.projectId}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {project.name || 'N/A'}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {project.customer?.name}<br/>
                         <span className="text-xs text-gray-500">{project.customer?.contactNumber}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {project.category.charAt(0).toUpperCase() + project.category.slice(1)}
+                        <span className="text-xs text-gray-500">{project.category.charAt(0).toUpperCase() + project.category.slice(1)}</span><br/>
+                        <span className="font-medium">{project.subCategory ? project.subCategory.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'N/A'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {project.projectType === 'new' ? 'New' : 'Rework'}
@@ -390,6 +395,7 @@ const Projects = () => {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-900">{project.projectId}</h3>
+                      <p className="text-sm font-semibold text-gray-800 mt-1">{project.name || 'N/A'}</p>
                       <p className="text-xs text-gray-500 mt-1">{project.customer?.name}</p>
                       <p className="text-xs text-gray-500">{project.customer?.contactNumber}</p>
                     </div>
@@ -408,7 +414,11 @@ const Projects = () => {
                   <div className="space-y-2 mb-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Category:</span>
-                      <span className="font-medium">{project.category.charAt(0).toUpperCase() + project.category.slice(1)}</span>
+                      <span className="font-medium text-xs text-gray-500">{project.category.charAt(0).toUpperCase() + project.category.slice(1)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Sub Category:</span>
+                      <span className="font-medium">{project.subCategory ? project.subCategory.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'N/A'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Project Date:</span>

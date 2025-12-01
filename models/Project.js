@@ -5,6 +5,11 @@ const projectSchema = new mongoose.Schema({
     type: String,
     unique: true
   },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Customer',
