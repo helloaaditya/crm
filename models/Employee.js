@@ -197,7 +197,7 @@ const employeeSchema = new mongoose.Schema({
     },
     role: {
       type: String,
-      enum: ['supervisor', 'engineer', 'worker', 'helper']
+      enum: ['supervisor', 'engineer', 'worker', 'helper', 'technician', 'manager', 'admin', 'driver']
     },
     assignedDate: { type: Date, default: Date.now },
     assignedBy: {
