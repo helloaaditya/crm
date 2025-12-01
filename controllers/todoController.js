@@ -165,6 +165,10 @@ export const createTodo = asyncHandler(async (req, res) => {
     });
   }
 
+  // Convert empty strings to undefined for optional ObjectId fields
+  const finalProject = project && project.trim() !== '' ? project : undefined;
+  const finalCustomer = customer && customer.trim() !== '' ? customer : undefined;
+
   const todo = await Todo.create({
     title,
     description,
@@ -176,8 +180,8 @@ export const createTodo = asyncHandler(async (req, res) => {
     tags: tags || [],
     notes,
     estimatedHours,
-    project,
-    customer
+    project: finalProject,
+    customer: finalCustomer
   });
 
   const populatedTodo = await Todo.findById(todo._id)
@@ -279,8 +283,9 @@ export const updateTodo = asyncHandler(async (req, res) => {
   if (notes !== undefined) todo.notes = notes;
   if (estimatedHours !== undefined) todo.estimatedHours = estimatedHours;
   if (actualHours !== undefined) todo.actualHours = actualHours;
-  if (project !== undefined) todo.project = project;
-  if (customer !== undefined) todo.customer = customer;
+  // Convert empty strings to null for optional ObjectId fields
+  if (project !== undefined) todo.project = (project && project.trim() !== '') ? project : null;
+  if (customer !== undefined) todo.customer = (customer && customer.trim() !== '') ? customer : null;
 
   await todo.save();
 

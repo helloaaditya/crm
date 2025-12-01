@@ -82,11 +82,21 @@ function Todos() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      // Clean up formData: convert empty strings to undefined for optional ObjectId fields
+      const cleanedData = {
+        ...formData,
+        project: formData.project && formData.project.trim() !== '' ? formData.project : undefined,
+        customer: formData.customer && formData.customer.trim() !== '' ? formData.customer : undefined,
+        assignedTo: formData.assignedTo && formData.assignedTo.trim() !== '' ? formData.assignedTo : undefined,
+        dueDate: formData.dueDate && formData.dueDate.trim() !== '' ? formData.dueDate : undefined,
+        estimatedHours: formData.estimatedHours && formData.estimatedHours.trim() !== '' ? parseFloat(formData.estimatedHours) : undefined
+      }
+
       if (editingTodo) {
-        await API.todos.update(editingTodo._id, formData)
+        await API.todos.update(editingTodo._id, cleanedData)
         toast.success('Todo updated successfully')
       } else {
-        await API.todos.create(formData)
+        await API.todos.create(cleanedData)
         toast.success('Todo created successfully')
       }
       setShowModal(false)

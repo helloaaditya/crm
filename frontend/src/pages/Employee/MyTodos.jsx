@@ -72,12 +72,19 @@ function MyTodos() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      // Clean up formData: convert empty strings to undefined for optional fields
+      const cleanedData = {
+        ...formData,
+        dueDate: formData.dueDate && formData.dueDate.trim() !== '' ? formData.dueDate : undefined,
+        estimatedHours: formData.estimatedHours && formData.estimatedHours.trim() !== '' ? parseFloat(formData.estimatedHours) : undefined
+      }
+
       if (editingTodo) {
-        await API.todos.update(editingTodo._id, formData)
+        await API.todos.update(editingTodo._id, cleanedData)
         toast.success('Todo updated successfully')
       } else {
         await API.todos.create({
-          ...formData,
+          ...cleanedData,
           assignedTo: null // Will be set to current employee on backend
         })
         toast.success('Todo created successfully')
