@@ -7,6 +7,10 @@ import { AuthContext } from '../../context/AuthContext'
 function CalendarReminders() {
   const { user } = useContext(AuthContext)
   const isAdmin = user && (user.role === 'admin' || user.role === 'main_admin')
+  const userModules = user?.module 
+    ? user.module.split(',').map(m => m.trim()).filter(m => m) 
+    : []
+  const hasCalendarAccess = isAdmin || userModules.includes('calendar') || userModules.includes('all')
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -60,11 +64,16 @@ function CalendarReminders() {
       
       let allBirthdays = [];
       
-      // Check if user is admin
-      const isAdmin = user && (user.role === 'admin' || user.role === 'main_admin');
+      // Check if user has calendar access
+      const userModules = user?.module 
+        ? user.module.split(',').map(m => m.trim()).filter(m => m) 
+        : [];
+      const hasCalendarAccess = (user && (user.role === 'admin' || user.role === 'main_admin')) || 
+                                userModules.includes('calendar') || 
+                                userModules.includes('all');
       
-      if (isAdmin) {
-        // For admins, try to fetch all employees
+      if (hasCalendarAccess) {
+        // For users with calendar access, fetch all employees
         try {
           const response = await API.employees.getAll({ limit: 1000 })
           const employees = response.data.data
@@ -197,7 +206,7 @@ function CalendarReminders() {
   }
 
   const handleResetReminders = async () => {
-    const confirmMessage = isAdmin 
+    const confirmMessage = hasCalendarAccess 
       ? 'Are you sure you want to delete ALL calendar reminders for ALL users? This action cannot be undone.'
       : 'Are you sure you want to delete all your calendar reminders? This action cannot be undone.'
     if (!window.confirm(confirmMessage)) {
@@ -316,13 +325,28 @@ function CalendarReminders() {
   // Calculate the actual count of pending items (excluding birthdays unless filtering)
   const pendingRemindersCount = reminders.filter(r => r.status === 'pending').length;
 
+  // If user doesn't have calendar access, show access denied message
+  if (!hasCalendarAccess) {
+    return (
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <FiBell className="mx-auto text-gray-400 mb-4" size={48} />
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Calendar Access Required</h2>
+          <p className="text-gray-600">
+            You don't have access to view the calendar. Please contact your administrator to grant calendar access.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
             Calendar Reminders
-            {isAdmin && <span className="text-sm font-normal text-gray-500 ml-2">(All Users)</span>}
+            {hasCalendarAccess && <span className="text-sm font-normal text-gray-500 ml-2">(All Users)</span>}
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Manage payments, bills & important dates</p>
         </div>
@@ -331,7 +355,7 @@ function CalendarReminders() {
             onClick={handleResetReminders}
             className="flex items-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
             disabled={loading}
-            title={isAdmin ? "Reset all reminders (Admin)" : "Reset all my reminders"}
+            title={hasCalendarAccess ? "Reset all reminders" : "Reset all my reminders"}
           >
             <FiTrash2 className="mr-1" />
             Reset
@@ -466,7 +490,7 @@ function CalendarReminders() {
           <div className="flex items-center">
             <FiBell className="text-red-500 mr-2" />
             <p className="text-red-800 font-medium">
-              {isAdmin ? 'There are' : 'You have'} {overdueReminders.length} overdue reminder{overdueReminders.length > 1 ? 's' : ''}
+              {hasCalendarAccess ? 'There are' : 'You have'} {overdueReminders.length} overdue reminder{overdueReminders.length > 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -529,17 +553,17 @@ function CalendarReminders() {
                         {item.recurring?.enabled && (
                           <span className="text-blue-600">🔄 {item.recurring.frequency}</span>
                         )}
-                        {isAdmin && item.createdBy && (
+                        {hasCalendarAccess && item.createdBy && (
                           <span className="text-xs text-gray-400">
                             Created by: {typeof item.createdBy === 'object' ? item.createdBy.name : 'Unknown'}
                           </span>
                         )}
-                        {isAdmin && item.assignedTo && Array.isArray(item.assignedTo) && item.assignedTo.length > 0 && (
+                        {hasCalendarAccess && item.assignedTo && Array.isArray(item.assignedTo) && item.assignedTo.length > 0 && (
                           <span className="text-xs text-gray-400">
                             Assigned to: {item.assignedTo.map(a => typeof a === 'object' ? a.name : 'Unknown').join(', ')}
                           </span>
                         )}
-                        {isAdmin && item.assignedTo && !Array.isArray(item.assignedTo) && (
+                        {hasCalendarAccess && item.assignedTo && !Array.isArray(item.assignedTo) && (
                           <span className="text-xs text-gray-400">
                             Assigned to: {typeof item.assignedTo === 'object' ? item.assignedTo.name : 'Unknown'}
                           </span>

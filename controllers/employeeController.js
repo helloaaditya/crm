@@ -1844,26 +1844,29 @@ export const getMyLeaves = asyncHandler(async (req, res) => {
 
 // @desc    Get my calendar reminders
 // @route   GET /api/employees/my-reminders
-// @access  Private (Employee)
+// @access  Private (Employee with calendar access)
 export const getMyReminders = asyncHandler(async (req, res) => {
   const { type, status } = req.query;
 
-  // Check if user is admin - admins see all reminders
+  // Check if user is admin or has calendar module access
   const isAdmin = req.user.role === 'admin' || req.user.role === 'main_admin';
+  const userModules = req.user.module 
+    ? req.user.module.split(',').map(m => m.trim()).filter(m => m) 
+    : [];
+  const hasCalendarAccess = isAdmin || userModules.includes('calendar') || userModules.includes('all');
   
   let query = {};
   
-  if (isAdmin) {
-    // Admins see all reminders - no filter by user
+  if (hasCalendarAccess) {
+    // Users with calendar access (admin or granted access) see all reminders
     query = {};
   } else {
-    // Regular employees only see their own reminders
-    query = {
-      $or: [
-        { assignedTo: req.user._id },
-        { createdBy: req.user._id }
-      ]
-    };
+    // Users without calendar access should not see any reminders
+    // Return empty array
+    return res.json({
+      success: true,
+      data: []
+    });
   }
 
   if (type) query.type = type;
