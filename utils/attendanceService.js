@@ -1,9 +1,156 @@
 import Employee from '../models/Employee.js';
 
 /**
+ * Helper function to normalize date to YYYY-MM-DD format for comparison
+ * This ensures consistent date comparison regardless of time components or timezones
+ */
+const normalizeDate = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * Helper function to check if attendance exists for a date
+ * Uses normalized date strings for reliable comparison
+ */
+const hasAttendanceForDate = (attendanceArray, targetDate) => {
+  const targetDateStr = normalizeDate(targetDate);
+  return attendanceArray.some(a => {
+    const attDateStr = normalizeDate(a.date);
+    return attDateStr === targetDateStr;
+  });
+};
+
+/**
+ * Helper function to find attendance index for a date
+ * Uses normalized date strings for reliable comparison
+ */
+const findAttendanceIndex = (attendanceArray, targetDate) => {
+  const targetDateStr = normalizeDate(targetDate);
+  return attendanceArray.findIndex(a => {
+    const attDateStr = normalizeDate(a.date);
+    return attDateStr === targetDateStr;
+  });
+};
+
+/**
+ * Deduplicate attendance records - keep the most complete record for each date
+ */
+export const deduplicateAttendance = async (employeeId = null) => {
+  try {
+    console.log('🔍 Starting attendance deduplication...');
+    
+    let employees;
+    if (employeeId) {
+      const employee = await Employee.findById(employeeId);
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+      employees = [employee];
+    } else {
+      employees = await Employee.find({ isActive: true }).select('_id name attendance');
+    }
+    
+    let totalDeduplicated = 0;
+    let totalProcessed = 0;
+    
+    for (const employee of employees) {
+      if (!employee.attendance || employee.attendance.length === 0) {
+        continue;
+      }
+      
+      // Group attendance by normalized date
+      const attendanceByDate = {};
+      const duplicates = [];
+      
+      employee.attendance.forEach((att, index) => {
+        const dateStr = normalizeDate(att.date);
+        
+        if (!attendanceByDate[dateStr]) {
+          attendanceByDate[dateStr] = [];
+        }
+        
+        attendanceByDate[dateStr].push({ att, index });
+      });
+      
+      // Find dates with duplicates
+      Object.keys(attendanceByDate).forEach(dateStr => {
+        if (attendanceByDate[dateStr].length > 1) {
+          duplicates.push({ dateStr, records: attendanceByDate[dateStr] });
+        }
+      });
+      
+      if (duplicates.length === 0) {
+        continue;
+      }
+      
+      // For each duplicate date, keep the best record
+      const indicesToRemove = [];
+      
+      duplicates.forEach(({ dateStr, records }) => {
+        // Sort records by completeness (prefer records with check-in/check-out times)
+        records.sort((a, b) => {
+          const aHasCheckIn = a.att.checkInTime ? 1 : 0;
+          const bHasCheckIn = b.att.checkInTime ? 1 : 0;
+          const aHasCheckOut = a.att.checkOutTime ? 1 : 0;
+          const bHasCheckOut = b.att.checkOutTime ? 1 : 0;
+          const aCompleteness = aHasCheckIn + aHasCheckOut;
+          const bCompleteness = bHasCheckIn + bHasCheckOut;
+          
+          if (aCompleteness !== bCompleteness) {
+            return bCompleteness - aCompleteness; // More complete first
+          }
+          
+          // If same completeness, prefer non-auto-generated
+          const aIsAuto = a.att.notes?.includes('Auto-generated') ? 1 : 0;
+          const bIsAuto = b.att.notes?.includes('Auto-generated') ? 1 : 0;
+          return aIsAuto - bIsAuto; // Non-auto-generated first
+        });
+        
+        // Keep the first (best) record, mark others for removal
+        const bestRecord = records[0];
+        for (let i = 1; i < records.length; i++) {
+          indicesToRemove.push(records[i].index);
+          totalDeduplicated++;
+        }
+      });
+      
+      // Remove duplicates (sort indices descending to avoid index shifting issues)
+      if (indicesToRemove.length > 0) {
+        indicesToRemove.sort((a, b) => b - a); // Sort descending
+        indicesToRemove.forEach(index => {
+          employee.attendance.splice(index, 1);
+        });
+        
+        await employee.save();
+        console.log(`✅ Removed ${indicesToRemove.length} duplicate records for employee ${employee.name || employee._id}`);
+      }
+      
+      totalProcessed++;
+    }
+    
+    console.log(`✅ Deduplication complete: Removed ${totalDeduplicated} duplicate records from ${totalProcessed} employees`);
+    
+    return {
+      success: true,
+      processed: totalProcessed,
+      removed: totalDeduplicated,
+      message: `Removed ${totalDeduplicated} duplicate attendance records from ${totalProcessed} employees`
+    };
+    
+  } catch (error) {
+    console.error('❌ Deduplication failed:', error);
+    throw error;
+  }
+};
+
+/**
  * Auto-generate attendance records for all active employees
  * Marks as 'absent' if no check-in was made for a given date
- * **OPTIMIZED: Only processes last 30 days to avoid server overload**
+ * Processes from joining date to yesterday (with reasonable limit to prevent overload)
  */
 export const autoGenerateAttendanceRecords = async () => {
   try {
@@ -20,10 +167,10 @@ export const autoGenerateAttendanceRecords = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // **FIX: Only process last 30 days to avoid server overload**
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    // Limit to last 365 days (1 year) to prevent server overload for very old employees
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+    oneYearAgo.setHours(0, 0, 0, 0);
     
     let totalCreated = 0;
     let totalProcessed = 0;
@@ -43,8 +190,8 @@ export const autoGenerateAttendanceRecords = async () => {
           continue;
         }
         
-        // **FIX: Only process last 30 days, not from joining date**
-        const processingStartDate = start > thirtyDaysAgo ? start : thirtyDaysAgo;
+        // Use the later of joining date or 1 year ago (to prevent processing too far back)
+        const processingStartDate = start > oneYearAgo ? start : oneYearAgo;
         
         // Process each date from start date to yesterday (not today)
         const yesterday = new Date(today);
@@ -53,22 +200,19 @@ export const autoGenerateAttendanceRecords = async () => {
         const currentDate = new Date(processingStartDate);
         let createdForEmployee = 0;
         let checkedDays = 0;
+        const maxDays = 366; // Safety limit for 1 year
         
         while (currentDate <= yesterday) {
           checkedDays++;
           
           // Safety check - prevent infinite loop
-          if (checkedDays > 31) {
-            console.error(`⚠️ Safety limit reached for employee ${employee._id}`);
+          if (checkedDays > maxDays) {
+            console.log(`⚠️ Safety limit reached for employee ${employee._id} (${maxDays} days)`);
             break;
           }
           
-          // Check if attendance already exists for this date
-          const existingAttendance = employee.attendance.find(a => {
-            const attDate = new Date(a.date);
-            attDate.setHours(0, 0, 0, 0);
-            return attDate.getTime() === currentDate.getTime();
-          });
+          // Check if attendance already exists for this date (using normalized date comparison)
+          const existingAttendance = hasAttendanceForDate(employee.attendance, currentDate);
           
           // If no attendance record exists, create one marked as 'absent'
           if (!existingAttendance) {
@@ -106,13 +250,13 @@ export const autoGenerateAttendanceRecords = async () => {
       }
     }
     
-    console.log(`✅ Auto-attendance complete: ${totalCreated} records created for ${totalProcessed} employees (last 30 days)`);
+    console.log(`✅ Auto-attendance complete: ${totalCreated} records created for ${totalProcessed} employees`);
     
     return {
       success: true,
       processed: totalProcessed,
       created: totalCreated,
-      message: `Generated ${totalCreated} attendance records for ${totalProcessed} employees (last 30 days only)`
+      message: `Generated ${totalCreated} missing attendance records for ${totalProcessed} employees`
     };
     
   } catch (error) {
@@ -126,7 +270,7 @@ export const autoGenerateAttendanceRecords = async () => {
 
 /**
  * Generate missing attendance for a specific employee
- * **OPTIMIZED: Only processes last 30 days to avoid timeouts**
+ * Processes from joining date to yesterday (with reasonable limit to prevent overload)
  */
 export const generateMissingAttendanceForEmployee = async (employeeId) => {
   try {
@@ -146,17 +290,17 @@ export const generateMissingAttendanceForEmployee = async (employeeId) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // **FIX: Limit to last 30 days like the bulk generation**
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    // Limit to last 365 days (1 year) to prevent server overload for very old employees
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+    oneYearAgo.setHours(0, 0, 0, 0);
     
     const startDate = employee.joiningDate || employee.createdAt;
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
     
-    // Use the later of joining date or 30 days ago
-    const processingStartDate = start > thirtyDaysAgo ? start : thirtyDaysAgo;
+    // Use the later of joining date or 1 year ago
+    const processingStartDate = start > oneYearAgo ? start : oneYearAgo;
     
     console.log(`📅 Processing from ${processingStartDate.toISOString().split('T')[0]} to yesterday`);
     
@@ -167,22 +311,19 @@ export const generateMissingAttendanceForEmployee = async (employeeId) => {
     const currentDate = new Date(processingStartDate);
     let created = 0;
     let checkedDays = 0;
+    const maxDays = 366; // Safety limit for 1 year
     
     while (currentDate <= yesterday) {
       checkedDays++;
       
       // Safety check - prevent infinite loop
-      if (checkedDays > 31) {
-        console.error(`⚠️ Safety limit reached - stopping at 31 days`);
+      if (checkedDays > maxDays) {
+        console.log(`⚠️ Safety limit reached - stopping at ${maxDays} days`);
         break;
       }
       
-      // Check if attendance exists
-      const existingAttendance = employee.attendance.find(a => {
-        const attDate = new Date(a.date);
-        attDate.setHours(0, 0, 0, 0);
-        return attDate.getTime() === currentDate.getTime();
-      });
+      // Check if attendance exists (using normalized date comparison)
+      const existingAttendance = hasAttendanceForDate(employee.attendance, currentDate);
       
       // Create if missing
       if (!existingAttendance) {
@@ -214,7 +355,7 @@ export const generateMissingAttendanceForEmployee = async (employeeId) => {
     return {
       success: true,
       created,
-      message: `Generated ${created} missing attendance records (last 30 days)`
+      message: `Generated ${created} missing attendance records`
     };
     
   } catch (error) {
@@ -228,16 +369,8 @@ export const generateMissingAttendanceForEmployee = async (employeeId) => {
  * Converts 'absent' status to 'present' or 'half_day' based on work hours
  */
 export const validateAndUpdateAttendance = (employee, date, checkInTime, checkOutTime, location) => {
-  const dateStr = new Date(date).toISOString().split('T')[0];
-  
-  // Find existing attendance for the date
-  const attendanceIndex = employee.attendance.findIndex(a => {
-    const attDate = new Date(a.date);
-    attDate.setHours(0, 0, 0, 0);
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    return attDate.getTime() === targetDate.getTime();
-  });
+  // Find existing attendance for the date (using normalized date comparison)
+  const attendanceIndex = findAttendanceIndex(employee.attendance, date);
   
   let workHours = 0;
   let status = 'present';

@@ -130,6 +130,27 @@ const Attendance = () => {
     }
   }
 
+  const handleDeduplicate = async () => {
+    if (!selectedEmployee && !window.confirm('This will remove duplicate attendance records for ALL employees. Continue?')) {
+      return
+    }
+    
+    try {
+      setGenerating(true)
+      const response = await API.employees.deduplicateAttendance(selectedEmployee || null)
+      toast.success(response.data.message || 'Duplicate attendance records removed')
+      if (selectedEmployee) {
+        fetchAttendance()
+      } else {
+        fetchEmployees()
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to remove duplicates')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const handleMarkAttendance = async (status) => {
     if (!selectedEmployee) {
       toast.error('Please select an employee')
@@ -301,6 +322,15 @@ const Attendance = () => {
               >
                 <FiRefreshCw className={`mr-2 ${generating ? 'animate-spin' : ''}`} />
                 Fill All
+              </button>
+              <button
+                onClick={handleDeduplicate}
+                disabled={generating}
+                className="flex items-center justify-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 text-sm"
+                title={selectedEmployee ? "Remove duplicate records for selected employee" : "Remove duplicate records for all employees"}
+              >
+                <FiRefreshCw className={`mr-2 ${generating ? 'animate-spin' : ''}`} />
+                Remove Duplicates
               </button>
             </>
           )}

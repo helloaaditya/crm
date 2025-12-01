@@ -5,7 +5,7 @@ import Customer from '../models/Customer.js';
 import CalendarReminder from '../models/CalendarReminder.js';
 import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, validateAndUpdateAttendance } from '../utils/attendanceService.js';
+import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, validateAndUpdateAttendance, deduplicateAttendance } from '../utils/attendanceService.js';
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -232,17 +232,26 @@ export const markAttendance = asyncHandler(async (req, res) => {
   // Use the validation service to update or create attendance
   validateAndUpdateAttendance(employee, date, checkInTime, checkOutTime, location);
   
-  // Add notes if provided
-  const dateObj = new Date(date);
-  dateObj.setHours(0, 0, 0, 0);
-  const attendanceRecord = employee.attendance.find(a => {
-    const attDate = new Date(a.date);
-    attDate.setHours(0, 0, 0, 0);
-    return attDate.getTime() === dateObj.getTime();
-  });
-  
-  if (attendanceRecord && notes) {
-    attendanceRecord.notes = notes;
+  // Add notes if provided (validateAndUpdateAttendance already found/created the record)
+  if (notes) {
+    // Find the attendance record that was just updated/created
+    const normalizeDate = (d) => {
+      const date = new Date(d);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const targetDateStr = normalizeDate(date);
+    const attendanceRecord = employee.attendance.find(a => {
+      const attDateStr = normalizeDate(a.date);
+      return attDateStr === targetDateStr;
+    });
+    
+    if (attendanceRecord) {
+      attendanceRecord.notes = notes;
+    }
   }
 
   await employee.save();
@@ -400,6 +409,43 @@ export const generateMissingAttendance = asyncHandler(async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to generate missing attendance'
+    });
+  }
+});
+
+// @desc    Deduplicate attendance records (remove duplicates for same date)
+// @route   POST /api/employees/attendance/deduplicate
+// @route   POST /api/employees/:id/attendance/deduplicate
+// @access  Private
+export const deduplicateAttendanceRecords = asyncHandler(async (req, res) => {
+  try {
+    console.log('📋 Deduplicate attendance request received');
+    
+    const employeeId = req.params.id || null;
+    
+    // Set a timeout of 60 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Operation timed out after 60 seconds')), 60000);
+    });
+    
+    // Race between the actual operation and timeout
+    const result = await Promise.race([
+      deduplicateAttendance(employeeId),
+      timeoutPromise
+    ]);
+    
+    console.log('✅ Deduplication completed:', result);
+    
+    res.json({
+      success: true,
+      data: result,
+      message: result.message || `Removed ${result.removed} duplicate attendance records`
+    });
+  } catch (error) {
+    console.error('❌ Deduplication error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to deduplicate attendance records'
     });
   }
 });

@@ -12,6 +12,7 @@ import {
   updateAttendanceEntry,
   autoGenerateAllAttendance,
   generateMissingAttendance,
+  deduplicateAttendanceRecords,
   applyLeave,
   updateLeaveStatus,
   grantCompOff,
@@ -169,7 +170,9 @@ router.delete('/reminders/reset', checkPermission('canDelete'), resetAllReminder
 
 // Attendance (Admin)
 router.post('/attendance/auto-generate', checkPermission('canCreate'), autoGenerateAllAttendance);
+router.post('/attendance/deduplicate', checkPermission('canCreate'), deduplicateAttendanceRecords);
 router.post('/:id/attendance/generate-missing', checkPermission('canCreate'), generateMissingAttendance);
+router.post('/:id/attendance/deduplicate', checkPermission('canCreate'), deduplicateAttendanceRecords);
 router.post('/:id/attendance', markAttendance);
 router.get('/:id/attendance', getAttendanceHistory);
 router.put('/:id/attendance/:attendanceId', checkPermission('canEdit'), updateAttendanceEntry);
