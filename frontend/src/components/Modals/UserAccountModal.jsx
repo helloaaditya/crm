@@ -576,6 +576,32 @@ const UserAccountModal = ({ isOpen, onClose, onSuccess, user = null, employees =
                     </div>
                   </div>
 
+                  {/* Todo Module */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">✅ Todo Module</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-2">
+                      {[
+                        { value: 'todo', label: 'Admin Todos', description: 'Create and assign todos to employees' }
+                      ].map((page) => (
+                        <label 
+                          key={page.value}
+                          className="flex items-start cursor-pointer p-2 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.modules.includes(page.value)}
+                            onChange={() => handleModuleToggle(page.value)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5 flex-shrink-0"
+                          />
+                          <div className="ml-2">
+                            <span className="text-xs text-gray-800 font-medium block">{page.label}</span>
+                            <span className="text-xs text-gray-500">{page.description}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Shared Pages */}
                   <div className="mb-4">
                     <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase">📁 Shared Pages</h4>
