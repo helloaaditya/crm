@@ -6,6 +6,7 @@ import { AuthContext } from '../../context/AuthContext'
 
 function CalendarReminders() {
   const { user } = useContext(AuthContext)
+  const isAdmin = user && (user.role === 'admin' || user.role === 'main_admin')
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -196,7 +197,10 @@ function CalendarReminders() {
   }
 
   const handleResetReminders = async () => {
-    if (!window.confirm('Are you sure you want to delete all your calendar reminders? This action cannot be undone.')) {
+    const confirmMessage = isAdmin 
+      ? 'Are you sure you want to delete ALL calendar reminders for ALL users? This action cannot be undone.'
+      : 'Are you sure you want to delete all your calendar reminders? This action cannot be undone.'
+    if (!window.confirm(confirmMessage)) {
       return;
     }
     
@@ -316,7 +320,10 @@ function CalendarReminders() {
     <div className="p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Calendar Reminders</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+            Calendar Reminders
+            {isAdmin && <span className="text-sm font-normal text-gray-500 ml-2">(All Users)</span>}
+          </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Manage payments, bills & important dates</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -324,7 +331,7 @@ function CalendarReminders() {
             onClick={handleResetReminders}
             className="flex items-center px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
             disabled={loading}
-            title="Reset all my reminders"
+            title={isAdmin ? "Reset all reminders (Admin)" : "Reset all my reminders"}
           >
             <FiTrash2 className="mr-1" />
             Reset
@@ -459,7 +466,7 @@ function CalendarReminders() {
           <div className="flex items-center">
             <FiBell className="text-red-500 mr-2" />
             <p className="text-red-800 font-medium">
-              You have {overdueReminders.length} overdue reminder{overdueReminders.length > 1 ? 's' : ''}
+              {isAdmin ? 'There are' : 'You have'} {overdueReminders.length} overdue reminder{overdueReminders.length > 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -521,6 +528,21 @@ function CalendarReminders() {
                         )}
                         {item.recurring?.enabled && (
                           <span className="text-blue-600">🔄 {item.recurring.frequency}</span>
+                        )}
+                        {isAdmin && item.createdBy && (
+                          <span className="text-xs text-gray-400">
+                            Created by: {typeof item.createdBy === 'object' ? item.createdBy.name : 'Unknown'}
+                          </span>
+                        )}
+                        {isAdmin && item.assignedTo && Array.isArray(item.assignedTo) && item.assignedTo.length > 0 && (
+                          <span className="text-xs text-gray-400">
+                            Assigned to: {item.assignedTo.map(a => typeof a === 'object' ? a.name : 'Unknown').join(', ')}
+                          </span>
+                        )}
+                        {isAdmin && item.assignedTo && !Array.isArray(item.assignedTo) && (
+                          <span className="text-xs text-gray-400">
+                            Assigned to: {typeof item.assignedTo === 'object' ? item.assignedTo.name : 'Unknown'}
+                          </span>
                         )}
                       </div>
                     </div>

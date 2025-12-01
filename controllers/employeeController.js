@@ -1848,18 +1848,30 @@ export const getMyLeaves = asyncHandler(async (req, res) => {
 export const getMyReminders = asyncHandler(async (req, res) => {
   const { type, status } = req.query;
 
-  let query = {
-    $or: [
-      { assignedTo: req.user._id },
-      { createdBy: req.user._id }
-    ]
-  };
+  // Check if user is admin - admins see all reminders
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'main_admin';
+  
+  let query = {};
+  
+  if (isAdmin) {
+    // Admins see all reminders - no filter by user
+    query = {};
+  } else {
+    // Regular employees only see their own reminders
+    query = {
+      $or: [
+        { assignedTo: req.user._id },
+        { createdBy: req.user._id }
+      ]
+    };
+  }
 
   if (type) query.type = type;
   if (status) query.status = status;
 
   const reminders = await CalendarReminder.find(query)
     .populate('assignedTo', 'name')
+    .populate('createdBy', 'name')
     .populate('completedBy', 'name')
     .sort({ date: 1 });
 
