@@ -27,18 +27,35 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
   const [uploadingFile, setUploadingFile] = useState(false)
   const [quotationFileUrl, setQuotationFileUrl] = useState('')
 
-  // Load invoice data when editing
+  // Load invoice or quotation data when editing/converting
   useEffect(() => {
-    if (invoice) {
+    if (quotation) {
+      // Pre-fill form with quotation data for conversion
       setFormData({
-        customer: invoice.customer?._id || '',
-        project: invoice.project?._id || '',
+        customer: quotation.customer?._id || quotation.customer || '',
+        project: quotation.project?._id || quotation.project || '',
+        invoiceType: 'tax_invoice', // Convert to tax invoice
+        billType: quotation.billType || 'service_bill',
+        isGST: quotation.isGST ?? true,
+        gstNumber: quotation.gstNumber || '',
+        items: [{ material: '', description: '', quantity: 1, unit: 'pcs', rate: 0, gstRate: 18, stockAvailable: undefined }], // Start with empty items
+        discount: quotation.discount || 0,
+        dueDate: quotation.dueDate?.split('T')[0] || '',
+        terms: quotation.terms || 'Payment due within 30 days',
+        notes: quotation.notes ? `${quotation.notes}\n\nConverted from Quotation: ${quotation.quotationNumber || quotation.invoiceNumber}` : `Converted from Quotation: ${quotation.quotationNumber || quotation.invoiceNumber}`
+      })
+      setQuotationFileUrl(quotation.quotationFileUrl || '')
+      setQuotationFile(null)
+    } else if (invoice) {
+      setFormData({
+        customer: invoice.customer?._id || invoice.customer || '',
+        project: invoice.project?._id || invoice.project || '',
         invoiceType: invoice.invoiceType || 'tax_invoice',
         billType: invoice.billType || 'service_bill',
         isGST: invoice.isGST ?? true,
         gstNumber: invoice.gstNumber || '',
         items: invoice.items?.map(item => ({
-          material: item.material?._id || '',
+          material: item.material?._id || item.material || '',
           description: item.description || '',
           quantity: item.quantity || 1,
           unit: item.unit || 'pcs',
@@ -71,7 +88,7 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
       setQuotationFileUrl('')
       setQuotationFile(null)
     }
-  }, [invoice, isOpen])
+  }, [invoice, quotation, isOpen])
 
   useEffect(() => {
     if (isOpen) {

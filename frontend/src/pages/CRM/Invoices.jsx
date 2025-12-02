@@ -115,14 +115,23 @@ const Invoices = () => {
     }
   }
 
-  const handleConvertToInvoice = (id) => {
+  const handleConvertToInvoice = async (id) => {
     const quotation = invoices.find(inv => inv._id === id);
     if (!quotation) return;
 
-    // Open InvoiceModal with quotation data pre-filled
-    setQuotationToConvert(quotation);
-    setSelectedInvoice(null); // Clear any existing invoice
-    setShowInvoiceModal(true);
+    try {
+      // Fetch full quotation data with all populated fields including quotationFileUrl
+      const response = await API.invoices.getById(id);
+      const fullQuotation = response.data.data;
+      
+      // Open InvoiceModal with quotation data pre-filled
+      setQuotationToConvert(fullQuotation);
+      setSelectedInvoice(null); // Clear any existing invoice
+      setShowInvoiceModal(true);
+    } catch (error) {
+      console.error('Error fetching quotation:', error);
+      toast.error('Failed to load quotation details');
+    }
   }
 
   const handleGeneratePDF = async (id, forceRegenerate = false) => {

@@ -34,8 +34,9 @@ export const getInvoices = asyncHandler(async (req, res) => {
 
   const invoices = await Invoice.find(query)
     .populate('customer', 'name contactNumber email')
-    .populate('project', 'projectId description')
+    .populate('project', 'projectId description name')
     .populate('createdBy', 'name')
+    .select('+quotationFileUrl') // Include quotationFileUrl in results
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit);
@@ -57,8 +58,9 @@ export const getInvoices = asyncHandler(async (req, res) => {
 export const getInvoice = asyncHandler(async (req, res) => {
   const invoice = await Invoice.findById(req.params.id)
     .populate('customer')
-    .populate('project')
-    .populate('createdBy', 'name');
+    .populate('project', 'projectId description name')
+    .populate('createdBy', 'name')
+    .select('+quotationFileUrl'); // Include quotationFileUrl in results
 
   if (!invoice) {
     return res.status(404).json({ message: 'Invoice not found' });
