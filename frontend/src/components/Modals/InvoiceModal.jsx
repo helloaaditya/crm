@@ -632,6 +632,15 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
               </div>
             )}
 
+            {/* Info message for Quotations */}
+            {formData.invoiceType === 'quotation' && (
+              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  📄 <strong>Quotation:</strong> Items are optional. You can either add items below or upload a quotation file. Both are optional, but at least one should be provided.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               {formData.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-start p-3 border rounded-lg">
