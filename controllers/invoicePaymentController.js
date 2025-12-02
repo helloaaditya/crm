@@ -207,6 +207,12 @@ export const createInvoice = asyncHandler(async (req, res) => {
     createdBy: req.user._id
   });
 
+  // Log quotation file URL for debugging
+  if (invoiceType === 'quotation' && quotationFileUrl) {
+    console.log('✅ Quotation created with file URL:', quotationFileUrl);
+    console.log('📄 Saved quotationFileUrl in invoice:', invoice.quotationFileUrl);
+  }
+
   // Auto-deduct stock for items with materials
   // ⚠️ SKIP inventory deduction for QUOTATIONS
   // Quotations are estimates only, inventory is deducted when converted to invoice
