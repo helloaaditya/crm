@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
 import API from '../../api';
-import { toast } from 'react-hot-toast';
-import { FiEye, FiTrash2, FiPlus, FiEdit, FiX, FiFileText, FiLink } from 'react-icons/fi';
+import { toast } from 'react-toastify';
+import { FiEye, FiTrash2, FiPlus, FiEdit, FiX, FiFileText, FiLink, FiLoader } from 'react-icons/fi';
 
 const VendorPayments = () => {
   const [activeTab, setActiveTab] = useState('payments'); // 'payments' or 'invoices'
@@ -40,6 +40,9 @@ const VendorPayments = () => {
   const [availableInvoices, setAvailableInvoices] = useState([]);
   const [poBillFile, setPoBillFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [submittingInvoice, setSubmittingInvoice] = useState(false);
+  const [linkingPayment, setLinkingPayment] = useState(false);
   const [selectedVendorDetails, setSelectedVendorDetails] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
@@ -188,7 +191,10 @@ const VendorPayments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingPayment) return; // Prevent double submission
+    
     try {
+      setSubmittingPayment(true);
       let poBillUrl = formData.poBillUrl;
 
       // Upload PO bill if file is selected
@@ -196,6 +202,9 @@ const VendorPayments = () => {
         const uploadedUrl = await uploadPoBill();
         if (uploadedUrl) {
           poBillUrl = uploadedUrl;
+        } else {
+          setSubmittingPayment(false);
+          return; // Stop if upload failed
         }
       }
 
@@ -230,10 +239,12 @@ const VendorPayments = () => {
         vendorInvoice: ''
       });
       setAvailableInvoices([]);
-      fetchPayments();
+      await fetchPayments();
     } catch (error) {
       console.error('Error recording payment:', error);
       toast.error(error.response?.data?.message || 'Failed to record payment');
+    } finally {
+      setSubmittingPayment(false);
     }
   };
 
@@ -279,7 +290,10 @@ const VendorPayments = () => {
 
   const handleInvoiceSubmit = async (e) => {
     e.preventDefault();
+    if (submittingInvoice) return; // Prevent double submission
+    
     try {
+      setSubmittingInvoice(true);
       if (selectedInvoice) {
         await API.vendorInvoices.update(selectedInvoice._id, invoiceFormData);
         toast.success('Invoice updated successfully!');
@@ -300,10 +314,12 @@ const VendorPayments = () => {
         description: '',
         notes: ''
       });
-      fetchInvoices();
+      await fetchInvoices();
     } catch (error) {
       console.error('Error saving invoice:', error);
       toast.error(error.response?.data?.message || 'Failed to save invoice');
+    } finally {
+      setSubmittingInvoice(false);
     }
   };
 
@@ -335,14 +351,20 @@ const VendorPayments = () => {
   };
 
   const handleLinkPayment = async (invoiceId, paymentId) => {
+    if (linkingPayment) return; // Prevent double submission
+    
     try {
+      setLinkingPayment(true);
       await API.vendorInvoices.linkPayment(invoiceId, { paymentId });
       toast.success('Payment linked to invoice successfully');
-      fetchInvoices();
-      fetchPayments();
+      await fetchInvoices();
+      await fetchPayments();
       setShowLinkPaymentModal(false);
+      setSelectedInvoice(null);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to link payment');
+    } finally {
+      setLinkingPayment(false);
     }
   };
 
@@ -1175,15 +1197,29 @@ const VendorPayments = () => {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  disabled={submittingPayment || uploading}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={submittingPayment || uploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[140px]"
                 >
-                  Record Payment
+                  {submittingPayment ? (
+                    <>
+                      <FiLoader className="animate-spin" size={16} />
+                      Recording...
+                    </>
+                  ) : uploading ? (
+                    <>
+                      <FiLoader className="animate-spin" size={16} />
+                      Uploading...
+                    </>
+                  ) : (
+                    'Record Payment'
+                  )}
                 </button>
               </div>
             </form>
@@ -1509,15 +1545,24 @@ const VendorPayments = () => {
                     setShowInvoiceModal(false);
                     setSelectedInvoice(null);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  disabled={submittingInvoice}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={submittingInvoice}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[150px]"
                 >
-                  {selectedInvoice ? 'Update Invoice' : 'Create Invoice'}
+                  {submittingInvoice ? (
+                    <>
+                      <FiLoader className="animate-spin" size={16} />
+                      {selectedInvoice ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    selectedInvoice ? 'Update Invoice' : 'Create Invoice'
+                  )}
                 </button>
               </div>
             </form>
@@ -1556,13 +1601,14 @@ const VendorPayments = () => {
               </label>
               <select
                 onChange={(e) => {
-                  if (e.target.value) {
+                  if (e.target.value && !linkingPayment) {
                     handleLinkPayment(selectedInvoice._id, e.target.value);
                   }
                 }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                disabled={linkingPayment}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">Select a payment...</option>
+                <option value="">{linkingPayment ? 'Linking...' : 'Select a payment...'}</option>
                 {payments
                   .filter(p => p.vendor?._id?.toString() === selectedInvoice.vendor?._id?.toString() && !p.vendorInvoice)
                   .map(payment => (
@@ -1571,6 +1617,12 @@ const VendorPayments = () => {
                     </option>
                   ))}
               </select>
+              {linkingPayment && (
+                <div className="flex items-center gap-2 text-blue-600 mt-2">
+                  <FiLoader className="animate-spin" />
+                  <span className="text-sm">Linking payment...</span>
+                </div>
+              )}
               {payments.filter(p => p.vendor?._id?.toString() === selectedInvoice.vendor?._id?.toString() && !p.vendorInvoice).length === 0 && (
                 <p className="text-sm text-gray-500">No unlinked payments available for this vendor</p>
               )}
@@ -1583,7 +1635,8 @@ const VendorPayments = () => {
                   setShowLinkPaymentModal(false);
                   setSelectedInvoice(null);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={linkingPayment}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Close
               </button>
