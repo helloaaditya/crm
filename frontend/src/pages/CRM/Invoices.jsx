@@ -635,10 +635,15 @@ Best Regards,
                   {invoices.map((invoice) => (
                     <tr key={invoice._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {invoice.invoiceType === 'quotation' 
-                          ? (invoice.quotationNumber || 'Generating...') 
-                          : (invoice.invoiceNumber || 'Generating...')
-                        }
+                        <div className="flex items-center gap-2">
+                          {invoice.invoiceType === 'quotation' 
+                            ? (invoice.quotationNumber || 'Generating...') 
+                            : (invoice.invoiceNumber || 'Generating...')
+                          }
+                          {invoice.invoiceType === 'quotation' && invoice.quotationFileUrl && (
+                            <FiFileText className="text-green-600" size={16} title="Quotation file uploaded" />
+                          )}
+                        </div>
                         {invoice.invoiceType === 'quotation' && invoice.isConvertedToInvoice && (
                           <span className="ml-2 text-xs text-gray-500">(Converted)</span>
                         )}
@@ -772,7 +777,17 @@ Best Regards,
                 <div key={invoice._id} className="p-4 border-b border-gray-200 last:border-b-0">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="text-sm font-medium text-gray-900">{invoice.invoiceNumber}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-gray-900">
+                          {invoice.invoiceType === 'quotation' 
+                            ? (invoice.quotationNumber || 'Generating...') 
+                            : (invoice.invoiceNumber || 'Generating...')
+                          }
+                        </h3>
+                        {invoice.invoiceType === 'quotation' && invoice.quotationFileUrl && (
+                          <FiFileText className="text-green-600" size={14} title="Quotation file uploaded" />
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500 mt-1">{invoice.customer?.name}</p>
                       <p className="text-xs text-gray-500">{invoice.customer?.contactNumber}</p>
                     </div>
