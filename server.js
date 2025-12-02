@@ -81,7 +81,7 @@ app.use(compression());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'https://crm-chi-rouge.vercel.app',
+  'https://prod.sanjanawaterproofing.com',
   process.env.FRONTEND_URL,
   process.env.FRONTEND_URL_PROD
 ].filter(Boolean);
@@ -275,7 +275,7 @@ app.get('/cors-test', (req, res) => {
     origin: req.get('origin'),
     allowedOrigins: [
       'http://localhost:3000',
-      'https://crm-chi-rouge.vercel.app'
+      'https://prod.sanjanawaterproofing.com'
     ]
   });
 });
