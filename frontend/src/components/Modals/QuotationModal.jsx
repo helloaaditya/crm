@@ -96,10 +96,14 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
   }
 
   const uploadQuotationFile = async () => {
-    if (!quotationFile) return null
+    if (!quotationFile) {
+      console.error('❌ No quotation file to upload')
+      return null
+    }
 
     try {
       setUploadingFile(true)
+      console.log('📤 Starting file upload:', quotationFile.name, quotationFile.size, 'bytes')
       const uploadFormData = new FormData()
       uploadFormData.append('file', quotationFile)
 
@@ -107,10 +111,21 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      return response.data.url
+      console.log('✅ Upload response:', response.data)
+      const fileUrl = response.data.url
+      console.log('📄 Extracted file URL:', fileUrl)
+      
+      if (!fileUrl) {
+        console.error('❌ No URL in upload response:', response.data)
+        toast.error('Upload succeeded but no file URL returned')
+        return null
+      }
+
+      return fileUrl
     } catch (error) {
-      console.error('Error uploading quotation file:', error)
-      toast.error('Failed to upload quotation file')
+      console.error('❌ Error uploading quotation file:', error)
+      console.error('❌ Error details:', error.response?.data || error.message)
+      toast.error(error.response?.data?.message || 'Failed to upload quotation file')
       return null
     } finally {
       setUploadingFile(false)
@@ -134,13 +149,17 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       // Upload quotation file
+      console.log('🔄 Starting quotation creation process...')
       const quotationFileUrl = await uploadQuotationFile()
+      
       if (!quotationFileUrl) {
+        console.error('❌ File upload failed or returned no URL')
         setLoading(false)
+        toast.error('File upload failed. Please try again.')
         return
       }
 
-      console.log('📤 Uploaded quotation file URL:', quotationFileUrl)
+      console.log('✅ Uploaded quotation file URL:', quotationFileUrl)
 
       // Create quotation with minimal data
       const quotationData = {
@@ -156,15 +175,21 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
         igst: 0,
         discount: 0,
         totalAmount: 0,
-        quotationFileUrl
+        quotationFileUrl: quotationFileUrl // Explicitly set the URL
       }
 
       console.log('📝 Creating quotation with data:', JSON.stringify(quotationData, null, 2))
+      console.log('📄 quotationFileUrl in request:', quotationData.quotationFileUrl)
 
       const response = await API.invoices.create(quotationData)
       
-      console.log('✅ Quotation created, response:', response.data.data)
-      console.log('📄 Quotation file URL in response:', response.data.data.quotationFileUrl)
+      console.log('✅ Quotation created, response:', response.data)
+      console.log('📄 Quotation file URL in response:', response.data.data?.quotationFileUrl)
+      
+      if (!response.data.data?.quotationFileUrl) {
+        console.error('⚠️ WARNING: Quotation created but quotationFileUrl is missing in response!')
+        console.error('📄 Full response:', JSON.stringify(response.data, null, 2))
+      }
       
       toast.success(`Quotation created! Number: ${response.data.data.quotationNumber || response.data.data.invoiceNumber}`)
       

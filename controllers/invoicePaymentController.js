@@ -99,6 +99,13 @@ export const createInvoice = asyncHandler(async (req, res) => {
     quotationFileUrl
   } = req.body;
 
+  // Debug: Log quotation file URL if it's a quotation
+  if (invoiceType === 'quotation') {
+    console.log('📥 Received quotation creation request');
+    console.log('📄 quotationFileUrl in req.body:', quotationFileUrl);
+    console.log('📄 Full req.body:', JSON.stringify(req.body, null, 2));
+  }
+
   // Validate required fields
   if (!customer) {
     return res.status(400).json({ message: 'Customer is required' });
@@ -214,9 +221,16 @@ export const createInvoice = asyncHandler(async (req, res) => {
   });
 
   // Log quotation file URL for debugging
-  if (invoiceType === 'quotation' && quotationFileUrl) {
-    console.log('✅ Quotation created with file URL:', quotationFileUrl);
-    console.log('📄 Saved quotationFileUrl in invoice:', invoice.quotationFileUrl);
+  if (invoiceType === 'quotation') {
+    console.log('📝 Quotation creation completed');
+    console.log('📄 quotationFileUrl from req.body:', quotationFileUrl);
+    console.log('📄 invoice.quotationFileUrl after save:', invoice.quotationFileUrl);
+    console.log('📄 invoice.toObject():', invoice.toObject ? invoice.toObject() : invoice);
+    
+    if (!invoice.quotationFileUrl) {
+      console.error('❌ ERROR: quotationFileUrl was not saved to invoice!');
+      console.error('📄 Request body quotationFileUrl:', quotationFileUrl);
+    }
   }
 
   // Auto-deduct stock for items with materials
