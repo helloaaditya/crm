@@ -1026,6 +1026,13 @@ Best Regards,
         invoices={[selectedPaymentInvoice].filter(Boolean)}
       />
       
+      {/* Quotation Modal */}
+      <QuotationModal
+        isOpen={showQuotationModal}
+        onClose={() => setShowQuotationModal(false)}
+        onSuccess={handleModalSuccess}
+      />
+
       {/* Invoice Modal */}
       <InvoiceModal
         isOpen={showInvoiceModal}
