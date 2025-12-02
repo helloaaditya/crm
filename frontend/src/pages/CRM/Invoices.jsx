@@ -1078,7 +1078,24 @@ Best Regards,
                     >
                       View Uploaded Quotation File
                     </a>
+                    <button
+                      onClick={() => window.open(viewingInvoice.quotationFileUrl, '_blank')}
+                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                      title="Open in new tab"
+                    >
+                      Open
+                    </button>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Click the link above to view or download the quotation file.
+                  </p>
+                </div>
+              )}
+              {viewingInvoice.invoiceType === 'quotation' && !viewingInvoice.quotationFileUrl && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ No quotation file uploaded for this quotation.
+                  </p>
                 </div>
               )}
 
