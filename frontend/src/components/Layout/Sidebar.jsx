@@ -25,7 +25,7 @@ const Sidebar = () => {
     // CRM Section
     { name: 'Customers', icon: FiUsers, path: '/customers', module: 'crm' },
     { name: 'Projects', icon: FiBriefcase, path: '/projects', module: 'crm' },
-    { name: 'Invoices', icon: FiFileText, path: '/invoices', module: 'crm', notificationCount: counts.invoices },
+    { name: 'Invoices & Quotations', icon: FiFileText, path: '/invoices', module: 'crm', notificationCount: counts.invoices },
     { name: 'Customer Payments', icon: FiDollarSign, path: '/payments', module: 'crm:payments' },
     
     // Inventory Section
