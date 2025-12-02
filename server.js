@@ -82,6 +82,10 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://prod.sanjanawaterproofing.com',
+  'https://localhost',  // Capacitor Android/iOS
+  'capacitor://localhost',  // Capacitor iOS
+  'ionic://localhost',  // Ionic
+  'http://localhost',  // Capacitor Android
   process.env.FRONTEND_URL,
   process.env.FRONTEND_URL_PROD
 ].filter(Boolean);
@@ -90,6 +94,10 @@ const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow Capacitor origins (they use capacitor:// or ionic:// scheme)
+    if (origin && (origin.startsWith('capacitor://') || origin.startsWith('ionic://') || origin === 'https://localhost' || origin === 'http://localhost')) {
+      return callback(null, true);
+    }
     // Fallback: echo any origin if explicitly allowed via env
     if (process.env.CORS_ALLOW_ALL === 'true') return callback(null, true);
     return callback(new Error('Not allowed by CORS'));

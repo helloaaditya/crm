@@ -1,0 +1,14 @@
+{
+  "appId": "com.sanjana.app",
+  "appName": "Sanjana-CRM",
+  "webDir": "frontend/dist",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
