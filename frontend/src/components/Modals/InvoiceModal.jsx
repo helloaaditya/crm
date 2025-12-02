@@ -310,15 +310,51 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     
     setLoading(true)
 
-    // Check if any items have insufficient stock
-    const insufficientStockItems = formData.items.filter(item => 
-      item.material && item.stockAvailable !== undefined && item.quantity > item.stockAvailable
-    )
+    // For quotations, items are optional - allow creation with just uploaded file
+    if (formData.invoiceType === 'quotation') {
+      // Check if quotation has either items or uploaded file
+      const hasItems = formData.items && formData.items.length > 0 && 
+        formData.items.some(item => (item.material || item.description) && item.quantity > 0 && item.rate > 0);
+      const hasFile = quotationFile || quotationFileUrl;
+      
+      if (!hasItems && !hasFile) {
+        toast.error('Please either add items or upload a quotation file')
+        setLoading(false)
+        return
+      }
+      
+      // If quotation has items, validate stock (but don't require items)
+      const insufficientStockItems = formData.items.filter(item => 
+        item.material && item.stockAvailable !== undefined && item.quantity > item.stockAvailable
+      )
 
-    if (insufficientStockItems.length > 0) {
-      toast.error('Please correct stock quantities before submitting')
-      setLoading(false)
-      return
+      if (insufficientStockItems.length > 0) {
+        toast.error('Please correct stock quantities before submitting')
+        setLoading(false)
+        return
+      }
+    } else {
+      // For non-quotations, items are required
+      // Check if any items have insufficient stock
+      const insufficientStockItems = formData.items.filter(item => 
+        item.material && item.stockAvailable !== undefined && item.quantity > item.stockAvailable
+      )
+
+      if (insufficientStockItems.length > 0) {
+        toast.error('Please correct stock quantities before submitting')
+        setLoading(false)
+        return
+      }
+      
+      // Validate that items exist for non-quotations
+      const hasValidItems = formData.items && formData.items.length > 0 && 
+        formData.items.some(item => (item.material || item.description) && item.quantity > 0 && item.rate > 0);
+      
+      if (!hasValidItems) {
+        toast.error('At least one item is required')
+        setLoading(false)
+        return
+      }
     }
 
     try {
@@ -333,19 +369,38 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         finalQuotationFileUrl = uploadedUrl
       }
 
-      const { subtotal, cgst, sgst, totalAmount } = calculateTotals()
-
-      // Prepare items with calculated amounts
-      const preparedItems = formData.items.map(item => ({
-        ...(item.material && { material: item.material }), // Only include material if selected
-        description: item.description,
-        quantity: parseFloat(item.quantity),
-        unit: item.unit,
-        rate: parseFloat(item.rate),
-        amount: parseFloat(item.quantity) * parseFloat(item.rate),
-        gstRate: parseFloat(item.gstRate || 0),
-        gstAmount: ((parseFloat(item.quantity) * parseFloat(item.rate)) * parseFloat(item.gstRate || 0)) / 100
-      }))
+      // For quotations without items, use empty array and zero amounts
+      let preparedItems = [];
+      let subtotal = 0;
+      let cgst = 0;
+      let sgst = 0;
+      let totalAmount = 0;
+      
+      // Only calculate totals if there are valid items
+      const hasValidItems = formData.items && formData.items.length > 0 && 
+        formData.items.some(item => (item.material || item.description) && item.quantity > 0 && item.rate > 0);
+      
+      if (hasValidItems) {
+        const calculated = calculateTotals();
+        subtotal = calculated.subtotal;
+        cgst = calculated.cgst;
+        sgst = calculated.sgst;
+        totalAmount = calculated.totalAmount;
+        
+        // Prepare items with calculated amounts
+        preparedItems = formData.items
+          .filter(item => (item.material || item.description) && item.quantity > 0 && item.rate > 0)
+          .map(item => ({
+            ...(item.material && { material: item.material }), // Only include material if selected
+            description: item.description,
+            quantity: parseFloat(item.quantity),
+            unit: item.unit,
+            rate: parseFloat(item.rate),
+            amount: parseFloat(item.quantity) * parseFloat(item.rate),
+            gstRate: parseFloat(item.gstRate || 0),
+            gstAmount: ((parseFloat(item.quantity) * parseFloat(item.rate)) * parseFloat(item.gstRate || 0)) / 100
+          }));
+      }
 
       const invoiceData = {
         customer: formData.customer,
@@ -530,7 +585,14 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
           {/* Items */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">Invoice Items</h3>
+              <h3 className="text-sm font-semibold text-gray-700">
+                {formData.invoiceType === 'quotation' ? 'Quotation Items (Optional)' : 'Invoice Items'}
+                {formData.invoiceType === 'quotation' && (
+                  <span className="text-xs text-gray-500 font-normal ml-2">
+                    - You can upload a file instead
+                  </span>
+                )}
+              </h3>
               {!isViewMode && (
                 <button
                   type="button"
@@ -593,21 +655,21 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
                     placeholder="Description"
                     value={item.description}
                     onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                    required
+                    required={formData.invoiceType !== 'quotation'}
                     disabled={isViewMode}
                     className={`col-span-2 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   <div className="col-span-1 relative">
-                    <input
-                      type="number"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                      required
-                      min="0.01"
-                      step="0.01"
-                      disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary ${
+                  <input
+                    type="number"
+                    placeholder="Qty"
+                    value={item.quantity}
+                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                    required={formData.invoiceType !== 'quotation'}
+                    min="0.01"
+                    step="0.01"
+                    disabled={isViewMode}
+                    className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary ${
                         item.material && item.stockAvailable !== undefined && item.quantity > item.stockAvailable && !isViewMode
                           ? 'border-red-500 bg-red-50' 
                           : ''
