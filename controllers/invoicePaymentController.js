@@ -64,6 +64,12 @@ export const getInvoice = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Invoice not found' });
   }
 
+  // Debug: Log quotation file URL if it's a quotation
+  if (invoice.invoiceType === 'quotation') {
+    console.log('📄 Fetching quotation, quotationFileUrl:', invoice.quotationFileUrl);
+    console.log('📄 Full invoice object keys:', Object.keys(invoice.toObject ? invoice.toObject() : invoice));
+  }
+
   res.json({
     success: true,
     data: invoice
