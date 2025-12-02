@@ -199,9 +199,13 @@ const VendorPayments = () => {
         }
       }
 
+      // Clean up formData: convert empty strings to undefined for optional ObjectId fields
       const submitData = {
         ...formData,
-        poBillUrl
+        poBillUrl,
+        vendorInvoice: formData.vendorInvoice && formData.vendorInvoice.trim() !== '' ? formData.vendorInvoice : undefined,
+        project: formData.project && formData.project.trim() !== '' ? formData.project : undefined,
+        materials: formData.materials && Array.isArray(formData.materials) && formData.materials.length > 0 ? formData.materials : undefined
       };
 
       await api.post('/vendor-payments', submitData);

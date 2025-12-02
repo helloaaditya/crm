@@ -34,6 +34,10 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
     throw new Error('Vendor not found');
   }
 
+  // Convert empty strings to undefined for optional ObjectId fields
+  const finalVendorInvoice = vendorInvoice && vendorInvoice.trim() !== '' ? vendorInvoice : undefined;
+  const finalProject = project && (typeof project === 'string' ? project.trim() !== '' : project) ? project : undefined;
+
   const payment = await VendorPayment.create({
     vendor,
     amount,
@@ -45,20 +49,20 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
     purpose,
     description,
     materials,
-    project,
+    project: finalProject,
     isGST,
     gstAmount: gstAmount || 0,
     tdsAmount: tdsAmount || 0,
     notes,
-    vendorInvoice,
+    vendorInvoice: finalVendorInvoice,
     createdBy: req.user._id,
     approvedBy: req.user._id,
     approvedDate: new Date()
   });
 
   // If payment is linked to an invoice, update invoice paid amount
-  if (vendorInvoice) {
-    const invoice = await VendorInvoice.findById(vendorInvoice);
+  if (finalVendorInvoice) {
+    const invoice = await VendorInvoice.findById(finalVendorInvoice);
     if (invoice) {
       // Add payment to invoice payments array if not already there
       if (!invoice.payments.includes(payment._id)) {
