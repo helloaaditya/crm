@@ -59,8 +59,7 @@ export const getInvoice = asyncHandler(async (req, res) => {
   const invoice = await Invoice.findById(req.params.id)
     .populate('customer')
     .populate('project', 'projectId description name')
-    .populate('createdBy', 'name')
-    .select('+quotationFileUrl'); // Include quotationFileUrl in results
+    .populate('createdBy', 'name');
 
   if (!invoice) {
     return res.status(404).json({ message: 'Invoice not found' });

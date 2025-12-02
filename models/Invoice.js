@@ -120,10 +120,7 @@ const invoiceSchema = new mongoose.Schema({
   // Document
   pdfUrl: String,
   // Uploaded quotation file (Excel, PDF, Word, etc.)
-  quotationFileUrl: {
-    type: String,
-    select: false // Don't include by default, must explicitly select
-  },
+  quotationFileUrl: String,
   
   // Payment Records
   payments: [{

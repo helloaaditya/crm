@@ -235,9 +235,18 @@ Sanjana Enterprises`;
     toast.success(`Email client opened with ${docType} details!`);
   }
 
-  const handleView = (invoice) => {
-    setViewingInvoice(invoice)
-    setShowViewModal(true)
+  const handleView = async (invoice) => {
+    try {
+      // Fetch full invoice data to ensure all fields including quotationFileUrl are loaded
+      const response = await API.invoices.getById(invoice._id)
+      setViewingInvoice(response.data.data)
+      setShowViewModal(true)
+    } catch (error) {
+      console.error('Error fetching invoice details:', error)
+      // Fallback to using the invoice from list if fetch fails
+      setViewingInvoice(invoice)
+      setShowViewModal(true)
+    }
   }
 
   const handleAdd = () => {
