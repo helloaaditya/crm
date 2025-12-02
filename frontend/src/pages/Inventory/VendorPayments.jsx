@@ -1,17 +1,26 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
+import API from '../../api';
 import { toast } from 'react-hot-toast';
-import { FiEye, FiTrash2 } from 'react-icons/fi';
+import { FiEye, FiTrash2, FiPlus, FiEdit, FiX, FiFileText, FiLink } from 'react-icons/fi';
 
 const VendorPayments = () => {
+  const [activeTab, setActiveTab] = useState('payments'); // 'payments' or 'invoices'
   const [payments, setPayments] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showLinkPaymentModal, setShowLinkPaymentModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [invoiceLocation, setInvoiceLocation] = useState('');
+  const [totalOutstanding, setTotalOutstanding] = useState(0);
   const [formData, setFormData] = useState({
     vendor: '',
     amount: '',
@@ -25,18 +34,35 @@ const VendorPayments = () => {
     isGST: false,
     gstAmount: 0,
     tdsAmount: 0,
-    notes: ''
+    notes: '',
+    vendorInvoice: ''
   });
+  const [availableInvoices, setAvailableInvoices] = useState([]);
   const [poBillFile, setPoBillFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [selectedVendorDetails, setSelectedVendorDetails] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [invoiceFormData, setInvoiceFormData] = useState({
+    invoiceNumber: '',
+    vendor: '',
+    invoiceDate: new Date().toISOString().split('T')[0],
+    dueDate: '',
+    amount: '',
+    location: '',
+    invoiceUrl: '',
+    description: '',
+    notes: ''
+  });
 
   useEffect(() => {
     fetchVendors();
-    fetchPayments();
-  }, [selectedVendor, startDate, endDate]);
+    if (activeTab === 'payments') {
+      fetchPayments();
+    } else {
+      fetchInvoices();
+    }
+  }, [selectedVendor, startDate, endDate, activeTab, invoiceLocation]);
 
   const fetchVendors = async () => {
     try {
@@ -65,6 +91,26 @@ const VendorPayments = () => {
     }
   };
 
+  const fetchInvoices = async () => {
+    try {
+      setInvoiceLoading(true);
+      const params = {};
+      if (selectedVendor) params.vendor = selectedVendor;
+      if (invoiceLocation) params.location = invoiceLocation;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+
+      const response = await API.vendorInvoices.getAll(params);
+      setInvoices(response.data.data || []);
+      setTotalOutstanding(response.data.totalOutstanding || 0);
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      toast.error('Failed to load invoices');
+    } finally {
+      setInvoiceLoading(false);
+    }
+  };
+
   const handleInputChange = async (e) => {
     const { name, value, type, checked } = e.target;
     
@@ -73,12 +119,21 @@ const VendorPayments = () => {
       try {
         const response = await api.get(`/inventory/vendors/${value}`);
         setSelectedVendorDetails(response.data.data);
+        
+        // Fetch outstanding invoices for this vendor
+        const invoicesResponse = await API.vendorInvoices.getAll({
+          vendor: value,
+          status: 'pending,partial,overdue'
+        });
+        setAvailableInvoices(invoicesResponse.data.data || []);
       } catch (error) {
         console.error('Error fetching vendor details:', error);
         setSelectedVendorDetails(null);
+        setAvailableInvoices([]);
       }
     } else if (name === 'vendor' && !value) {
       setSelectedVendorDetails(null);
+      setAvailableInvoices([]);
     }
     
     setFormData(prev => ({
@@ -167,8 +222,10 @@ const VendorPayments = () => {
         isGST: false,
         gstAmount: 0,
         tdsAmount: 0,
-        notes: ''
+        notes: '',
+        vendorInvoice: ''
       });
+      setAvailableInvoices([]);
       fetchPayments();
     } catch (error) {
       console.error('Error recording payment:', error);
@@ -208,26 +265,157 @@ const VendorPayments = () => {
     const colors = {
       completed: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
-      cancelled: 'bg-red-100 text-red-800'
+      cancelled: 'bg-red-100 text-red-800',
+      paid: 'bg-green-100 text-green-800',
+      partial: 'bg-orange-100 text-orange-800',
+      overdue: 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const handleInvoiceSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (selectedInvoice) {
+        await API.vendorInvoices.update(selectedInvoice._id, invoiceFormData);
+        toast.success('Invoice updated successfully!');
+      } else {
+        await API.vendorInvoices.create(invoiceFormData);
+        toast.success('Invoice created successfully!');
+      }
+      setShowInvoiceModal(false);
+      setSelectedInvoice(null);
+      setInvoiceFormData({
+        invoiceNumber: '',
+        vendor: '',
+        invoiceDate: new Date().toISOString().split('T')[0],
+        dueDate: '',
+        amount: '',
+        location: '',
+        invoiceUrl: '',
+        description: '',
+        notes: ''
+      });
+      fetchInvoices();
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      toast.error(error.response?.data?.message || 'Failed to save invoice');
+    }
+  };
+
+  const handleEditInvoice = (invoice) => {
+    setSelectedInvoice(invoice);
+    setInvoiceFormData({
+      invoiceNumber: invoice.invoiceNumber || '',
+      vendor: invoice.vendor._id || '',
+      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : '',
+      amount: invoice.amount || '',
+      location: invoice.location || '',
+      invoiceUrl: invoice.invoiceUrl || '',
+      description: invoice.description || '',
+      notes: invoice.notes || ''
+    });
+    setShowInvoiceModal(true);
+  };
+
+  const handleDeleteInvoice = async (invoiceId) => {
+    if (!window.confirm('Are you sure you want to delete this invoice?')) return;
+    try {
+      await API.vendorInvoices.delete(invoiceId);
+      toast.success('Invoice deleted successfully');
+      fetchInvoices();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete invoice');
+    }
+  };
+
+  const handleLinkPayment = async (invoiceId, paymentId) => {
+    try {
+      await API.vendorInvoices.linkPayment(invoiceId, { paymentId });
+      toast.success('Payment linked to invoice successfully');
+      fetchInvoices();
+      fetchPayments();
+      setShowLinkPaymentModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to link payment');
+    }
   };
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Vendor Payments</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          + Record Payment
-        </button>
+        <h1 className="text-2xl font-bold">Vendor Payments & Invoices</h1>
+        <div className="flex gap-2">
+          {activeTab === 'payments' && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <FiPlus className="inline mr-1" />
+              Record Payment
+            </button>
+          )}
+          {activeTab === 'invoices' && (
+            <button
+              onClick={() => {
+                setSelectedInvoice(null);
+                setInvoiceFormData({
+                  invoiceNumber: '',
+                  vendor: '',
+                  invoiceDate: new Date().toISOString().split('T')[0],
+                  dueDate: '',
+                  amount: '',
+                  location: '',
+                  invoiceUrl: '',
+                  description: '',
+                  notes: ''
+                });
+                setShowInvoiceModal(true);
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <FiPlus className="inline mr-1" />
+              Add Invoice
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="flex border-b">
+          <button
+            onClick={() => setActiveTab('payments')}
+            className={`px-6 py-3 font-medium text-sm ${
+              activeTab === 'payments'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Payments
+          </button>
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={`px-6 py-3 font-medium text-sm ${
+              activeTab === 'invoices'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Vendor Invoices
+            {totalOutstanding > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full">
+                ₹{totalOutstanding.toLocaleString()}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-${activeTab === 'invoices' ? '4' : '3'} gap-4`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Vendor
@@ -245,6 +433,20 @@ const VendorPayments = () => {
               ))}
             </select>
           </div>
+          {activeTab === 'invoices' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location
+              </label>
+              <input
+                type="text"
+                value={invoiceLocation}
+                onChange={(e) => setInvoiceLocation(e.target.value)}
+                placeholder="Filter by location"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Start Date
@@ -270,6 +472,9 @@ const VendorPayments = () => {
         </div>
       </div>
 
+      {/* Payments Section */}
+      {activeTab === 'payments' && (
+        <>
       {/* Payments Table - Desktop */}
       <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
@@ -456,6 +661,192 @@ const VendorPayments = () => {
         )}
       </div>
 
+        </>
+      )}
+
+      {/* Invoices Section */}
+      {activeTab === 'invoices' && (
+        <>
+          {/* Outstanding Summary */}
+          {totalOutstanding > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-red-800">Total Outstanding</h3>
+                  <p className="text-2xl font-bold text-red-600">₹{totalOutstanding.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="text-sm text-red-700">
+                  {invoices.filter(inv => inv.status !== 'paid').length} unpaid invoices
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Invoices Table - Desktop */}
+          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remainder</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {invoiceLoading ? (
+                  <tr>
+                    <td colSpan="9" className="px-6 py-4 text-center">Loading...</td>
+                  </tr>
+                ) : invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
+                      No invoices found
+                    </td>
+                  </tr>
+                ) : (
+                  invoices.map((invoice) => (
+                    <tr key={invoice._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {invoice.invoiceNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div>
+                          <div className="font-medium">{invoice.vendor?.name}</div>
+                          <div className="text-gray-500">{invoice.vendor?.vendorId}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {invoice.location}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₹{invoice.amount?.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₹{invoice.paidAmount?.toLocaleString() || '0'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
+                        ₹{invoice.remainder?.toLocaleString() || invoice.amount?.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditInvoice(invoice)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Edit"
+                          >
+                            <FiEdit />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedInvoice(invoice);
+                              setShowLinkPaymentModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-800"
+                            title="Link Payment"
+                          >
+                            <FiLink />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteInvoice(invoice._id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Invoices Cards - Mobile */}
+          <div className="md:hidden space-y-4">
+            {invoiceLoading ? (
+              <div className="text-center py-8">Loading...</div>
+            ) : invoices.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+                No invoices found
+              </div>
+            ) : (
+              invoices.map((invoice) => (
+                <div key={invoice._id} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="font-semibold text-gray-900">{invoice.invoiceNumber}</div>
+                      <div className="text-sm text-gray-600 mt-1">{invoice.vendor?.name}</div>
+                      <div className="text-xs text-gray-500">{invoice.location}</div>
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
+                      {invoice.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Amount:</span>
+                      <span className="font-semibold text-gray-900">₹{invoice.amount?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Paid:</span>
+                      <span className="text-gray-900">₹{invoice.paidAmount?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Remainder:</span>
+                      <span className="font-semibold text-red-600">₹{invoice.remainder?.toLocaleString() || invoice.amount?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Date:</span>
+                      <span className="text-gray-900">{format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-4 pt-3 border-t">
+                    <button
+                      onClick={() => handleEditInvoice(invoice)}
+                      className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm"
+                    >
+                      <FiEdit className="inline mr-1" /> Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        setShowLinkPaymentModal(true);
+                      }}
+                      className="flex-1 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-medium text-sm"
+                    >
+                      <FiLink className="inline mr-1" /> Link
+                    </button>
+                    <button
+                      onClick={() => handleDeleteInvoice(invoice._id)}
+                      className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+
       {/* Payment Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
@@ -610,6 +1001,32 @@ const VendorPayments = () => {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
                 </div>
+
+                {availableInvoices.length > 0 && (
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Link to Invoice (Optional)
+                    </label>
+                    <select
+                      name="vendorInvoice"
+                      value={formData.vendorInvoice}
+                      onChange={handleInputChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    >
+                      <option value="">None - General Payment</option>
+                      {availableInvoices.map(invoice => (
+                        <option key={invoice._id} value={invoice._id}>
+                          {invoice.invoiceNumber} - {invoice.location} - ₹{invoice.remainder?.toLocaleString()} remaining
+                        </option>
+                      ))}
+                    </select>
+                    {formData.vendorInvoice && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Payment will be linked to selected invoice and remainder will be updated automatically
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -933,6 +1350,239 @@ const VendorPayments = () => {
                   📥 Download PO Bill
                 </a>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">{selectedInvoice ? 'Edit Invoice' : 'Add Vendor Invoice'}</h2>
+              <button
+                onClick={() => {
+                  setShowInvoiceModal(false);
+                  setSelectedInvoice(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleInvoiceSubmit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Vendor *
+                  </label>
+                  <select
+                    value={invoiceFormData.vendor}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, vendor: e.target.value })}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  >
+                    <option value="">Select Vendor</option>
+                    {vendors.map(vendor => (
+                      <option key={vendor._id} value={vendor._id}>
+                        {vendor.vendorId} - {vendor.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Invoice Number *
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceFormData.invoiceNumber}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, invoiceNumber: e.target.value })}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Location *
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceFormData.location}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, location: e.target.value })}
+                    required
+                    placeholder="e.g., Location 1, Location 2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Invoice Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={invoiceFormData.invoiceDate}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, invoiceDate: e.target.value })}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={invoiceFormData.dueDate}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, dueDate: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    value={invoiceFormData.amount}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, amount: e.target.value })}
+                    required
+                    min="0"
+                    step="0.01"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Invoice URL
+                  </label>
+                  <input
+                    type="url"
+                    value={invoiceFormData.invoiceUrl}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, invoiceUrl: e.target.value })}
+                    placeholder="https://..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={invoiceFormData.description}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, description: e.target.value })}
+                    rows="3"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    value={invoiceFormData.notes}
+                    onChange={(e) => setInvoiceFormData({ ...invoiceFormData, notes: e.target.value })}
+                    rows="2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInvoiceModal(false);
+                    setSelectedInvoice(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  {selectedInvoice ? 'Update Invoice' : 'Create Invoice'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Link Payment Modal */}
+      {showLinkPaymentModal && selectedInvoice && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Link Payment to Invoice</h2>
+              <button
+                onClick={() => {
+                  setShowLinkPaymentModal(false);
+                  setSelectedInvoice(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm font-medium text-blue-900">Invoice: {selectedInvoice.invoiceNumber}</p>
+              <p className="text-sm text-blue-700">Vendor: {selectedInvoice.vendor?.name}</p>
+              <p className="text-sm text-blue-700">Location: {selectedInvoice.location}</p>
+              <p className="text-sm text-blue-700">Amount: ₹{selectedInvoice.amount?.toLocaleString()}</p>
+              <p className="text-sm text-blue-700">Remainder: ₹{selectedInvoice.remainder?.toLocaleString()}</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Payment to Link
+              </label>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleLinkPayment(selectedInvoice._id, e.target.value);
+                  }
+                }}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              >
+                <option value="">Select a payment...</option>
+                {payments
+                  .filter(p => p.vendor?._id?.toString() === selectedInvoice.vendor?._id?.toString() && !p.vendorInvoice)
+                  .map(payment => (
+                    <option key={payment._id} value={payment._id}>
+                      {payment.paymentId} - ₹{payment.amount?.toLocaleString()} - {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
+                    </option>
+                  ))}
+              </select>
+              {payments.filter(p => p.vendor?._id?.toString() === selectedInvoice.vendor?._id?.toString() && !p.vendorInvoice).length === 0 && (
+                <p className="text-sm text-gray-500">No unlinked payments available for this vendor</p>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLinkPaymentModal(false);
+                  setSelectedInvoice(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

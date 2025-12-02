@@ -184,6 +184,14 @@ export const getDashboardOverview = asyncHandler(async (req, res) => {
   const materials = await Material.find({ isActive: true });
   const lowStockCount = materials.filter(m => m.isLowStock()).length;
 
+  // Outstanding vendor invoices
+  const VendorInvoice = (await import('../models/VendorInvoice.js')).default;
+  const outstandingInvoices = await VendorInvoice.find({
+    status: { $in: ['pending', 'partial', 'overdue'] }
+  });
+  const totalVendorOutstanding = outstandingInvoices.reduce((sum, inv) => sum + (inv.remainder || 0), 0);
+  const vendorOutstandingCount = outstandingInvoices.length;
+
   res.json({
     success: true,
     data: {
@@ -195,7 +203,9 @@ export const getDashboardOverview = asyncHandler(async (req, res) => {
       paidRevenue,
       pendingRevenue,
       pendingInvoices,
-      lowStockCount
+      lowStockCount,
+      vendorOutstanding: totalVendorOutstanding,
+      vendorOutstandingCount
     }
   });
 });

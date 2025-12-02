@@ -1,5 +1,6 @@
 import VendorPayment from '../models/VendorPayment.js';
 import Vendor from '../models/Vendor.js';
+import VendorInvoice from '../models/VendorInvoice.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { deleteFromS3 } from '../utils/s3Service.js';
 
@@ -22,7 +23,8 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
     isGST,
     gstAmount,
     tdsAmount,
-    notes
+    notes,
+    vendorInvoice
   } = req.body;
 
   // Validate vendor exists
@@ -48,13 +50,34 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
     gstAmount: gstAmount || 0,
     tdsAmount: tdsAmount || 0,
     notes,
+    vendorInvoice,
     createdBy: req.user._id,
     approvedBy: req.user._id,
     approvedDate: new Date()
   });
 
-  // Update vendor outstanding balance
-  vendorDoc.outstandingBalance = (vendorDoc.outstandingBalance || 0) + amount;
+  // If payment is linked to an invoice, update invoice paid amount
+  if (vendorInvoice) {
+    const invoice = await VendorInvoice.findById(vendorInvoice);
+    if (invoice) {
+      // Add payment to invoice payments array if not already there
+      if (!invoice.payments.includes(payment._id)) {
+        invoice.payments.push(payment._id);
+      }
+      
+      // Recalculate paid amount
+      const totalPaid = await VendorPayment.aggregate([
+        { $match: { vendorInvoice: invoice._id } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]);
+      
+      invoice.paidAmount = totalPaid[0]?.total || 0;
+      await invoice.save();
+    }
+  }
+
+  // Update vendor outstanding balance (reduce when payment is made)
+  vendorDoc.outstandingBalance = Math.max(0, (vendorDoc.outstandingBalance || 0) - amount);
   await vendorDoc.save();
 
   res.status(201).json({

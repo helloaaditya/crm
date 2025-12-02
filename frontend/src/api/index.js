@@ -350,6 +350,17 @@ export const todoAPI = {
   getPerformanceStats: (params) => api.get('/todos/stats/performance', { params })
 };
 
+// ============= VENDOR INVOICES =============
+export const vendorInvoiceAPI = {
+  getAll: (params) => api.get('/vendor-invoices', { params }),
+  getById: (id) => api.get(`/vendor-invoices/${id}`),
+  create: (data) => api.post('/vendor-invoices', data),
+  update: (id, data) => api.put(`/vendor-invoices/${id}`, data),
+  delete: (id) => api.delete(`/vendor-invoices/${id}`),
+  linkPayment: (id, data) => api.post(`/vendor-invoices/${id}/link-payment`, data),
+  getOutstanding: (params) => api.get('/vendor-invoices/stats/outstanding', { params })
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -368,5 +379,6 @@ export default {
   expenses: expenseAPI,
   locationTracking: locationTrackingAPI,
   funds: fundAPI,
-  todos: todoAPI
+  todos: todoAPI,
+  vendorInvoices: vendorInvoiceAPI
 };

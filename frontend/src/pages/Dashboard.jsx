@@ -292,6 +292,28 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Vendor Outstanding */}
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-red-500">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-gray-600 text-xs sm:text-sm font-medium">Vendor Outstanding</p>
+              {loading ? (
+                <div className="h-8 bg-gray-200 rounded w-20 mt-2 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-1 sm:mt-2">
+                  ₹{((stats?.vendorOutstanding || 0) / 100000).toFixed(1)}L
+                </p>
+              )}
+              <p className="text-red-600 text-xs sm:text-sm mt-1 sm:mt-2">
+                {stats?.vendorOutstandingCount || 0} unpaid invoices
+              </p>
+            </div>
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <FiDollarSign className="text-red-600" size={20} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Charts */}

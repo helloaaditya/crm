@@ -34,6 +34,12 @@ const vendorPaymentSchema = new mongoose.Schema({
   poBillDate: Date,
   poBillUrl: String, // Uploaded PO bill document
   
+  // Link to Vendor Invoice (if payment is against an invoice)
+  vendorInvoice: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'VendorInvoice'
+  },
+  
   // Additional Documents
   documents: [{
     name: String,
