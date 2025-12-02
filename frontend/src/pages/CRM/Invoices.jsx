@@ -8,6 +8,7 @@ import InvoiceModal from '../../components/Modals/InvoiceModal'
 import QuotationModal from '../../components/Modals/QuotationModal'
 
 const Invoices = () => {
+  const [activeTab, setActiveTab] = useState('quotation') // 'quotation' or 'invoice'
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -35,7 +36,7 @@ const Invoices = () => {
 
   useEffect(() => {
     fetchInvoices()
-  }, [page, searchTerm, statusFilter, paymentStatusFilter, startDate, endDate])
+  }, [page, searchTerm, statusFilter, paymentStatusFilter, startDate, endDate, activeTab])
 
   // Listen for refresh event from Header
   useEffect(() => {
@@ -51,8 +52,8 @@ const Invoices = () => {
     try {
       setLoading(true)
       const params = { 
-        page, 
-        limit: 10,
+        page: 1, 
+        limit: 10000, // Get all records to filter client-side
         ...(searchTerm && { search: searchTerm }),
         ...(statusFilter && { status: statusFilter }),
         ...(paymentStatusFilter && { paymentStatus: paymentStatusFilter }),
@@ -61,13 +62,30 @@ const Invoices = () => {
       };
       
       const response = await API.invoices.getAll(params);
-      setInvoices(response.data.data);
-      setTotalPages(response.data.totalPages);
-      setTotalCount(response.data.total || 0);
       
-      // Calculate summary
-      const totalAmount = response.data.data.reduce((sum, inv) => sum + inv.totalAmount, 0);
-      const paidAmount = response.data.data.reduce((sum, inv) => sum + inv.paidAmount, 0);
+      // Filter based on active tab
+      let filteredData = response.data.data || [];
+      if (activeTab === 'quotation') {
+        filteredData = filteredData.filter(inv => inv.invoiceType === 'quotation');
+      } else if (activeTab === 'invoice') {
+        // In invoice tab, show both invoices and unconverted quotations (for conversion)
+        filteredData = filteredData.filter(inv => 
+          inv.invoiceType !== 'quotation' || !inv.isConvertedToInvoice
+        );
+      }
+      
+      // Apply pagination
+      const startIndex = (page - 1) * 10;
+      const endIndex = startIndex + 10;
+      const paginatedData = filteredData.slice(startIndex, endIndex);
+      
+      setInvoices(paginatedData);
+      setTotalPages(Math.ceil(filteredData.length / 10));
+      setTotalCount(filteredData.length);
+      
+      // Calculate summary for current tab
+      const totalAmount = filteredData.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+      const paidAmount = filteredData.reduce((sum, inv) => sum + (inv.paidAmount || 0), 0);
       setSummary({
         totalAmount,
         paidAmount,
@@ -489,50 +507,92 @@ Best Regards,
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Invoices</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Invoices & Quotations</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            {totalCount} invoices • Total: ₹{summary.totalAmount?.toLocaleString() || '0'} • 
+            {totalCount} {activeTab === 'quotation' ? 'quotations' : 'invoices'} • Total: ₹{summary.totalAmount?.toLocaleString() || '0'} • 
             Paid: ₹{summary.paidAmount?.toLocaleString() || '0'} • 
             Pending: ₹{summary.pendingAmount?.toLocaleString() || '0'}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <button 
-            onClick={handleDownloadSample}
-            disabled={downloading}
-            className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-          >
-            <FiDownload className="mr-2" />
-            {downloading ? 'Downloading...' : 'Download Sample'}
-          </button>
-          <label className="w-full sm:w-auto">
-            <div className={`flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 cursor-pointer disabled:opacity-50 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-              <FiUpload className="mr-2" />
-              {uploading ? 'Uploading...' : 'Bulk Upload'}
-            </div>
-            <input 
-              type="file" 
-              accept=".csv,.xls,.xlsx" 
-              onChange={handleUpload} 
-              className="hidden" 
-              disabled={uploading} 
-            />
-          </label>
-          <button 
-            onClick={handleExportCSV}
-            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-            disabled={invoices.length === 0}
-          >
-            <FiDownload className="mr-2" />
-            Export CSV
-          </button>
-          <button 
-            onClick={handleAdd}
-            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
-          >
-            <FiPlus className="mr-2" />
-            Create Invoice
-          </button>
+          {activeTab === 'invoice' && (
+            <>
+              <button 
+                onClick={handleDownloadSample}
+                disabled={downloading}
+                className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+              >
+                <FiDownload className="mr-2" />
+                {downloading ? 'Downloading...' : 'Download Sample'}
+              </button>
+              <label className="w-full sm:w-auto">
+                <div className={`flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 cursor-pointer disabled:opacity-50 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <FiUpload className="mr-2" />
+                  {uploading ? 'Uploading...' : 'Bulk Upload'}
+                </div>
+                <input 
+                  type="file" 
+                  accept=".csv,.xls,.xlsx" 
+                  onChange={handleUpload} 
+                  className="hidden" 
+                  disabled={uploading} 
+                />
+              </label>
+              <button 
+                onClick={handleExportCSV}
+                className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                disabled={invoices.length === 0}
+              >
+                <FiDownload className="mr-2" />
+                Export CSV
+              </button>
+            </>
+          )}
+          {activeTab === 'quotation' ? (
+            <button 
+              onClick={handleAddQuotation}
+              className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
+            >
+              <FiPlus className="mr-2" />
+              Create Quotation
+            </button>
+          ) : (
+            <button 
+              onClick={handleAdd}
+              className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
+            >
+              <FiPlus className="mr-2" />
+              Create Invoice
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('quotation')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'quotation'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Quotations ({invoices.filter(inv => inv.invoiceType === 'quotation').length})
+            </button>
+            <button
+              onClick={() => setActiveTab('invoice')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'invoice'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Invoices ({invoices.filter(inv => inv.invoiceType !== 'quotation').length})
+            </button>
+          </nav>
         </div>
       </div>
 
@@ -720,8 +780,8 @@ Best Regards,
                           >
                             <FiEye />
                           </button>
-                          {/* Convert to Invoice button - Only for quotations that haven't been converted */}
-                          {invoice.invoiceType === 'quotation' && !invoice.isConvertedToInvoice && (
+                          {/* Convert to Invoice button - Only show in Invoice tab for quotations that haven't been converted */}
+                          {activeTab === 'invoice' && invoice.invoiceType === 'quotation' && !invoice.isConvertedToInvoice && (
                             <button 
                               onClick={() => handleConvertToInvoice(invoice._id)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded"
