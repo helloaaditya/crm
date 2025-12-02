@@ -180,8 +180,23 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
 
       console.log('📝 Creating quotation with data:', JSON.stringify(quotationData, null, 2))
       console.log('📄 quotationFileUrl in request:', quotationData.quotationFileUrl)
+      console.log('📄 quotationData object keys:', Object.keys(quotationData))
+      console.log('📄 quotationData.quotationFileUrl value:', quotationData.quotationFileUrl)
+      console.log('📄 quotationData.quotationFileUrl type:', typeof quotationData.quotationFileUrl)
+
+      // Double-check the URL is actually set
+      if (!quotationData.quotationFileUrl) {
+        console.error('❌ CRITICAL: quotationFileUrl is missing before API call!')
+        console.error('❌ quotationFileUrl variable:', quotationFileUrl)
+        toast.error('File URL is missing. Please try uploading again.')
+        setLoading(false)
+        return
+      }
 
       const response = await API.invoices.create(quotationData)
+      
+      // Log the actual request that was sent
+      console.log('📤 API request sent with quotationFileUrl:', quotationData.quotationFileUrl)
       
       console.log('✅ Quotation created, response:', response.data)
       console.log('📄 Quotation file URL in response:', response.data.data?.quotationFileUrl)

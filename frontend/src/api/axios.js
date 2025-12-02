@@ -11,6 +11,14 @@ axios.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Debug: Log request data for invoice creation (especially quotations)
+  if (config.url?.includes('/invoices') && config.method === 'post' && config.data) {
+    console.log('🌐 Axios Request - URL:', config.url);
+    console.log('🌐 Axios Request - Data:', JSON.stringify(config.data, null, 2));
+    console.log('🌐 Axios Request - quotationFileUrl in data:', config.data.quotationFileUrl);
+  }
+  
   return config;
 });
 
