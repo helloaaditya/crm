@@ -85,32 +85,33 @@ const Invoices = () => {
     // Find the invoice to check its payment status
     const invoice = invoices.find(inv => inv._id === id);
     
-    // Prevent cancellation of already cancelled invoices
-    if (invoice && invoice.status === 'cancelled') {
-      toast.error('Invoice is already cancelled');
+    if (!invoice) return;
+    
+    const isQuotation = invoice.invoiceType === 'quotation';
+    const docType = isQuotation ? 'quotation' : 'invoice';
+    const docNumber = isQuotation ? (invoice.quotationNumber || invoice.invoiceNumber) : invoice.invoiceNumber;
+    
+    // Prevent deletion of paid invoices
+    if (!isQuotation && invoice.paymentStatus === 'paid' && invoice.paidAmount > 0) {
+      toast.error('Cannot delete invoice that has been fully paid');
       return;
     }
     
-    // Prevent cancellation of paid invoices
-    if (invoice && invoice.paymentStatus === 'paid') {
-      toast.error('Cannot cancel invoice that has been fully paid');
+    // Prevent deletion of invoices with partial payments
+    if (!isQuotation && invoice.paymentStatus === 'partial' && invoice.paidAmount > 0) {
+      toast.error('Cannot delete invoice that has partial payments');
       return;
     }
     
-    // Prevent cancellation of partially paid invoices
-    if (invoice && invoice.paymentStatus === 'partial') {
-      toast.error('Cannot cancel invoice that has partial payments');
-      return;
-    }
-    
-    if (!window.confirm('Are you sure you want to cancel this invoice? This action cannot be undone.')) return
+    if (!window.confirm(`Are you sure you want to permanently delete this ${docType} (${docNumber})? This action cannot be undone and will:\n\n- Permanently remove the ${docType} from the system\n- Restore inventory stock (if applicable)\n- Delete associated files\n\nThis action is irreversible!`)) return
 
     try {
       await API.invoices.delete(id)
-      toast.success('Invoice cancelled successfully')
+      toast.success(`${isQuotation ? 'Quotation' : 'Invoice'} deleted successfully`)
       fetchInvoices()
     } catch (error) {
-      toast.error('Failed to cancel invoice')
+      console.error('Error deleting:', error)
+      toast.error(error.response?.data?.message || `Failed to delete ${docType}`)
     }
   }
 
@@ -758,8 +759,8 @@ Best Regards,
                           <button 
                             onClick={() => handleDelete(invoice._id)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded"
-                            title="Cancel Invoice"
-                            disabled={invoice.status === 'cancelled'}
+                            title={invoice.invoiceType === 'quotation' ? 'Delete Quotation' : 'Delete Invoice'}
+                            disabled={(!invoice.invoiceType || invoice.invoiceType !== 'quotation') && invoice.paymentStatus === 'paid'}
                           >
                             <FiTrash2 />
                           </button>
@@ -886,10 +887,11 @@ Best Regards,
                     <button 
                       onClick={() => handleDelete(invoice._id)}
                       className="flex items-center justify-center px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg text-xs"
-                      disabled={invoice.status === 'cancelled'}
+                      disabled={(!invoice.invoiceType || invoice.invoiceType !== 'quotation') && invoice.paymentStatus === 'paid'}
+                      title={invoice.invoiceType === 'quotation' ? 'Delete Quotation' : 'Delete Invoice'}
                     >
                       <FiTrash2 className="mr-1" size={12} />
-                      Cancel
+                      Delete
                     </button>
                   </div>
                 </div>

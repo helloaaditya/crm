@@ -417,13 +417,21 @@ export const deleteInvoice = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Invoice not found' });
   }
 
-  // Set invoice status to cancelled
-  invoice.status = 'cancelled';
-  
-  // Also update payment status to avoid showing in unpaid counts
-  invoice.paymentStatus = 'cancelled';
-  
-  await invoice.save();
+  // Prevent deletion of paid invoices (only allow if admin explicitly wants to)
+  if (invoice.paymentStatus === 'paid' && invoice.paidAmount > 0) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Cannot delete invoice that has been fully paid. Please cancel it instead.' 
+    });
+  }
+
+  // Prevent deletion of invoices with partial payments
+  if (invoice.paymentStatus === 'partial' && invoice.paidAmount > 0) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Cannot delete invoice that has partial payments. Please cancel it instead.' 
+    });
+  }
 
   // Auto-restock materials if invoice had materials
   let restockResults = null;
@@ -464,15 +472,75 @@ export const deleteInvoice = asyncHandler(async (req, res) => {
       }
     } catch (error) {
       console.error('Error during auto-restock:', error);
-      // Don't fail the invoice cancellation if restock fails
+      // Don't fail the deletion if restock fails
     }
   }
 
+  // Delete associated files from S3 if they exist
+  try {
+    const { deleteFromS3 } = await import('../utils/s3Service.js');
+    
+    // Helper function to extract S3 key from URL
+    const extractS3Key = (url) => {
+      if (!url) return null;
+      try {
+        const urlObj = new URL(url);
+        // Remove leading slash from pathname
+        return urlObj.pathname.substring(1);
+      } catch {
+        // If URL parsing fails, assume it's already a key
+        return url;
+      }
+    };
+    
+    // Delete quotation file if exists
+    if (invoice.quotationFileUrl) {
+      try {
+        const fileKey = extractS3Key(invoice.quotationFileUrl);
+        if (fileKey) {
+          await deleteFromS3(fileKey);
+          console.log('Deleted quotation file from S3:', fileKey);
+        }
+      } catch (error) {
+        console.error('Error deleting quotation file from S3:', error);
+        // Continue with deletion even if file deletion fails
+      }
+    }
+
+    // Delete PDF if exists
+    if (invoice.pdfUrl) {
+      try {
+        const fileKey = extractS3Key(invoice.pdfUrl);
+        if (fileKey) {
+          await deleteFromS3(fileKey);
+          console.log('Deleted PDF from S3:', fileKey);
+        }
+      } catch (error) {
+        console.error('Error deleting PDF from S3:', error);
+        // Continue with deletion even if file deletion fails
+      }
+    }
+  } catch (error) {
+    console.error('Error importing S3 service:', error);
+    // Continue with deletion even if S3 service fails
+  }
+
+  // Delete associated payments if any
+  try {
+    await Payment.deleteMany({ invoice: invoice._id });
+    console.log('Deleted associated payments');
+  } catch (error) {
+    console.error('Error deleting associated payments:', error);
+    // Continue with deletion even if payment deletion fails
+  }
+
+  // Actually delete the invoice from database
+  await invoice.deleteOne();
+
   res.json({
     success: true,
-    message: 'Invoice cancelled successfully',
+    message: invoice.invoiceType === 'quotation' ? 'Quotation deleted successfully' : 'Invoice deleted successfully',
     data: {
-      invoice: invoice,
       restockResults: restockResults?.data || null
     }
   });
