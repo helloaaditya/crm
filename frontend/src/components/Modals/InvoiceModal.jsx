@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { FiX, FiPlus, FiTrash2 } from 'react-icons/fi'
+import { FiX, FiPlus, FiTrash2, FiUpload, FiFile, FiLoader } from 'react-icons/fi'
 import API from '../../api'
+import api from '../../api/axios'
 import { toast } from 'react-toastify'
 import SearchableSelect from '../SearchableSelect'
 
@@ -22,6 +23,9 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     notes: ''
   })
   const [loading, setLoading] = useState(false)
+  const [quotationFile, setQuotationFile] = useState(null)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [quotationFileUrl, setQuotationFileUrl] = useState('')
 
   // Load invoice data when editing
   useEffect(() => {
@@ -47,6 +51,8 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         terms: invoice.terms || 'Payment due within 30 days',
         notes: invoice.notes || ''
       })
+      setQuotationFileUrl(invoice.quotationFileUrl || '')
+      setQuotationFile(null)
     } else {
       // Reset form when adding new
       setFormData({
@@ -62,6 +68,8 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         terms: 'Payment due within 30 days',
         notes: ''
       })
+      setQuotationFileUrl('')
+      setQuotationFile(null)
     }
   }, [invoice, isOpen])
 
@@ -237,6 +245,60 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     return { subtotal, cgst, sgst, totalAmount }
   }
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate file type - allow Excel, PDF, Word, and other common formats
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'image/jpeg',
+      'image/jpg',
+      'image/png'
+    ]
+    
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(xls|xlsx|doc|docx|pdf|txt|jpg|jpeg|png)$/i)) {
+      toast.error('Please upload Excel, PDF, Word, or image files only')
+      return
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB')
+      return
+    }
+
+    setQuotationFile(file)
+    toast.success('File selected: ' + file.name)
+  }
+
+  const uploadQuotationFile = async () => {
+    if (!quotationFile) return quotationFileUrl
+
+    try {
+      setUploadingFile(true)
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', quotationFile)
+
+      const response = await api.post('/media/upload/quotation-files', uploadFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      return response.data.url
+    } catch (error) {
+      console.error('Error uploading quotation file:', error)
+      toast.error('Failed to upload quotation file')
+      return null
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -260,6 +322,17 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     }
 
     try {
+      // Upload quotation file if it's a quotation and file is selected
+      let finalQuotationFileUrl = quotationFileUrl
+      if (formData.invoiceType === 'quotation' && quotationFile) {
+        const uploadedUrl = await uploadQuotationFile()
+        if (!uploadedUrl) {
+          setLoading(false)
+          return // Stop if upload failed
+        }
+        finalQuotationFileUrl = uploadedUrl
+      }
+
       const { subtotal, cgst, sgst, totalAmount } = calculateTotals()
 
       // Prepare items with calculated amounts
@@ -291,6 +364,11 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
         dueDate: formData.dueDate,
         terms: formData.terms,
         notes: formData.notes
+      }
+
+      // Add quotation file URL if it's a quotation
+      if (formData.invoiceType === 'quotation' && finalQuotationFileUrl) {
+        invoiceData.quotationFileUrl = finalQuotationFileUrl
       }
 
       // Only create new invoices, no updates allowed
@@ -671,6 +749,92 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
             </div>
           </div>
 
+          {/* Quotation File Upload - Only for quotations */}
+          {formData.invoiceType === 'quotation' && (
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Quotation File (Excel, PDF, Word, etc.)
+              </label>
+              <div className="space-y-2">
+                {quotationFileUrl && !quotationFile && (
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <FiFile className="text-green-600" size={20} />
+                      <a
+                        href={quotationFileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-green-700 hover:underline"
+                      >
+                        View Uploaded File
+                      </a>
+                    </div>
+                    {!isViewMode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuotationFileUrl('')
+                          setQuotationFile(null)
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                        title="Remove file"
+                      >
+                        <FiX size={18} />
+                      </button>
+                    )}
+                  </div>
+                )}
+                {quotationFile && (
+                  <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <FiFile className="text-blue-600" size={20} />
+                      <span className="text-sm text-blue-700">{quotationFile.name}</span>
+                    </div>
+                    {!isViewMode && (
+                      <button
+                        type="button"
+                        onClick={() => setQuotationFile(null)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Remove file"
+                      >
+                        <FiX size={18} />
+                      </button>
+                    )}
+                  </div>
+                )}
+                {!isViewMode && !quotationFileUrl && !quotationFile && (
+                  <label className="flex flex-col items-center justify-center w-full p-4 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <FiUpload className="text-gray-400 mb-2" size={24} />
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Excel, PDF, Word, Images (MAX. 10MB)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".xls,.xlsx,.doc,.docx,.pdf,.txt,.jpg,.jpeg,.png"
+                      className="hidden"
+                      disabled={uploadingFile || loading}
+                    />
+                  </label>
+                )}
+                {uploadingFile && (
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <FiLoader className="animate-spin text-blue-600" size={20} />
+                    <span className="text-sm text-blue-700">Uploading file...</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Upload your quotation file manually. This file will be attached to the quotation and preserved when converting to invoice.
+              </p>
+            </div>
+          )}
+
           {/* Actions */}
           {!isViewMode && (
             <div className="flex justify-end space-x-3 pt-4 border-t">
@@ -683,10 +847,17 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
               </button>
               <button
                 type="submit"
-                disabled={loading}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                disabled={loading || uploadingFile}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? 'Saving...' : invoice ? 'Update Invoice' : 'Create Invoice'}
+                {loading || uploadingFile ? (
+                  <>
+                    <FiLoader className="animate-spin" size={16} />
+                    {uploadingFile ? 'Uploading...' : 'Saving...'}
+                  </>
+                ) : (
+                  invoice ? 'Update Invoice' : 'Create Invoice'
+                )}
               </button>
             </div>
           )}

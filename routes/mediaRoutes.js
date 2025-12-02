@@ -21,6 +21,9 @@ router.post('/upload/work-order-doc', protect, uploadMemory.single('file'), uplo
 // Upload company documents
 router.post('/upload/company-doc', protect, uploadMemory.single('file'), uploadVendorDocument); // Reusing the same function
 
+// Upload quotation files (Excel, PDF, Word, etc.)
+router.post('/upload/quotation-files', protect, uploadMemory.single('file'), uploadVendorDocument); // Reusing the same function
+
 export default router;
 
 

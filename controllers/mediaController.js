@@ -123,6 +123,9 @@ export const uploadVendorDocument = asyncHandler(async (req, res) => {
     } else if (routePath.includes('company-doc')) {
       folder = 'company-documents';
       documentType = 'company document';
+    } else if (routePath.includes('quotation-files')) {
+      folder = 'quotation-files';
+      documentType = 'quotation file';
     }
 
     console.log(`📤 Uploading ${documentType}:`, req.file.originalname);

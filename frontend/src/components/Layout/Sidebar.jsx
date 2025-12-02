@@ -52,7 +52,7 @@ const Sidebar = () => {
     { name: 'My Leave', icon: FiCalendar, path: '/my-leave', module: 'all', employeeOnly: true },
     { name: 'My Expenses', icon: FiCreditCard, path: '/my-expenses', module: 'all', employeeOnly: true },
     { name: 'My Todos', icon: FiList, path: '/my-todos', module: 'all', employeeOnly: true },
-    { name: 'Calendar', icon: FiBell, path: '/calendar-reminders', module: 'admin:calendar', notificationCount: counts.reminders },
+    { name: 'Calendar', icon: FiBell, path: '/calendar-reminders', module: 'calendar', notificationCount: counts.reminders },
     
     // Accounts Section
     { name: 'Accounts', icon: FiKey, path: '/accounts', module: 'admin:accounts'},

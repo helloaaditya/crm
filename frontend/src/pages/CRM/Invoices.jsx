@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck, FiUpload, FiEye, FiX } from 'react-icons/fi'
+import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck, FiUpload, FiEye, FiX, FiFileText } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import API from '../../api'
 import { toast } from 'react-toastify'
@@ -1047,6 +1047,25 @@ Best Regards,
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                   <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingInvoice.notes}</p>
+                </div>
+              )}
+
+              {viewingInvoice.quotationFileUrl && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Uploaded Quotation File
+                  </label>
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <FiFileText className="text-blue-600" size={20} />
+                    <a
+                      href={viewingInvoice.quotationFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 hover:underline flex-1"
+                    >
+                      View Uploaded Quotation File
+                    </a>
+                  </div>
                 </div>
               )}
 

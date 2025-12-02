@@ -89,7 +89,8 @@ export const createInvoice = asyncHandler(async (req, res) => {
     totalAmount, 
     dueDate, 
     terms, 
-    notes 
+    notes,
+    quotationFileUrl
   } = req.body;
 
   // Validate required fields
@@ -175,6 +176,7 @@ export const createInvoice = asyncHandler(async (req, res) => {
     dueDate,
     terms: invoiceTerms,
     notes,
+    quotationFileUrl: quotationFileUrl || undefined, // Only set if provided
     createdBy: req.user._id
   });
 
@@ -1106,6 +1108,7 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
     dueDate: quotation.dueDate,
     terms: quotation.terms,
     notes: quotation.notes ? `${quotation.notes}\n\nConverted from Quotation: ${quotation.quotationNumber}` : `Converted from Quotation: ${quotation.quotationNumber}`,
+    quotationFileUrl: quotation.quotationFileUrl || undefined, // Preserve uploaded quotation file
     sourceQuotationId: quotation._id,
     createdBy: req.user._id
   };
