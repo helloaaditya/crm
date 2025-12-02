@@ -64,8 +64,10 @@ const Payments = () => {
 
   const fetchInvoices = async () => {
     try {
-      const response = await API.invoices.getAll()
-      setInvoices(response.data.data || [])
+      const response = await API.invoices.getAll({ limit: 10000, page: 1 })
+      // Filter out quotations - only show actual invoices for payment recording
+      const invoicesOnly = (response.data.data || []).filter(inv => inv.invoiceType !== 'quotation')
+      setInvoices(invoicesOnly)
     } catch (error) {
       console.error('Error fetching invoices:', error)
       toast.error('Failed to load invoices')
@@ -222,10 +224,12 @@ const Payments = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
             <SearchableSelect
-              options={invoices.map(inv => ({ 
-                value: inv._id, 
-                label: `${inv.invoiceNumber} - ${inv.customer?.name || 'N/A'}` 
-              }))}
+              options={invoices
+                .filter(inv => inv.invoiceType !== 'quotation') // Ensure no quotations in filter dropdown
+                .map(inv => ({ 
+                  value: inv._id, 
+                  label: `${inv.invoiceNumber} - ${inv.customer?.name || 'N/A'}` 
+                }))}
               value={filterInvoice}
               onChange={setFilterInvoice}
               placeholder="All Invoices"

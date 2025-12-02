@@ -120,7 +120,12 @@ const PaymentModal = ({ isOpen, onClose, onSuccess, payment = null, invoices = [
                 Invoice <span className="text-red-500">*</span>
               </label>
               <SearchableSelect
-                options={invoices.map(inv => ({ value: inv._id, label: `${inv.invoiceNumber} - ${inv.customer?.name || ''} (₹${inv.totalAmount?.toLocaleString() || 0})` }))}
+                options={invoices
+                  .filter(inv => inv.invoiceType !== 'quotation') // Exclude quotations from payment dropdown
+                  .map(inv => ({ 
+                    value: inv._id, 
+                    label: `${inv.invoiceNumber || inv.quotationNumber || 'N/A'} - ${inv.customer?.name || ''} (₹${inv.totalAmount?.toLocaleString() || 0})` 
+                  }))}
                 value={formData.invoiceId}
                 onChange={(val) => setFormData({ ...formData, invoiceId: val })}
                 placeholder="-- Select Invoice --"
