@@ -5,7 +5,7 @@ import api from '../../api/axios'
 import { toast } from 'react-toastify'
 import SearchableSelect from '../SearchableSelect'
 
-const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
+const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = null }) => {
   const [customers, setCustomers] = useState([])
   const [projects, setProjects] = useState([])
   const [materials, setMaterials] = useState([])

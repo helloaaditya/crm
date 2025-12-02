@@ -5,6 +5,7 @@ import API from '../../api'
 import { toast } from 'react-toastify'
 import PaymentModal from '../../components/Modals/PaymentModal'
 import InvoiceModal from '../../components/Modals/InvoiceModal'
+import QuotationModal from '../../components/Modals/QuotationModal'
 
 const Invoices = () => {
   const [invoices, setInvoices] = useState([])
@@ -15,8 +16,10 @@ const Invoices = () => {
   const [selectedPaymentInvoice, setSelectedPaymentInvoice] = useState(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
+  const [showQuotationModal, setShowQuotationModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [viewingInvoice, setViewingInvoice] = useState(null)
+  const [quotationToConvert, setQuotationToConvert] = useState(null)
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -111,26 +114,14 @@ const Invoices = () => {
     }
   }
 
-  const handleConvertToInvoice = async (id) => {
+  const handleConvertToInvoice = (id) => {
     const quotation = invoices.find(inv => inv._id === id);
     if (!quotation) return;
 
-    if (!window.confirm(`Convert Quotation ${quotation.quotationNumber || quotation.invoiceNumber} to Invoice?\n\nThis will:\n- Create a new invoice\n- Deduct inventory from stock\n- Mark this quotation as converted`)) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await API.invoices.convertToInvoice(id);
-      toast.success(response.data.message || 'Quotation converted to invoice successfully!');
-      fetchInvoices();
-    } catch (error) {
-      console.error('Error converting quotation:', error);
-      const errorMessage = error.response?.data?.message || error.response?.data?.errors?.[0] || 'Failed to convert quotation to invoice';
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    // Open InvoiceModal with quotation data pre-filled
+    setQuotationToConvert(quotation);
+    setSelectedInvoice(null); // Clear any existing invoice
+    setShowInvoiceModal(true);
   }
 
   const handleGeneratePDF = async (id, forceRegenerate = false) => {
@@ -241,7 +232,12 @@ Sanjana Enterprises`;
 
   const handleAdd = () => {
     setSelectedInvoice(null)
+    setQuotationToConvert(null)
     setShowInvoiceModal(true)
+  }
+
+  const handleAddQuotation = () => {
+    setShowQuotationModal(true)
   }
 
   const handleWhatsAppReminder = async (invoice) => {
@@ -359,6 +355,7 @@ Best Regards,
   const handleInvoiceModalClose = () => {
     setShowInvoiceModal(false)
     setSelectedInvoice(null)
+    setQuotationToConvert(null)
   }
 
   const handleModalSuccess = () => {
@@ -932,6 +929,7 @@ Best Regards,
         onClose={handleInvoiceModalClose}
         onSuccess={handleModalSuccess}
         invoice={selectedInvoice}
+        quotation={quotationToConvert}
       />
 
       {/* View Invoice Modal */}
