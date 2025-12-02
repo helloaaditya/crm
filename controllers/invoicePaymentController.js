@@ -36,7 +36,6 @@ export const getInvoices = asyncHandler(async (req, res) => {
     .populate('customer', 'name contactNumber email')
     .populate('project', 'projectId description name')
     .populate('createdBy', 'name')
-    .select('+quotationFileUrl') // Include quotationFileUrl in results
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit);
