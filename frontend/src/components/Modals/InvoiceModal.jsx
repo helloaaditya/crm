@@ -421,14 +421,32 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
         notes: formData.notes
       }
 
-      // Add quotation file URL if it's a quotation
-      if (formData.invoiceType === 'quotation' && finalQuotationFileUrl) {
-        invoiceData.quotationFileUrl = finalQuotationFileUrl
+      // If converting from quotation, mark the quotation as converted
+      if (quotation) {
+        invoiceData.sourceQuotationId = quotation._id
+        // Preserve quotation file URL if exists
+        if (quotation.quotationFileUrl) {
+          invoiceData.quotationFileUrl = quotation.quotationFileUrl
+        }
       }
 
       // Only create new invoices, no updates allowed
       const response = await API.invoices.create(invoiceData)
       toast.success(`Invoice created! Number: ${response.data.data.invoiceNumber}`)
+      
+      // Mark quotation as converted if converting
+      if (quotation) {
+        try {
+          await API.invoices.update(quotation._id, {
+            isConvertedToInvoice: true,
+            convertedInvoiceId: response.data.data._id,
+            status: 'sent'
+          })
+        } catch (error) {
+          console.error('Error marking quotation as converted:', error)
+          // Don't fail the invoice creation if this fails
+        }
+      }
       
       onSuccess()
       onClose()
@@ -461,9 +479,11 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
           <h2 className="text-lg sm:text-xl font-bold text-gray-800">
             {isViewMode 
               ? `View ${formData.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'}` 
-              : invoice 
-                ? `Edit ${formData.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'}` 
-                : `Create New ${formData.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'}`
+              : quotation
+                ? `Convert Quotation to Invoice`
+                : invoice 
+                  ? `Edit ${formData.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'}` 
+                  : `Create New Invoice`
             }
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
