@@ -12,7 +12,7 @@ function MyExpenses() {
   const [formData, setFormData] = useState({
     category: 'petrol',
     description: '',
-    amount: 0, // Set to 0, admin will determine actual amount
+    amount: '', // Allow manual entry, admin will cross-check and approve
     expenseDate: new Date().toISOString().split('T')[0],
     documents: [],
     notes: ''
@@ -310,6 +310,12 @@ function MyExpenses() {
       return
     }
     
+    const amount = Number(formData.amount)
+    if (!formData.amount || isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    
     if (formData.documents.length === 0) {
       const confirm = window.confirm('No documents attached. Continue without receipts?')
       if (!confirm) return
@@ -321,6 +327,7 @@ function MyExpenses() {
       // Ensure documents is an array, not a string
       const submitData = {
         ...formData,
+        amount: amount,
         documents: Array.isArray(formData.documents) ? formData.documents : []
       }
       
@@ -355,7 +362,7 @@ function MyExpenses() {
     setFormData({
       category: 'petrol',
       description: '',
-      amount: 0, // Set to 0, admin will determine actual amount
+      amount: '', // Allow manual entry, admin will cross-check and approve
       expenseDate: new Date().toISOString().split('T')[0],
       documents: [],
       notes: ''
@@ -637,17 +644,20 @@ function MyExpenses() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Amount (₹)
+                    Amount (₹) <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="text"
-                    value="Admin will verify from receipts"
-                    className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
-                    disabled
-                    readOnly
+                    type="number"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter amount"
+                    min="0"
+                    step="0.01"
+                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    💡 Admin will determine the approved amount based on your submitted receipts
+                    💡 Enter the expense amount. Admin will cross-check with receipts and approve the final amount.
                   </p>
                 </div>
               </div>
@@ -745,7 +755,8 @@ function MyExpenses() {
               
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-sm text-yellow-800">
-                  <strong>Note:</strong> Please ensure you upload valid receipts/bills for your expense claim. 
+                  <strong>Note:</strong> Please enter the expense amount and upload valid receipts/bills. 
+                  The backend team will cross-check the amount with your receipts and approve the final amount. 
                   Expenses without proper documentation may be rejected.
                 </p>
               </div>
