@@ -140,6 +140,8 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
         return
       }
 
+      console.log('📤 Uploaded quotation file URL:', quotationFileUrl)
+
       // Create quotation with minimal data
       const quotationData = {
         customer: formData.customer,
@@ -157,7 +159,13 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
         quotationFileUrl
       }
 
+      console.log('📝 Creating quotation with data:', JSON.stringify(quotationData, null, 2))
+
       const response = await API.invoices.create(quotationData)
+      
+      console.log('✅ Quotation created, response:', response.data.data)
+      console.log('📄 Quotation file URL in response:', response.data.data.quotationFileUrl)
+      
       toast.success(`Quotation created! Number: ${response.data.data.quotationNumber || response.data.data.invoiceNumber}`)
       
       onSuccess()

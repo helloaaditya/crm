@@ -239,7 +239,15 @@ Sanjana Enterprises`;
     try {
       // Fetch full invoice data to ensure all fields including quotationFileUrl are loaded
       const response = await API.invoices.getById(invoice._id)
-      setViewingInvoice(response.data.data)
+      const fullInvoice = response.data.data
+      
+      // Debug: Log quotation file URL
+      if (fullInvoice.invoiceType === 'quotation') {
+        console.log('📄 Quotation file URL:', fullInvoice.quotationFileUrl)
+        console.log('📄 Full invoice data:', JSON.stringify(fullInvoice, null, 2))
+      }
+      
+      setViewingInvoice(fullInvoice)
       setShowViewModal(true)
     } catch (error) {
       console.error('Error fetching invoice details:', error)
@@ -1115,6 +1123,9 @@ Best Regards,
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">
                     ⚠️ No quotation file uploaded for this quotation.
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Debug: quotationFileUrl = {viewingInvoice.quotationFileUrl ? `"${viewingInvoice.quotationFileUrl}"` : 'undefined/null'}
                   </p>
                 </div>
               )}
