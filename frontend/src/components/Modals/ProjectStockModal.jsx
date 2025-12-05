@@ -44,12 +44,16 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
   };
 
   const fetchStockHistory = async () => {
+    if (!project?._id) return;
+    
     try {
       setLoading(true);
       const response = await API.projects.getStockHistory(project._id);
+      console.log('📊 Stock history fetched:', response.data.data);
       setStockHistory(response.data.data || []);
     } catch (error) {
       console.error('Error fetching stock history:', error);
+      // Don't show error toast, just log it
     } finally {
       setLoading(false);
     }
@@ -92,14 +96,20 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
       });
 
       toast.success('Stock sent to project successfully');
+      
+      // Reset form
       setStockOutForm({
         material: '',
         quantity: '',
         date: new Date().toISOString().split('T')[0],
         notes: ''
       });
-      fetchStockHistory();
-      fetchMaterials();
+      
+      // Refresh data with a small delay to ensure backend has updated
+      setTimeout(() => {
+        fetchStockHistory();
+        fetchMaterials();
+      }, 500);
     } catch (error) {
       console.error('Error recording stock out:', error);
       toast.error(error.response?.data?.message || 'Failed to record stock out');
@@ -133,14 +143,20 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
       });
 
       toast.success('Stock returned from project successfully');
+      
+      // Reset form
       setStockInForm({
         material: '',
         quantity: '',
         date: new Date().toISOString().split('T')[0],
         notes: ''
       });
-      fetchStockHistory();
-      fetchMaterials();
+      
+      // Refresh data with a small delay to ensure backend has updated
+      setTimeout(() => {
+        fetchStockHistory();
+        fetchMaterials();
+      }, 500);
     } catch (error) {
       console.error('Error recording stock in:', error);
       toast.error(error.response?.data?.message || 'Failed to record stock in');

@@ -1191,10 +1191,14 @@ export const getProjectStockHistory = asyncHandler(async (req, res) => {
 
   const Material = (await import('../models/Material.js')).default;
   
+  console.log('📊 Fetching stock history for project:', project.projectId);
+  
   // Get all materials with stock history for this project
   const materials = await Material.find({
     'stockHistory.project': project._id
-  }).select('name materialId unit stockHistory');
+  }).select('name materialId unit quantity stockHistory');
+
+  console.log('📦 Found materials with history:', materials.length);
 
   // Extract and format stock history
   const stockHistory = [];
@@ -1212,7 +1216,8 @@ export const getProjectStockHistory = asyncHandler(async (req, res) => {
             _id: material._id,
             name: material.name,
             materialId: material.materialId,
-            unit: material.unit
+            unit: material.unit,
+            currentStock: material.quantity // Add current stock for reference
           }
         });
       }
@@ -1221,6 +1226,8 @@ export const getProjectStockHistory = asyncHandler(async (req, res) => {
 
   // Sort by date (newest first)
   stockHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  console.log('📋 Returning stock history entries:', stockHistory.length);
 
   res.json({
     success: true,
