@@ -88,10 +88,14 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
 
     try {
       setSubmitting(true);
+      
+      // Create date object with current time to preserve local timezone
+      const dateWithTime = new Date(stockOutForm.date + 'T' + new Date().toTimeString().split(' ')[0]);
+      
       await API.projects.stockOut(project._id, {
         materialId: stockOutForm.material,
         quantity: requestedQty,
-        date: stockOutForm.date,
+        date: dateWithTime,
         notes: stockOutForm.notes
       });
 
@@ -135,10 +139,14 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
 
     try {
       setSubmitting(true);
+      
+      // Create date object with current time to preserve local timezone
+      const dateWithTime = new Date(stockInForm.date + 'T' + new Date().toTimeString().split(' ')[0]);
+      
       await API.projects.stockIn(project._id, {
         materialId: stockInForm.material,
         quantity: requestedQty,
-        date: stockInForm.date,
+        date: dateWithTime,
         notes: stockInForm.notes
       });
 
@@ -343,7 +351,8 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
                           stockHistory.filter(h => h.type === 'outward').map((history, index) => (
                             <tr key={index} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-sm text-gray-900">
-                                {new Date(history.date).toLocaleDateString()}
+                                <div>{new Date(history.date).toLocaleDateString()}</div>
+                                <div className="text-xs text-gray-500">{new Date(history.date).toLocaleTimeString()}</div>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900">
                                 {history.material?.name || 'N/A'}
@@ -482,7 +491,8 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
                           stockHistory.filter(h => h.type === 'return').map((history, index) => (
                             <tr key={index} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-sm text-gray-900">
-                                {new Date(history.date).toLocaleDateString()}
+                                <div>{new Date(history.date).toLocaleDateString()}</div>
+                                <div className="text-xs text-gray-500">{new Date(history.date).toLocaleTimeString()}</div>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900">
                                 {history.material?.name || 'N/A'}
