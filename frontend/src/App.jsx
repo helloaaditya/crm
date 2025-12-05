@@ -41,6 +41,9 @@ import Todos from './pages/Todos'
 // Layout
 import Layout from './components/Layout/Layout'
 
+// Modals
+import ApkUpdateModal from './components/Modals/ApkUpdateModal'
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth()
@@ -87,6 +90,9 @@ function App() {
 
   return (
     <Router>
+      {/* APK Update Modal - Shows globally when old URL detected */}
+      <ApkUpdateModal />
+      
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
