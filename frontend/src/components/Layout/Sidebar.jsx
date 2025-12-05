@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut, FiEye, FiCheckSquare, FiList
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut, FiEye, FiCheckSquare, FiList, FiDownload
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -73,6 +73,7 @@ const Sidebar = () => {
    // { name: 'Bulk Import', icon: FiDatabase, path: '/bulk-import', module: 'all', adminOnly: true },
     
     // Common
+    { name: 'Update', icon: FiDownload, path: '/update', module: 'all'},
     { name: 'Settings', icon: FiSettings, path: '/settings', module: 'all'},
   ]
 

@@ -37,12 +37,10 @@ import MyExpenses from './pages/Employee/MyExpenses'
 import MyLeads from './pages/Employee/MyLeads'
 import MyTodos from './pages/Employee/MyTodos'
 import Todos from './pages/Todos'
+import Update from './pages/Update'
 
 // Layout
 import Layout from './components/Layout/Layout'
-
-// Modals
-import ApkUpdateModal from './components/Modals/ApkUpdateModal'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -90,9 +88,6 @@ function App() {
 
   return (
     <Router>
-      {/* APK Update Modal - Shows globally when old URL detected */}
-      <ApkUpdateModal />
-      
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
@@ -155,6 +150,7 @@ function App() {
           {/* Other Routes */}
           <Route path="reminders" element={<Reminders />} />
           <Route path="company-documents" element={<CompanyDocuments />} />
+          <Route path="update" element={<Update />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
