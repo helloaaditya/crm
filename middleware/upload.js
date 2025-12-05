@@ -26,6 +26,8 @@ const storage = multer.diskStorage({
       uploadPath = 'uploads/documents/';
     } else if (file.fieldname === 'profileImage') {
       uploadPath = 'uploads/profiles/';
+    } else if (file.fieldname === 'apk') {
+      uploadPath = 'uploads/apk/';
     }
     
     // Ensure the directory exists
@@ -39,9 +41,19 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter (allow common media + docs + CSV/Excel for bulk import)
+// File filter (allow common media + docs + CSV/Excel for bulk import + APK)
 const fileFilter = (req, file, cb) => {
-  // Allowed file types
+  // Special handling for APK files
+  if (file.fieldname === 'apk') {
+    const isApk = /\.apk$/i.test(file.originalname) || file.mimetype === 'application/vnd.android.package-archive' || file.mimetype === 'application/octet-stream';
+    if (isApk) {
+      return cb(null, true);
+    } else {
+      return cb(new Error('Invalid file type. Only APK files are allowed.'));
+    }
+  }
+  
+  // Allowed file types for other uploads
   const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|m4a|m4b|aac|oga|ogg|3gp|3gpp|mp4|webm|avi|pdf|doc|docx|xls|xlsx|txt|csv|vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
@@ -60,6 +72,22 @@ export const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: fileFilter
+});
+
+// APK upload configuration (larger file size limit)
+export const apkUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB limit for APK files
+  },
+  fileFilter: (req, file, cb) => {
+    const isApk = /\.apk$/i.test(file.originalname) || file.mimetype === 'application/vnd.android.package-archive' || file.mimetype === 'application/octet-stream';
+    if (isApk) {
+      return cb(null, true);
+    } else {
+      return cb(new Error('Invalid file type. Only APK files are allowed.'));
+    }
+  }
 });
 
 // Image only upload

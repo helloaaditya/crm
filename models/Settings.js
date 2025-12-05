@@ -97,6 +97,19 @@ const settingsSchema = new mongoose.Schema({
     lastBackup: Date
   },
   
+  // APK Settings
+  apk: {
+    fileName: String,
+    filePath: String,
+    fileSize: Number,
+    version: String,
+    uploadedAt: Date,
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  },
+  
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

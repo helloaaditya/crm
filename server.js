@@ -34,6 +34,7 @@ import vendorInvoiceRoutes from './routes/vendorInvoiceRoutes.js';
 import workOrderRoutes from './routes/workOrderRoutes.js';
 import companyDocumentRoutes from './routes/companyDocumentRoutes.js';
 import todoRoutes from './routes/todoRoutes.js';
+import apkRoutes from './routes/apkRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -53,7 +54,8 @@ const ensureUploadDirectories = () => {
     'uploads/documents',
     'uploads/profiles',
     'uploads/payslips',
-    'uploads/certificates'
+    'uploads/certificates',
+    'uploads/apk'
   ];
 
   directories.forEach(dir => {
@@ -186,6 +188,7 @@ app.use('/api/vendor-invoices', vendorInvoiceRoutes);
 app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/company-documents', companyDocumentRoutes);
 app.use('/api/todos', todoRoutes);
+app.use('/api/apk', apkRoutes);
 
 // Log route registration for debugging
 console.log('✅ Todo routes registered at /api/todos');

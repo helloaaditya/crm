@@ -366,6 +366,15 @@ export const vendorInvoiceAPI = {
   getOutstanding: (params) => api.get('/vendor-invoices/stats/outstanding', { params })
 };
 
+// ============= APK =============
+export const apkAPI = {
+  getInfo: () => api.get('/apk'),
+  download: () => api.get('/apk/download', { responseType: 'blob' }),
+  upload: (formData) => api.post('/apk/upload', formData, { 
+    headers: { 'Content-Type': 'multipart/form-data' } 
+  })
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -385,5 +394,6 @@ export default {
   locationTracking: locationTrackingAPI,
   funds: fundAPI,
   todos: todoAPI,
-  vendorInvoices: vendorInvoiceAPI
+  vendorInvoices: vendorInvoiceAPI,
+  apk: apkAPI
 };
