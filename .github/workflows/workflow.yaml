@@ -1,0 +1,33 @@
+name: Deploy to EC2 (Self-Hosted Runner)
+
+on:
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: deploy-self-hosted
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: [self-hosted]
+
+    env:
+      CRM_DIR: /root/crm
+      FRONTEND_DIR: /root/crm/frontend
+      NGINX_DIR: /var/www/crm-frontend
+
+    steps:
+      - name: Pull latest backend code and restart PM2
+        run: |
+          sudo bash -c "cd ${CRM_DIR} && git pull && pm2 restart crm-backend --update-env"
+
+      - name: Build frontend and deploy to Nginx
+        run: |
+          sudo bash -c "
+            cd ${FRONTEND_DIR} &&
+            npm install --legacy-peer-deps &&
+            npm run build &&
+            cp -r dist/* ${NGINX_DIR}/ &&
+            systemctl restart nginx
+            "
