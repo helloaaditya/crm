@@ -292,7 +292,7 @@ const Attendance = () => {
     <div className="p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Attendance Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Attendance Mgmt</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Track and manage employee attendance</p>
         </div>
         <div className="flex flex-wrap gap-2">
