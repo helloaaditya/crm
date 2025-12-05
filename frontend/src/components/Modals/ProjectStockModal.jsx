@@ -35,7 +35,7 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
 
   const fetchMaterials = async () => {
     try {
-      const response = await API.inventory.getAllMaterials({ limit: 10000 });
+      const response = await API.inventory.getMaterials({ limit: 10000 });
       setMaterials(response.data.data || []);
     } catch (error) {
       console.error('Error fetching materials:', error);
