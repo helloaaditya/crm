@@ -82,6 +82,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://prod.sanjanawaterproofing.com',
+  'https://crm-1ej7.onrender.com',
   'https://localhost',  // Capacitor Android/iOS
   'capacitor://localhost',  // Capacitor iOS
   'ionic://localhost',  // Ionic
