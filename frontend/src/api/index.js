@@ -60,7 +60,12 @@ export const projectAPI = {
   addMaterial: (id, data) => api.post(`/projects/${id}/materials`, data),
   addReturnedMaterial: (id, data) => api.post(`/projects/${id}/return-materials`, data),
   generateQuotation: (id) => api.get(`/projects/${id}/quotation`),
-  generateWarranty: (id) => api.get(`/projects/${id}/warranty`)
+  generateWarranty: (id) => api.get(`/projects/${id}/warranty`),
+  
+  // Stock movements
+  stockOut: (id, data) => api.post(`/projects/${id}/stock-out`, data),
+  stockIn: (id, data) => api.post(`/projects/${id}/stock-in`, data),
+  getStockHistory: (id) => api.get(`/projects/${id}/stock-history`)
 };
 
 // ============= INVENTORY =============

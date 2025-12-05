@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiClock, FiUpload, FiUsers, FiDownload, FiFilter, FiCalendar, FiDollarSign, FiEye, FiX } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiClock, FiUpload, FiUsers, FiDownload, FiFilter, FiCalendar, FiDollarSign, FiEye, FiX, FiPackage } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import ProjectModal from '../../components/Modals/ProjectModal'
 import ProjectHistoryModal from '../../components/Modals/ProjectHistoryModal'
 import ProjectTeamModal from '../../components/Modals/ProjectTeamModal'
+import ProjectStockModal from '../../components/Modals/ProjectStockModal'
 
 const Projects = () => {
   const [projects, setProjects] = useState([])
@@ -26,6 +27,8 @@ const Projects = () => {
   const [historyProjectId, setHistoryProjectId] = useState(null)
   const [showTeamModal, setShowTeamModal] = useState(false)
   const [teamProject, setTeamProject] = useState(null)
+  const [showStockModal, setShowStockModal] = useState(false)
+  const [stockProject, setStockProject] = useState(null)
 
   useEffect(() => {
     fetchProjects()
@@ -168,6 +171,11 @@ const Projects = () => {
   const handleManageTeam = (project) => {
     setTeamProject(project)
     setShowTeamModal(true)
+  }
+
+  const handleManageStock = (project) => {
+    setStockProject(project)
+    setShowStockModal(true)
   }
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -358,6 +366,13 @@ const Projects = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex space-x-2">
                           <button 
+                            onClick={() => handleManageStock(project)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded"
+                            title="Stock In/Out"
+                          >
+                            <FiPackage />
+                          </button>
+                          <button 
                             onClick={() => handleViewHistory(project)}
                             className="p-2 text-purple-600 hover:bg-purple-50 rounded"
                             title="View History"
@@ -434,7 +449,14 @@ const Projects = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <button 
+                      onClick={() => handleManageStock(project)}
+                      className="flex items-center justify-center px-2 py-2 text-orange-600 hover:bg-orange-50 rounded-lg text-xs"
+                    >
+                      <FiPackage className="mr-1" size={12} />
+                      Stock
+                    </button>
                     <button 
                       onClick={() => handleView(project)}
                       className="flex items-center justify-center px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"
@@ -531,6 +553,13 @@ const Projects = () => {
         isOpen={showTeamModal}
         onClose={() => { setShowTeamModal(false); setTeamProject(null); }}
         project={teamProject}
+      />
+
+      {/* Project Stock Modal */}
+      <ProjectStockModal
+        isOpen={showStockModal}
+        onClose={() => { setShowStockModal(false); setStockProject(null); }}
+        project={stockProject}
       />
 
       {/* View Project Modal */}

@@ -1091,3 +1091,139 @@ export const markProjectComplete = asyncHandler(async (req, res) => {
     message: 'Project marked as completed successfully'
   });
 });
+
+// @desc    Project stock out (send material to project)
+// @route   POST /api/projects/:id/stock-out
+// @access  Private
+export const projectStockOut = asyncHandler(async (req, res) => {
+  const { materialId, quantity, date, notes } = req.body;
+
+  const project = await Project.findById(req.params.id);
+  if (!project) {
+    return res.status(404).json({ message: 'Project not found' });
+  }
+
+  const Material = (await import('../models/Material.js')).default;
+  const material = await Material.findById(materialId);
+  if (!material) {
+    return res.status(404).json({ message: 'Material not found' });
+  }
+
+  if (material.quantity < Number(quantity)) {
+    return res.status(400).json({ message: 'Insufficient stock' });
+  }
+
+  // Deduct from inventory
+  material.quantity -= Number(quantity);
+
+  // Add to stock history
+  material.stockHistory.push({
+    type: 'outward',
+    quantity: Number(quantity),
+    balanceAfter: material.quantity,
+    location: 'project_site',
+    reference: `Stock Out to ${project.projectId}`,
+    project: project._id,
+    notes: notes || `Sent to project: ${project.name}`,
+    date: date || new Date(),
+    handledBy: req.user._id
+  });
+
+  await material.save();
+
+  res.json({
+    success: true,
+    message: 'Stock sent to project successfully',
+    data: { material, project }
+  });
+});
+
+// @desc    Project stock in (return material from project)
+// @route   POST /api/projects/:id/stock-in
+// @access  Private
+export const projectStockIn = asyncHandler(async (req, res) => {
+  const { materialId, quantity, date, notes } = req.body;
+
+  const project = await Project.findById(req.params.id);
+  if (!project) {
+    return res.status(404).json({ message: 'Project not found' });
+  }
+
+  const Material = (await import('../models/Material.js')).default;
+  const material = await Material.findById(materialId);
+  if (!material) {
+    return res.status(404).json({ message: 'Material not found' });
+  }
+
+  // Add back to inventory
+  material.quantity += Number(quantity);
+
+  // Add to stock history
+  material.stockHistory.push({
+    type: 'return',
+    quantity: Number(quantity),
+    balanceAfter: material.quantity,
+    location: material.storageLocation || 'godown',
+    reference: `Stock Return from ${project.projectId}`,
+    project: project._id,
+    notes: notes || `Returned from project: ${project.name}`,
+    date: date || new Date(),
+    handledBy: req.user._id
+  });
+
+  await material.save();
+
+  res.json({
+    success: true,
+    message: 'Stock returned from project successfully',
+    data: { material, project }
+  });
+});
+
+// @desc    Get project stock history
+// @route   GET /api/projects/:id/stock-history
+// @access  Private
+export const getProjectStockHistory = asyncHandler(async (req, res) => {
+  const project = await Project.findById(req.params.id);
+  if (!project) {
+    return res.status(404).json({ message: 'Project not found' });
+  }
+
+  const Material = (await import('../models/Material.js')).default;
+  
+  // Get all materials with stock history for this project
+  const materials = await Material.find({
+    'stockHistory.project': project._id
+  }).select('name materialId unit stockHistory');
+
+  // Extract and format stock history
+  const stockHistory = [];
+  materials.forEach(material => {
+    material.stockHistory.forEach(history => {
+      if (history.project && history.project.toString() === project._id.toString()) {
+        stockHistory.push({
+          type: history.type,
+          quantity: history.quantity,
+          balanceAfter: history.balanceAfter,
+          date: history.date,
+          notes: history.notes,
+          reference: history.reference,
+          material: {
+            _id: material._id,
+            name: material.name,
+            materialId: material.materialId,
+            unit: material.unit
+          }
+        });
+      }
+    });
+  });
+
+  // Sort by date (newest first)
+  stockHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  res.json({
+    success: true,
+    data: stockHistory
+  });
+});

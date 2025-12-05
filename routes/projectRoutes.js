@@ -21,7 +21,10 @@ import {
   addComment,
   updateProjectStatus,
   markProjectComplete,
-  removeEmployee
+  removeEmployee,
+  projectStockOut,
+  projectStockIn,
+  getProjectStockHistory
 } from '../controllers/projectController.js';
 
 const router = express.Router();
@@ -54,5 +57,10 @@ router.post('/:id/return-materials', checkPermission('canCreate'), addReturnedMa
 router.get('/:id/quotation', generateQuotation);
 router.get('/:id/warranty', generateWarranty);
 router.delete('/:id', checkPermission('canDelete'), deleteProject);
+
+// Stock movement routes
+router.post('/:id/stock-out', checkPermission('canCreate'), projectStockOut);
+router.post('/:id/stock-in', checkPermission('canCreate'), projectStockIn);
+router.get('/:id/stock-history', getProjectStockHistory);
 
 export default router;
