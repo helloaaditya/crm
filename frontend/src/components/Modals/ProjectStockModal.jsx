@@ -63,11 +63,30 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
       return;
     }
 
+    // Validate available quantity
+    const selectedMaterial = getSelectedMaterial(stockOutForm.material);
+    const requestedQty = parseFloat(stockOutForm.quantity);
+    
+    if (!selectedMaterial) {
+      toast.error('Selected material not found');
+      return;
+    }
+
+    if (requestedQty > selectedMaterial.quantity) {
+      toast.error(`Insufficient stock! Available: ${selectedMaterial.quantity} ${selectedMaterial.unit}`);
+      return;
+    }
+
+    if (requestedQty <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
+    }
+
     try {
       setSubmitting(true);
       await API.projects.stockOut(project._id, {
         materialId: stockOutForm.material,
-        quantity: parseFloat(stockOutForm.quantity),
+        quantity: requestedQty,
         date: stockOutForm.date,
         notes: stockOutForm.notes
       });
@@ -97,11 +116,18 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
       return;
     }
 
+    const requestedQty = parseFloat(stockInForm.quantity);
+    
+    if (requestedQty <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
+    }
+
     try {
       setSubmitting(true);
       await API.projects.stockIn(project._id, {
         materialId: stockInForm.material,
-        quantity: parseFloat(stockInForm.quantity),
+        quantity: requestedQty,
         date: stockInForm.date,
         notes: stockInForm.notes
       });
@@ -210,16 +236,30 @@ const ProjectStockModal = ({ isOpen, onClose, project }) => {
                       type="number"
                       step="0.01"
                       min="0.01"
+                      max={stockOutForm.material ? getSelectedMaterial(stockOutForm.material)?.quantity : undefined}
                       value={stockOutForm.quantity}
                       onChange={(e) => setStockOutForm({ ...stockOutForm, quantity: e.target.value })}
                       placeholder="Enter quantity"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        stockOutForm.material && parseFloat(stockOutForm.quantity) > getSelectedMaterial(stockOutForm.material)?.quantity
+                          ? 'border-red-500'
+                          : ''
+                      }`}
                       required
                     />
                     {stockOutForm.material && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Unit: {getSelectedMaterial(stockOutForm.material)?.unit || 'N/A'}
-                      </p>
+                      <div className="mt-1">
+                        <p className="text-xs text-gray-500">
+                          Unit: {getSelectedMaterial(stockOutForm.material)?.unit || 'N/A'}
+                        </p>
+                        <p className={`text-xs font-semibold ${
+                          parseFloat(stockOutForm.quantity) > getSelectedMaterial(stockOutForm.material)?.quantity
+                            ? 'text-red-600'
+                            : 'text-green-600'
+                        }`}>
+                          Available: {getSelectedMaterial(stockOutForm.material)?.quantity || 0} {getSelectedMaterial(stockOutForm.material)?.unit}
+                        </p>
+                      </div>
                     )}
                   </div>
 
