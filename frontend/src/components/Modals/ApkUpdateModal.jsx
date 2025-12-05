@@ -89,21 +89,11 @@ const ApkUpdateModal = () => {
     checkNative()
   }, [])
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     try {
-      // Try to use Capacitor Browser plugin for better mobile experience
-      if (isNative) {
-        try {
-          const { Browser } = await import('@capacitor/browser')
-          await Browser.open({ url: APK_DOWNLOAD_URL })
-        } catch (error) {
-          // Fallback to window.open
-          window.open(APK_DOWNLOAD_URL, '_blank')
-        }
-      } else {
-        // Web fallback
-        window.open(APK_DOWNLOAD_URL, '_blank')
-      }
+      // Open download link (works on both web and mobile)
+      // On mobile, this will trigger the browser/download manager
+      window.open(APK_DOWNLOAD_URL, '_blank')
       
       // Mark as updated (user clicked download)
       localStorage.setItem('apk_updated', 'true')
@@ -113,8 +103,8 @@ const ApkUpdateModal = () => {
       setShowModal(false)
     } catch (error) {
       console.error('Error opening download link:', error)
-      // Fallback to window.open
-      window.open(APK_DOWNLOAD_URL, '_blank')
+      // Fallback: try direct link
+      window.location.href = APK_DOWNLOAD_URL
       localStorage.setItem('apk_updated', 'true')
       setShowModal(false)
     }
