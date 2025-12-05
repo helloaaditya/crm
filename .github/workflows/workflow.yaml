@@ -16,12 +16,6 @@ jobs:
       # Path where crm folder exists on EC2
       CRM_DIR: /root/crm
 
-      # Replace with your repo
-      GIT_REPO: github.com/helloaaditya/crm.git
-
-      # Token stored as GitHub secret (DON'T hardcode real token)
-      GIT_TOKEN: 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
-
     steps:
       - name: Pull latest code in EC2 backend and restart PM2
         run: |
@@ -29,7 +23,7 @@ jobs:
           sudo su - << 'EOF'
           cd ${CRM_DIR}
           echo "Pulling latest code..."
-          git pull https://helloaaditya:${GIT_TOKEN}@${GIT_REPO}
+          git pull
           echo "Restarting PM2 process..."
           pm2 restart 0 --update-env
           EOF
