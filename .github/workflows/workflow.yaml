@@ -19,7 +19,6 @@ jobs:
     steps:
       - name: Pull latest code in EC2 backend and restart PM2
         run: |
-          set -e
           sudo su - << 'EOF'
           cd ${CRM_DIR}
           echo "Pulling latest code..."
@@ -30,7 +29,6 @@ jobs:
 
       - name: Build Frontend and Deploy to Nginx
         run: |
-          set -e
           sudo su - << 'EOF'
           cd ${CRM_DIR}/frontend
           echo "Installing dependencies..."
