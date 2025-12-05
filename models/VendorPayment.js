@@ -97,6 +97,18 @@ const vendorPaymentSchema = new mongoose.Schema({
   
   notes: String,
   
+  // 🔔 Reminder for next payment
+  reminderDate: Date,
+  reminderNotes: String,
+  reminderCreated: {
+    type: Boolean,
+    default: false
+  },
+  reminderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Reminder'
+  },
+  
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

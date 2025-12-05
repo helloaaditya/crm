@@ -1,6 +1,7 @@
 import VendorPayment from '../models/VendorPayment.js';
 import Vendor from '../models/Vendor.js';
 import VendorInvoice from '../models/VendorInvoice.js';
+import Reminder from '../models/Reminder.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { deleteFromS3 } from '../utils/s3Service.js';
 
@@ -24,7 +25,10 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
     gstAmount,
     tdsAmount,
     notes,
-    vendorInvoice
+    vendorInvoice,
+    reminderDate,
+    reminderAmount,
+    reminderNotes
   } = req.body;
 
   // Validate vendor exists
@@ -84,9 +88,43 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
   vendorDoc.outstandingBalance = Math.max(0, (vendorDoc.outstandingBalance || 0) - amount);
   await vendorDoc.save();
 
+  // 🔔 Create reminder if reminder date is provided
+  if (reminderDate) {
+    try {
+      const reminder = await Reminder.create({
+        title: `Vendor Payment Reminder - ${vendorDoc.name}`,
+        description: reminderNotes || `Next payment reminder for vendor ${vendorDoc.name}${description ? ` - ${description}` : ''}`,
+        reminderType: 'vendor_payment',
+        reminderDate: new Date(reminderDate),
+        relatedTo: {
+          entityType: 'vendor',
+          entityId: vendor
+        },
+        amount: reminderAmount || amount,
+        priority: 'high',
+        status: 'pending',
+        createdBy: req.user._id
+      });
+
+      // Update payment with reminder info
+      payment.reminderDate = reminderDate;
+      payment.reminderNotes = reminderNotes;
+      payment.reminderCreated = true;
+      payment.reminderId = reminder._id;
+      await payment.save();
+    } catch (error) {
+      console.error('Error creating reminder:', error);
+      // Don't fail the payment if reminder creation fails
+    }
+  }
+
+  const populatedPayment = await VendorPayment.findById(payment._id)
+    .populate('vendor', 'vendorId name contactPerson contactNumber')
+    .populate('createdBy', 'name');
+
   res.status(201).json({
     success: true,
-    data: payment
+    data: populatedPayment
   });
 });
 

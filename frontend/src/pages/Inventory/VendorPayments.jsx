@@ -35,7 +35,10 @@ const VendorPayments = () => {
     gstAmount: 0,
     tdsAmount: 0,
     notes: '',
-    vendorInvoice: ''
+    vendorInvoice: '',
+    reminderDate: '',
+    reminderAmount: '',
+    reminderNotes: ''
   });
   const [availableInvoices, setAvailableInvoices] = useState([]);
   const [poBillFile, setPoBillFile] = useState(null);
@@ -252,6 +255,25 @@ const VendorPayments = () => {
     setShowModal(false);
     setSelectedVendorDetails(null);
     setPoBillFile(null);
+    setFormData({
+      vendor: '',
+      amount: '',
+      paymentMode: 'bank_transfer',
+      referenceNumber: '',
+      poBillNumber: '',
+      poBillDate: '',
+      poBillUrl: '',
+      purpose: 'material_purchase',
+      description: '',
+      isGST: false,
+      gstAmount: 0,
+      tdsAmount: 0,
+      notes: '',
+      vendorInvoice: '',
+      reminderDate: '',
+      reminderAmount: '',
+      reminderNotes: ''
+    });
   };
 
   const handleViewPayment = (payment) => {
@@ -512,6 +534,7 @@ const VendorPayments = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Mode</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO Bill No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reminder</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -519,11 +542,11 @@ const VendorPayments = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan="8" className="px-6 py-4 text-center">Loading...</td>
+                <td colSpan="9" className="px-6 py-4 text-center">Loading...</td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
+                <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
                   No payments found
                 </td>
               </tr>
@@ -568,6 +591,20 @@ const VendorPayments = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {payment.reminderDate ? (
+                      <div>
+                        <div className="flex items-center gap-1 text-orange-600">
+                          🔔 {format(new Date(payment.reminderDate), 'dd MMM yyyy')}
+                        </div>
+                        {payment.reminderNotes && (
+                          <div className="text-xs text-gray-500 mt-1 max-w-xs truncate">{payment.reminderNotes}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status)}`}>
@@ -1190,6 +1227,59 @@ const VendorPayments = () => {
                     rows="2"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
+                </div>
+
+                {/* 🔔 Reminder Section */}
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    🔔 Payment Reminder (Optional)
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Set a reminder for the next payment date
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reminder Date
+                      </label>
+                      <input
+                        type="date"
+                        name="reminderDate"
+                        value={formData.reminderDate}
+                        onChange={handleInputChange}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reminder Amount
+                      </label>
+                      <input
+                        type="number"
+                        name="reminderAmount"
+                        value={formData.reminderAmount}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="0.01"
+                        placeholder="Expected payment amount"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reminder Notes
+                      </label>
+                      <textarea
+                        name="reminderNotes"
+                        value={formData.reminderNotes}
+                        onChange={handleInputChange}
+                        rows="2"
+                        placeholder="Add notes for the next payment..."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
