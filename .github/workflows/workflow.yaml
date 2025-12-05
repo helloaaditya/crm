@@ -18,7 +18,7 @@ jobs:
       # Replace with your repo
       GIT_REPO: https://github.com/helloaaditya/crm.git
       # Token stored as GitHub secret
-      GIT_TOKEN: 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
+      GIT_TOKEN: ${{ secrets.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 }}
     steps:
       - name: Pull latest code in EC2 backend and restart PM2
         run: |
