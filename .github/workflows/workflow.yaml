@@ -2,7 +2,7 @@ name: Deploy to EC2 (Self-Hosted Runner)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 concurrency:
   group: deploy-self-hosted
@@ -13,30 +13,21 @@ jobs:
     runs-on: [self-hosted]
 
     env:
-      # Path where crm folder exists on EC2
       CRM_DIR: /root/crm
+      FRONTEND_DIR: /root/crm/frontend
+      NGINX_DIR: /var/www/crm-frontend
 
     steps:
-      - name: Pull latest code in EC2 backend and restart PM2
+      - name: Pull latest backend code and restart PM2
         run: |
-          sudo su - << 'EOF'
-          cd ${CRM_DIR}
-          echo "Pulling latest code..."
-          git pull
-          echo "Restarting PM2 process..."
-          pm2 restart 0 --update-env
-          EOF
+          sudo bash -c "cd ${CRM_DIR} && git pull && pm2 restart crm-backend --update-env"
 
-      - name: Build Frontend and Deploy to Nginx
+      - name: Build frontend and deploy to Nginx
         run: |
-          sudo su - << 'EOF'
-          cd ${CRM_DIR}/frontend
-          echo "Installing dependencies..."
-          npm install --legacy-peer-deps
-          echo "Building frontend..."
-          npm run build
-          echo "Copying build to Nginx directory..."
-          cp -r dist/* /var/www/crm-frontend/
-          echo "Restarting Nginx..."
-          systemctl restart nginx
-          EOF
+          sudo bash -c "
+            cd ${FRONTEND_DIR} &&
+            npm install --legacy-peer-deps &&
+            npm run build &&
+            cp -r dist/* ${NGINX_DIR}/ &&
+            systemctl restart nginx
+            "
