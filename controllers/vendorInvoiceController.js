@@ -1,6 +1,7 @@
 import VendorInvoice from '../models/VendorInvoice.js';
 import VendorPayment from '../models/VendorPayment.js';
 import Vendor from '../models/Vendor.js';
+import Reminder from '../models/Reminder.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 // @desc    Create vendor invoice
@@ -43,13 +44,38 @@ export const createVendorInvoice = asyncHandler(async (req, res) => {
   vendorDoc.outstandingBalance = (vendorDoc.outstandingBalance || 0) + amount;
   await vendorDoc.save();
 
+  // 🔔 Auto-create reminder if due date exists
+  if (dueDate) {
+    try {
+      await Reminder.create({
+        title: `Vendor Payment Due - ${vendorDoc.name}`,
+        description: `Payment due for invoice ${invoiceNumber}. Amount: ₹${amount.toLocaleString()}${description ? ` - ${description}` : ''}`,
+        reminderType: 'vendor_payment',
+        reminderDate: new Date(dueDate),
+        relatedTo: {
+          entityType: 'vendor',
+          entityId: vendor
+        },
+        amount: amount,
+        priority: 'high',
+        notifyBefore: 24, // 1 day before
+        createdBy: req.user._id
+      });
+      console.log(`✅ Auto-created payment reminder for vendor invoice ${invoiceNumber}`);
+    } catch (reminderError) {
+      console.error('❌ Failed to create reminder:', reminderError);
+      // Don't fail the invoice creation if reminder fails
+    }
+  }
+
   const populatedInvoice = await VendorInvoice.findById(invoice._id)
     .populate('vendor', 'vendorId name contactPerson contactNumber')
     .populate('createdBy', 'name');
 
   res.status(201).json({
     success: true,
-    data: populatedInvoice
+    data: populatedInvoice,
+    reminderCreated: !!dueDate
   });
 });
 
@@ -146,6 +172,8 @@ export const updateVendorInvoice = asyncHandler(async (req, res) => {
     }
   }
 
+  const oldDueDate = invoice.dueDate;
+  
   if (invoiceNumber) invoice.invoiceNumber = invoiceNumber;
   if (invoiceDate) invoice.invoiceDate = new Date(invoiceDate);
   if (dueDate !== undefined) invoice.dueDate = dueDate ? new Date(dueDate) : null;
@@ -156,6 +184,50 @@ export const updateVendorInvoice = asyncHandler(async (req, res) => {
   if (notes !== undefined) invoice.notes = notes;
 
   await invoice.save();
+
+  // 🔔 Handle reminder updates when due date changes
+  if (dueDate !== undefined) {
+    const vendor = await Vendor.findById(invoice.vendor);
+    
+    if (dueDate) {
+      // Find existing reminder for this invoice
+      const existingReminder = await Reminder.findOne({
+        'relatedTo.entityId': invoice.vendor,
+        reminderType: 'vendor_payment'
+      }).sort({ createdAt: -1 });
+
+      if (existingReminder) {
+        // Update existing reminder
+        existingReminder.title = `Vendor Payment Due - ${vendor.name}`;
+        existingReminder.description = `Payment due for invoice ${invoice.invoiceNumber}. Amount: ₹${invoice.amount.toLocaleString()}${invoice.description ? ` - ${invoice.description}` : ''}`;
+        existingReminder.reminderDate = new Date(dueDate);
+        existingReminder.amount = invoice.amount;
+        await existingReminder.save();
+      } else if (!oldDueDate) {
+        // Create new reminder if due date was added
+        await Reminder.create({
+          title: `Vendor Payment Due - ${vendor.name}`,
+          description: `Payment due for invoice ${invoice.invoiceNumber}. Amount: ₹${invoice.amount.toLocaleString()}${invoice.description ? ` - ${invoice.description}` : ''}`,
+          reminderType: 'vendor_payment',
+          reminderDate: new Date(dueDate),
+          relatedTo: {
+            entityType: 'vendor',
+            entityId: invoice.vendor
+          },
+          amount: invoice.amount,
+          priority: 'high',
+          status: 'pending',
+          createdBy: req.user._id
+        });
+      }
+    } else if (oldDueDate && !dueDate) {
+      // Delete reminder if due date was removed
+      await Reminder.findOneAndDelete({
+        'relatedTo.entityId': invoice.vendor,
+        reminderType: 'vendor_payment'
+      });
+    }
+  }
 
   const updatedInvoice = await VendorInvoice.findById(invoice._id)
     .populate('vendor', 'vendorId name contactPerson contactNumber')
@@ -185,6 +257,12 @@ export const deleteVendorInvoice = asyncHandler(async (req, res) => {
     vendor.outstandingBalance = Math.max(0, (vendor.outstandingBalance || 0) - invoice.amount);
     await vendor.save();
   }
+
+  // 🔔 Delete associated reminder
+  await Reminder.findOneAndDelete({
+    'relatedTo.entityId': invoice.vendor,
+    reminderType: 'vendor_payment'
+  });
 
   await VendorInvoice.findByIdAndDelete(req.params.id);
 

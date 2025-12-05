@@ -522,12 +522,14 @@ const Dashboard = () => {
                   </div>
                 </div>
 
+                {/* Customer Invoices */}
                 {reminder.invoices && reminder.invoices.length > 0 && (
                   <div className="space-y-2 mt-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Customer Payments</p>
                     {reminder.invoices.map((invoice, invIndex) => (
                       <div 
                         key={invIndex} 
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -557,6 +559,49 @@ const Dashboard = () => {
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
                             Total: ₹{invoice.totalAmount.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Vendor Payments */}
+                {reminder.vendorPayments && reminder.vendorPayments.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Vendor Payments</p>
+                    {reminder.vendorPayments.map((payment, vpIndex) => (
+                      <div 
+                        key={vpIndex}
+                        className="flex items-center justify-between p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <FiAlertCircle className={
+                              payment.isOverdue ? 'text-red-500' : 'text-orange-500'
+                            } />
+                            <p className="font-medium text-gray-900">
+                              {payment.title}
+                            </p>
+                            <span className={`px-2 py-0.5 text-xs rounded ${
+                              payment.isOverdue 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {payment.isOverdue ? 'overdue' : payment.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {payment.vendor?.name || 'Vendor'} • {payment.vendor?.contactPerson || ''}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {payment.description}
+                          </p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-sm text-gray-600">Amount</p>
+                          <p className="font-semibold text-gray-900">
+                            ₹{(payment.amount || 0).toLocaleString()}
                           </p>
                         </div>
                       </div>

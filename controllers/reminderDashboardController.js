@@ -648,9 +648,36 @@ export const getPaymentReminders = asyncHandler(async (req, res) => {
   
   console.log(`📅 Found ${invoices.length} invoices with pending payments`);
 
+  // 🔔 Also fetch vendor payment reminders
+  let reminderQuery = {
+    reminderType: 'vendor_payment',
+    status: { $in: ['pending', 'overdue'] }
+  };
+
+  if (date) {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    reminderQuery.reminderDate = { $gte: targetDate, $lt: nextDay };
+  } else if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    reminderQuery.reminderDate = { $gte: start, $lte: end };
+  }
+
+  const vendorReminders = await Reminder.find(reminderQuery)
+    .populate('relatedTo.entityId', 'name contactPerson contactNumber')
+    .sort({ reminderDate: 1 });
+
+  console.log(`📅 Found ${vendorReminders.length} vendor payment reminders`);
+
   // Group by date if range is provided
   const remindersByDate = {};
   
+  // Add customer invoices
   invoices.forEach(invoice => {
     // Use dueDate if available, otherwise use invoiceDate
     const dateToUse = invoice.dueDate || invoice.invoiceDate;
@@ -660,6 +687,7 @@ export const getPaymentReminders = asyncHandler(async (req, res) => {
       remindersByDate[dateKey] = {
         date: dateKey,
         invoices: [],
+        vendorPayments: [],
         totalPending: 0,
         count: 0
       };
@@ -683,6 +711,36 @@ export const getPaymentReminders = asyncHandler(async (req, res) => {
     remindersByDate[dateKey].totalPending += invoice.balanceAmount;
     remindersByDate[dateKey].count += 1;
   });
+
+  // Add vendor payment reminders
+  vendorReminders.forEach(reminder => {
+    const dateKey = reminder.reminderDate ? reminder.reminderDate.toISOString().split('T')[0] : 'no-date';
+    
+    if (!remindersByDate[dateKey]) {
+      remindersByDate[dateKey] = {
+        date: dateKey,
+        invoices: [],
+        vendorPayments: [],
+        totalPending: 0,
+        count: 0
+      };
+    }
+    
+    remindersByDate[dateKey].vendorPayments.push({
+      _id: reminder._id,
+      title: reminder.title,
+      description: reminder.description,
+      amount: reminder.amount,
+      vendor: reminder.relatedTo?.entityId,
+      reminderDate: reminder.reminderDate,
+      priority: reminder.priority,
+      status: reminder.status,
+      isOverdue: reminder.reminderDate ? reminder.reminderDate < new Date() : false
+    });
+    
+    remindersByDate[dateKey].totalPending += (reminder.amount || 0);
+    remindersByDate[dateKey].count += 1;
+  });
   
   console.log('📅 Reminders grouped by date:', Object.keys(remindersByDate).length, 'dates');
 
@@ -692,13 +750,16 @@ export const getPaymentReminders = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    count: invoices.length,
+    count: invoices.length + vendorReminders.length,
     data: {
       reminders: remindersArray,
       allInvoices: invoices,
+      vendorPaymentReminders: vendorReminders,
       summary: {
-        totalPending: invoices.reduce((sum, inv) => sum + inv.balanceAmount, 0),
-        overdueCount: invoices.filter(inv => inv.dueDate < new Date()).length
+        totalPending: invoices.reduce((sum, inv) => sum + inv.balanceAmount, 0) + vendorReminders.reduce((sum, rem) => sum + (rem.amount || 0), 0),
+        overdueCount: invoices.filter(inv => inv.dueDate < new Date()).length + vendorReminders.filter(rem => rem.reminderDate < new Date()).length,
+        customerPayments: invoices.length,
+        vendorPayments: vendorReminders.length
       }
     }
   });
