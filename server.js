@@ -83,6 +83,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'https://prod.sanjanawaterproofing.com',
   'https://crm-chi-rouge.vercel.app',
+  'https://crm-1ej7.onrender.com',  // Render backend URL
   'https://localhost',  // Capacitor Android/iOS
   'capacitor://localhost',  // Capacitor iOS
   'ionic://localhost',  // Ionic
@@ -97,6 +98,10 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) return callback(null, true);
     // Allow Capacitor origins (they use capacitor:// or ionic:// scheme)
     if (origin && (origin.startsWith('capacitor://') || origin.startsWith('ionic://') || origin === 'https://localhost' || origin === 'http://localhost')) {
+      return callback(null, true);
+    }
+    // Allow all Render.com and Vercel.app domains for development
+    if (origin && (origin.includes('.onrender.com') || origin.includes('.vercel.app'))) {
       return callback(null, true);
     }
     // Fallback: echo any origin if explicitly allowed via env
