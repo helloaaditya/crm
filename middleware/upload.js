@@ -78,7 +78,7 @@ export const upload = multer({
 export const apkUpload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB limit for APK files
+    fileSize: 150 * 1024 * 1024 // 150MB limit for APK files
   },
   fileFilter: (req, file, cb) => {
     const isApk = /\.apk$/i.test(file.originalname) || file.mimetype === 'application/vnd.android.package-archive' || file.mimetype === 'application/octet-stream';

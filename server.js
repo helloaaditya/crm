@@ -120,8 +120,9 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Body parser middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Increased limits for APK file uploads (up to 150MB)
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {

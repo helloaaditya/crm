@@ -69,6 +69,15 @@ const Update = () => {
         toast.error('Please select an APK file')
         return
       }
+      
+      // Check file size (150MB limit)
+      const maxSize = 150 * 1024 * 1024 // 150MB
+      if (file.size > maxSize) {
+        toast.error(`File too large! Maximum size is 150MB. Your file is ${formatFileSize(file.size)}`)
+        e.target.value = '' // Clear the input
+        return
+      }
+      
       setSelectedFile(file)
     }
   }
@@ -101,7 +110,14 @@ const Update = () => {
       fetchApkInfo()
     } catch (error) {
       console.error('Error uploading APK:', error)
-      toast.error(error.response?.data?.message || 'Failed to upload APK')
+      
+      if (error.response?.status === 413) {
+        toast.error('File too large! Maximum size is 150MB. Please compress or use a smaller APK file.')
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message)
+      } else {
+        toast.error('Failed to upload APK. Please check file size and try again.')
+      }
     } finally {
       setUploading(false)
     }
