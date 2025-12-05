@@ -3,26 +3,16 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { 
   FiHome, FiUsers, FiBriefcase, FiFileText, FiPackage, 
   FiTruck, FiUserCheck, FiCalendar, FiDollarSign, 
-  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut, FiEye, FiCheckSquare, FiList, FiDownload, FiChevronLeft, FiChevronRight
+  FiBell, FiSettings, FiMenu, FiX, FiKey, FiClock, FiSend, FiTool, FiCreditCard, FiDatabase, FiNavigation, FiShoppingCart, FiFolder, FiClipboard, FiLogOut, FiEye, FiCheckSquare, FiList, FiDownload
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true)
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    // Load collapsed state from localStorage
-    const saved = localStorage.getItem('sidebarCollapsed')
-    return saved === 'true'
-  })
   const { user, logout } = useAuth()
   const { counts } = useNotifications()
   const navigate = useNavigate()
-
-  // Save collapsed state to localStorage
-  useEffect(() => {
-    localStorage.setItem('sidebarCollapsed', isCollapsed.toString())
-  }, [isCollapsed])
 
   const handleLogout = () => {
     logout()
@@ -190,42 +180,19 @@ const Sidebar = () => {
       <aside
         className={`${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed lg:relative inset-y-0 left-0 z-40 ${
-          isCollapsed ? 'lg:w-20' : 'w-64 sm:w-72 lg:w-64 xl:w-72'
-        } bg-white shadow-lg transform transition-all duration-300 ease-in-out lg:translate-x-0 flex-shrink-0 relative`}
+        } fixed lg:relative inset-y-0 left-0 z-40 w-64 sm:w-72 lg:w-64 xl:w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex-shrink-0`}
       >
-        {/* Minimizer Button - Right Side */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden lg:flex absolute -right-3 top-20 z-50 bg-white border-2 border-gray-200 rounded-full p-1.5 shadow-lg hover:bg-gray-50 hover:border-primary transition-colors"
-          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-        >
-          {isCollapsed ? (
-            <FiChevronRight className="text-gray-600" size={16} />
-          ) : (
-            <FiChevronLeft className="text-gray-600" size={16} />
-          )}
-        </button>
-
         {/* Logo */}
-        <div className={`flex items-center justify-center h-16 lg:h-20 border-b px-4 ${isCollapsed ? 'px-2' : ''}`}>
-          {isCollapsed ? (
-            <img 
-              src="https://www.sanjanawaterproofing.com/assets/sanjana-enterprises-Ihc86Ddy.png" 
-              alt="Sanjana Logo" 
-              className="w-12 h-auto" 
-            />
-          ) : (
-            <img 
-              src="https://www.sanjanawaterproofing.com/assets/sanjana-enterprises-Ihc86Ddy.png" 
-              alt="Sanjana Logo" 
-              className="w-32 sm:w-40 lg:w-44 h-auto" 
-            />
-          )}
+        <div className="flex items-center justify-center h-16 lg:h-20 border-b px-4">
+          <img 
+            src="https://www.sanjanawaterproofing.com/assets/sanjana-enterprises-Ihc86Ddy.png" 
+            alt="Sanjana Logo" 
+            className="w-32 sm:w-40 lg:w-44 h-auto" 
+          />
         </div>
 
         {/* Navigation */}
-          <nav className={`mt-4 lg:mt-6 pb-24 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-3 sm:px-4'}`} style={{ maxHeight: 'calc(100svh - 200px)' }}>
+          <nav className="mt-4 lg:mt-6 px-3 sm:px-4 pb-24 overflow-y-auto" style={{ maxHeight: 'calc(100svh - 200px)' }}>
           <div className="space-y-1">
             {filteredMenuItems.map((item) => (
               <NavLink
@@ -238,37 +205,19 @@ const Sidebar = () => {
                   }
                 }}
                 className={({ isActive }) =>
-                  `flex items-center ${
-                    isCollapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5 sm:px-4 sm:py-3'
-                  } rounded-lg transition-colors text-sm sm:text-base relative group ${
+                  `flex items-center px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg transition-colors text-sm sm:text-base ${
                     isActive
                       ? 'bg-primary text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`
                 }
-                title={isCollapsed ? item.name : ''}
               >
-                <item.icon className={`${isCollapsed ? '' : 'mr-2 sm:mr-3'} flex-shrink-0`} size={18} />
-                {!isCollapsed && (
-                  <>
-                    <span className="font-medium truncate">{item.name}</span>
-                    {item.notificationCount > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center flex-shrink-0">
-                        {item.notificationCount}
-                      </span>
-                    )}
-                  </>
-                )}
-                {isCollapsed && item.notificationCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                <item.icon className="mr-2 sm:mr-3 flex-shrink-0" size={18} />
+                <span className="font-medium truncate">{item.name}</span>
+                {item.notificationCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center flex-shrink-0">
                     {item.notificationCount}
                   </span>
-                )}
-                {/* Tooltip for collapsed state */}
-                {isCollapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
-                    {item.name}
-                  </div>
                 )}
               </NavLink>
             ))}
@@ -276,22 +225,13 @@ const Sidebar = () => {
         </nav>
 
         {/* Logout Button at Bottom */}
-        <div className={`absolute bottom-0 w-full border-t bg-white ${isCollapsed ? 'p-2' : 'p-4'}`}>
+        <div className="absolute bottom-0 w-full p-4 border-t bg-white">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center ${
-              isCollapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5 sm:px-4 sm:py-3'
-            } text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm sm:text-base font-medium relative group`}
-            title={isCollapsed ? 'Logout' : ''}
+            className="w-full flex items-center px-3 py-2.5 sm:px-4 sm:py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm sm:text-base font-medium"
           >
-            <FiLogOut className={`${isCollapsed ? '' : 'mr-2 sm:mr-3'} flex-shrink-0`} size={18} />
-            {!isCollapsed && <span>Logout</span>}
-            {/* Tooltip for collapsed state */}
-            {isCollapsed && (
-              <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
-                Logout
-              </div>
-            )}
+            <FiLogOut className="mr-2 sm:mr-3 flex-shrink-0" size={18} />
+            <span>Logout</span>
           </button>
         </div>
       </aside>
