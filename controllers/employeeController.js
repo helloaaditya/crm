@@ -28,6 +28,7 @@ export const getEmployees = asyncHandler(async (req, res) => {
   const employees = await Employee.find(query)
     .populate('userId', 'name email role')
     .populate('createdBy', 'name')
+    .populate('assignedProjects.project', 'projectId name description status')
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit);

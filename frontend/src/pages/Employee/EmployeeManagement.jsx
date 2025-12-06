@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import API from '../../api';
+import { FiX } from 'react-icons/fi';
 
 const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
@@ -10,11 +11,35 @@ const EmployeeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState(''); // Show all by default
   const [assigningProject, setAssigningProject] = useState({});
+  const [projectSearchTerm, setProjectSearchTerm] = useState({});
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState({});
+  const dropdownRefs = useRef({});
 
   useEffect(() => {
     fetchEmployees();
     fetchProjects();
   }, [filterStatus]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      Object.keys(projectDropdownOpen).forEach(employeeId => {
+        if (projectDropdownOpen[employeeId] && 
+            dropdownRefs.current[employeeId] && 
+            !dropdownRefs.current[employeeId].contains(event.target)) {
+          setProjectDropdownOpen(prev => ({ ...prev, [employeeId]: false }));
+        }
+      });
+    };
+
+    if (Object.values(projectDropdownOpen).some(open => open)) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [projectDropdownOpen]);
 
   const fetchEmployees = async () => {
     try {
@@ -35,11 +60,49 @@ const EmployeeManagement = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await API.projects.getAll({ limit: 10000, status: 'planning,in_progress' });
+      const response = await API.projects.getAll({ limit: 10000 }); // Fetch all projects
       setProjects(response.data.data || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
     }
+  };
+
+  const handleRemoveProject = async (employeeId, projectId) => {
+    if (!window.confirm('Are you sure you want to remove this project assignment?')) return;
+
+    try {
+      // Find the project assignment
+      const employee = employees.find(e => e._id === employeeId);
+      if (!employee) return;
+
+      const assignment = employee.assignedProjects?.find(
+        ap => ap.project?._id === projectId || ap.project?.toString() === projectId
+      );
+
+      if (!assignment) {
+        toast.error('Project assignment not found');
+        return;
+      }
+
+      // Remove from project team
+      await API.projects.removeEmployee(assignment.project?._id || assignment.project, employeeId);
+      toast.success('Project removed successfully');
+      fetchEmployees(); // Refresh employee list
+    } catch (error) {
+      console.error('Error removing project:', error);
+      toast.error(error.response?.data?.message || 'Failed to remove project');
+    }
+  };
+
+  const getFilteredProjects = (employeeId) => {
+    if (!projectSearchTerm[employeeId]) return projects;
+    
+    const searchLower = projectSearchTerm[employeeId].toLowerCase();
+    return projects.filter(project => 
+      (project.name && project.name.toLowerCase().includes(searchLower)) ||
+      (project.projectId && project.projectId.toLowerCase().includes(searchLower)) ||
+      (project.description && project.description.toLowerCase().includes(searchLower))
+    );
   };
 
   const handleAssignProject = async (employeeId, projectId, role) => {
@@ -247,39 +310,29 @@ const EmployeeManagement = () => {
                     )}
                   </div>
                   
-                  {/* Project Assignment */}
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <select
-                      onChange={(e) => {
-                        const projectId = e.target.value;
-                        if (projectId) {
-                          handleAssignProject(node._id, projectId, node.role || node.designation);
-                          e.target.value = ''; // Reset dropdown
-                        }
-                      }}
-                      disabled={assigningProject[node._id]}
-                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white disabled:opacity-50"
-                    >
-                      <option value="">📋 Assign Project...</option>
-                      {projects.map((project) => (
-                        <option key={project._id} value={project._id}>
-                          {project.name || project.projectId} - {project.projectId}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
                   {/* Assigned Projects List */}
                   {node.assignedProjects && node.assignedProjects.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      {node.assignedProjects.slice(0, 3).map((assignment, idx) => (
-                        <div key={idx} className="text-xs bg-blue-50 px-2 py-1 rounded">
-                          📊 {assignment.project?.name || assignment.project?.projectId || 'Unknown Project'}
+                      {node.assignedProjects.filter(p => p.status === 'active').slice(0, 3).map((assignment, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs bg-blue-50 px-2 py-1 rounded group">
+                          <span className="flex-1">
+                            📊 {assignment.project?.name || assignment.project?.projectId || 'Unknown Project'}
+                            {assignment.project?.projectId && assignment.project?.name && (
+                              <span className="text-gray-500 ml-1">({assignment.project.projectId})</span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => handleRemoveProject(node._id, assignment.project?._id || assignment.project)}
+                            className="ml-2 text-red-600 hover:text-red-800 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                            title="Remove project"
+                          >
+                            <FiX size={14} />
+                          </button>
                         </div>
                       ))}
-                      {node.assignedProjects.length > 3 && (
+                      {node.assignedProjects.filter(p => p.status === 'active').length > 3 && (
                         <div className="text-xs text-gray-500">
-                          +{node.assignedProjects.length - 3} more
+                          +{node.assignedProjects.filter(p => p.status === 'active').length - 3} more
                         </div>
                       )}
                     </div>
@@ -287,7 +340,7 @@ const EmployeeManagement = () => {
                 </div>
               </div>
               
-              {/* Stats */}
+              {/* Right Side - Stats and Project Assignment */}
               <div className="text-left sm:text-right flex sm:flex-col gap-2 flex-wrap">
                 {hasChildren && (
                   <div className="text-xs sm:text-sm font-semibold text-blue-600 whitespace-nowrap">
@@ -299,6 +352,77 @@ const EmployeeManagement = () => {
                     📊 {node.assignedProjects.filter(p => p.status === 'active').length} Project(s)
                   </div>
                 )}
+                
+                {/* Project Assignment Dropdown - Right Side */}
+                <div className="relative mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectDropdownOpen({ ...projectDropdownOpen, [node._id]: !projectDropdownOpen[node._id] });
+                      setProjectSearchTerm({ ...projectSearchTerm, [node._id]: '' });
+                    }}
+                    disabled={assigningProject[node._id]}
+                    className="w-full sm:w-auto px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white disabled:opacity-50 flex items-center justify-between gap-2"
+                  >
+                    <span className="text-gray-500">📋 Assign Project...</span>
+                    <span className="text-gray-400">▼</span>
+                  </button>
+                  
+                  {projectDropdownOpen[node._id] && (
+                    <div 
+                      ref={el => dropdownRefs.current[node._id] = el}
+                      className="absolute right-0 mt-1 w-64 sm:w-80 bg-white border border-gray-300 rounded-lg shadow-lg z-50" 
+                      style={{ maxHeight: '60vh' }}
+                    >
+                      {/* Search Input */}
+                      <div className="p-2 border-b sticky top-0 bg-white z-10">
+                        <input
+                          type="text"
+                          placeholder="Search projects..."
+                          value={projectSearchTerm[node._id] || ''}
+                          onChange={(e) => setProjectSearchTerm({ ...projectSearchTerm, [node._id]: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          autoFocus
+                        />
+                      </div>
+                      
+                      {/* Scrollable Project List */}
+                      <div className="overflow-y-auto" style={{ maxHeight: 'calc(60vh - 60px)' }}>
+                        {getFilteredProjects(node._id).length === 0 ? (
+                          <div className="px-4 py-2 text-gray-500 text-sm">No projects found</div>
+                        ) : (
+                          getFilteredProjects(node._id).map(project => {
+                            const isAssigned = node.assignedProjects?.some(
+                              ap => (ap.project?._id === project._id || ap.project?.toString() === project._id) && ap.status === 'active'
+                            );
+                            
+                            return (
+                              <button
+                                key={project._id}
+                                type="button"
+                                onClick={() => {
+                                  if (!isAssigned) {
+                                    handleAssignProject(node._id, project._id, node.role || node.designation);
+                                    setProjectDropdownOpen({ ...projectDropdownOpen, [node._id]: false });
+                                    setProjectSearchTerm({ ...projectSearchTerm, [node._id]: '' });
+                                  }
+                                }}
+                                disabled={isAssigned || assigningProject[node._id]}
+                                className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                                  isAssigned ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'text-gray-900'
+                                } ${assigningProject[node._id] ? 'opacity-50' : ''}`}
+                              >
+                                <div className="font-medium">{project.name || project.projectId}</div>
+                                <div className="text-xs text-gray-500">{project.projectId}</div>
+                                {isAssigned && <div className="text-xs text-blue-600 mt-1">Already assigned</div>}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
