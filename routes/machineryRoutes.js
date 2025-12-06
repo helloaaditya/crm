@@ -9,7 +9,8 @@ import {
   returnFromProject,
   getProjectAssignments,
   uploadImage,
-  getDashboardStats
+  getDashboardStats,
+  getMachineryHistory
 } from '../controllers/machineryController.js'
 import { protect } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
@@ -25,6 +26,7 @@ router.get('/dashboard/stats', getDashboardStats)
 // CRUD operations
 router.get('/', getAllMachinery)
 router.get('/:id', getMachineryById)
+router.get('/:id/history', getMachineryHistory)
 router.post('/', createMachinery)
 router.put('/:id', updateMachinery)
 router.delete('/:id', deleteMachinery)

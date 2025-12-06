@@ -103,6 +103,7 @@ export const inventoryAPI = {
 export const machineryAPI = {
   getAll: (params) => api.get('/machinery', { params }),
   getById: (id) => api.get(`/machinery/${id}`),
+  getHistory: (id) => api.get(`/machinery/${id}/history`),
   create: (data) => api.post('/machinery', data),
   update: (id, data) => api.put(`/machinery/${id}`, data),
   delete: (id) => api.delete(`/machinery/${id}`),

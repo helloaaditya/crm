@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiSearch, FiEye, FiEdit, FiTrash2, FiPackage, FiTruck, FiTool, FiAlertTriangle, FiCheckCircle, FiXCircle, FiFilter, FiX, FiRotateCcw } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEye, FiEdit, FiTrash2, FiPackage, FiTruck, FiTool, FiAlertTriangle, FiCheckCircle, FiXCircle, FiFilter, FiX, FiRotateCcw, FiClock } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
 import MachineryModal from '../../components/Modals/MachineryModal'
 import AssignMachineryModal from '../../components/Modals/AssignMachineryModal'
 import ReturnMachineryModal from '../../components/Modals/ReturnMachineryModal'
+import MachineryHistoryModal from '../../components/Modals/MachineryHistoryModal'
 
 const Machinery = () => {
   const [machinery, setMachinery] = useState([])
@@ -29,6 +30,8 @@ const Machinery = () => {
   const [selectedMachinery, setSelectedMachinery] = useState(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [viewingMachinery, setViewingMachinery] = useState(null)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [historyMachineryId, setHistoryMachineryId] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -154,6 +157,11 @@ const Machinery = () => {
   const handleReturn = (machinery) => {
     setSelectedMachinery(machinery)
     setShowReturnModal(true)
+  }
+
+  const handleViewHistory = (machinery) => {
+    setHistoryMachineryId(machinery._id)
+    setShowHistoryModal(true)
   }
 
   const handleDelete = async (id) => {
@@ -436,6 +444,13 @@ const Machinery = () => {
                               <FiEye size={16} />
                             </button>
                             <button 
+                              onClick={() => handleViewHistory(item)}
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded"
+                              title="View History"
+                            >
+                              <FiClock size={16} />
+                            </button>
+                            <button 
                               onClick={() => handleEdit(item)}
                               className="p-2 text-green-600 hover:bg-green-50 rounded"
                               title="Edit"
@@ -529,6 +544,13 @@ const Machinery = () => {
                       >
                         <FiEye className="mr-1" size={14} />
                         View
+                      </button>
+                      <button 
+                        onClick={() => handleViewHistory(item)}
+                        className="flex items-center justify-center px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg text-xs font-medium min-h-44"
+                      >
+                        <FiClock className="mr-1" size={14} />
+                        History
                       </button>
                       <button 
                         onClick={() => handleEdit(item)}
@@ -640,6 +662,18 @@ const Machinery = () => {
             fetchMachinery()
           }}
           machinery={selectedMachinery}
+        />
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <MachineryHistoryModal
+          isOpen={showHistoryModal}
+          onClose={() => {
+            setShowHistoryModal(false)
+            setHistoryMachineryId(null)
+          }}
+          machineryId={historyMachineryId}
         />
       )}
 

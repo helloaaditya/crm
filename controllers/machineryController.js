@@ -504,6 +504,129 @@ export const uploadImage = async (req, res) => {
   }
 }
 
+// Get machinery history (all assignments and activities)
+export const getMachineryHistory = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const machinery = await Machinery.findById(id)
+      .populate('assignedProjects.project', 'projectId name customer description')
+      .populate('createdBy', 'name')
+      .populate('updatedBy', 'name')
+    
+    if (!machinery) {
+      return res.status(404).json({
+        success: false,
+        message: 'Machinery not found'
+      })
+    }
+
+    // Build history array from all activities
+    const history = []
+
+    // Add creation event
+    history.push({
+      type: 'created',
+      date: machinery.createdAt,
+      description: `Machinery "${machinery.name}" was created`,
+      performedBy: machinery.createdBy,
+      details: {
+        name: machinery.name,
+        category: machinery.category,
+        quantity: machinery.quantity,
+        unit: machinery.unit
+      }
+    })
+
+    // Add update events (if updatedBy exists and is different from createdBy)
+    if (machinery.updatedAt && machinery.updatedAt.getTime() !== machinery.createdAt.getTime()) {
+      history.push({
+        type: 'updated',
+        date: machinery.updatedAt,
+        description: `Machinery "${machinery.name}" was updated`,
+        performedBy: machinery.updatedBy,
+        details: {
+          name: machinery.name,
+          category: machinery.category,
+          quantity: machinery.quantity,
+          availableQuantity: machinery.availableQuantity,
+          condition: machinery.condition,
+          location: machinery.location
+        }
+      })
+    }
+
+    // Add all assignment history
+    machinery.assignedProjects.forEach((assignment, index) => {
+      // Assignment event
+      history.push({
+        type: 'assigned',
+        date: assignment.assignedDate,
+        description: `${assignment.quantity} ${machinery.unit} assigned to project`,
+        project: assignment.project,
+        quantity: assignment.quantity,
+        expectedReturnDate: assignment.expectedReturnDate,
+        notes: assignment.notes,
+        status: assignment.status,
+        details: {
+          projectId: assignment.project?.projectId,
+          projectName: assignment.project?.name,
+          quantity: assignment.quantity,
+          expectedReturnDate: assignment.expectedReturnDate
+        }
+      })
+
+      // Return event (if returned)
+      if (assignment.status === 'returned' && assignment.actualReturnDate) {
+        history.push({
+          type: 'returned',
+          date: assignment.actualReturnDate,
+          description: `${assignment.quantity} ${machinery.unit} returned from project`,
+          project: assignment.project,
+          quantity: assignment.quantity,
+          notes: assignment.notes,
+          status: assignment.status,
+          details: {
+            projectId: assignment.project?.projectId,
+            projectName: assignment.project?.name,
+            quantity: assignment.quantity,
+            actualReturnDate: assignment.actualReturnDate
+          }
+        })
+      }
+    })
+
+    // Sort history by date (newest first)
+    history.sort((a, b) => new Date(b.date) - new Date(a.date))
+
+    res.json({
+      success: true,
+      data: {
+        machinery: {
+          _id: machinery._id,
+          name: machinery.name,
+          category: machinery.category,
+          brand: machinery.brand,
+          model: machinery.model,
+          quantity: machinery.quantity,
+          availableQuantity: machinery.availableQuantity,
+          unit: machinery.unit,
+          condition: machinery.condition,
+          location: machinery.location
+        },
+        history: history
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching machinery history:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch machinery history',
+      error: error.message
+    })
+  }
+}
+
 // Get machinery dashboard stats
 export const getDashboardStats = async (req, res) => {
   try {
