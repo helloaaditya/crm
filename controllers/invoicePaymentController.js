@@ -406,6 +406,13 @@ export const updateInvoice = asyncHandler(async (req, res) => {
   
   invoice.notes = notes || invoice.notes;
 
+  // Clear PDF URL when invoice is updated so it regenerates with new data
+  // This ensures the PDF always reflects the latest invoice data
+  if (invoice.pdfUrl) {
+    invoice.pdfUrl = undefined;
+    console.log('Cleared PDF URL for invoice:', invoice.invoiceNumber || invoice.quotationNumber, '- PDF will be regenerated on next download');
+  }
+
   await invoice.save();
 
   // Sync with project if exists and amount changed

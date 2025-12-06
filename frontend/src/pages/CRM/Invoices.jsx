@@ -157,17 +157,17 @@ const Invoices = () => {
     try {
       setDownloadingPDF(id)
       
-      // Add force regenerate parameter to URL
-      const url = forceRegenerate ? `${id}?force=true` : id
+      // Always force regenerate to ensure we get the latest invoice data
+      // This ensures updated invoices always show the latest PDF
+      const url = `${id}?force=true`
       const response = await API.invoices.generatePDF(url)
       
-      if (response.data.data.cached && !forceRegenerate) {
-        toast.success('PDF loaded from cache!')
-      } else {
-        toast.success('PDF generated successfully!')
-      }
+      toast.success('PDF generated successfully!')
       
       window.open(response.data.data.pdfUrl, '_blank')
+      
+      // Refresh invoice list to get updated PDF URL
+      fetchInvoices()
     } catch (error) {
       console.error('PDF generation error:', error)
       toast.error(error.response?.data?.message || 'Failed to generate PDF')
@@ -856,21 +856,12 @@ Best Regards,
                           </button>
                           <button 
                             onClick={() => handleGeneratePDF(invoice._id)}
-                            onContextMenu={(e) => {
-                              e.preventDefault()
-                              if (invoice.pdfUrl) {
-                                handleGeneratePDF(invoice._id, true)
-                              }
-                            }}
                             className={`p-2 rounded disabled:opacity-50 disabled:cursor-not-allowed ${
                               invoice.pdfUrl 
                                 ? 'text-green-600 hover:bg-green-50' 
                                 : 'text-blue-600 hover:bg-blue-50'
                             }`}
-                            title={invoice.pdfUrl 
-                              ? `Left-click: Download ${invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} PDF (Cached) | Right-click: Force Regenerate` 
-                              : `Generate & Download ${invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} PDF`
-                            }
+                            title={`Generate & Download ${invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'} PDF`}
                             disabled={downloadingPDF === invoice._id}
                           >
                             {downloadingPDF === invoice._id ? (
