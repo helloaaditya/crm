@@ -1002,7 +1002,7 @@ Best Regards,
                           : 'text-blue-600 hover:bg-blue-50'
                       }`}
                       disabled={downloadingPDF === invoice._id}
-                      title={invoice.pdfUrl ? 'Download PDF (Cached)' : 'Generate & Download PDF'}
+                      title="Generate & Download PDF"
                     >
                       {downloadingPDF === invoice._id ? (
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-1"></div>
