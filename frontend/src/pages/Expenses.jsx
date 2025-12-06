@@ -418,6 +418,21 @@ const Expenses = () => {
       toast.error(error.response?.data?.message || 'Failed to reject expense')
     }
   }
+
+  const handleDeleteExpense = async (expenseId) => {
+    if (!window.confirm('Are you sure you want to delete this expense? This action cannot be undone.')) {
+      return
+    }
+    
+    try {
+      await API.expenses.delete(expenseId)
+      toast.success('Expense deleted successfully')
+      fetchExpenses()
+      fetchStats()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete expense')
+    }
+  }
   
   const openPaymentModal = (expense) => {
     setPaymentModal(expense)
@@ -668,12 +683,6 @@ const Expenses = () => {
                               <td className="py-3 px-4">
                                 <div className="flex gap-2">
                                   <button
-                                    onClick={() => openAddEmployeeFundModal(emp)}
-                                    className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                                  >
-                                    Add Funds
-                                  </button>
-                                  <button
                                     onClick={() => openHistoryModal(emp)}
                                     className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
                                   >
@@ -701,12 +710,6 @@ const Expenses = () => {
                             <p className="font-semibold text-green-600">₹{emp.availableFunds?.toLocaleString('en-IN') || 0}</p>
                           </div>
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => openAddEmployeeFundModal(emp)}
-                              className="flex-1 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                            >
-                              Add Funds
-                            </button>
                             <button
                               onClick={() => openHistoryModal(emp)}
                               className="flex-1 px-3 py-2 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
@@ -1049,6 +1052,16 @@ const Expenses = () => {
                               </>
                             )}
                             
+                            {hasExpenseAccess && expense.status === 'pending' && (
+                              <button
+                                onClick={() => handleDeleteExpense(expense._id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded"
+                                title="Delete Expense"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            )}
+                            
                             {hasExpenseAccess && expense.status === 'approved' && expense.paymentStatus === 'unpaid' && (
                               <button
                                 onClick={() => openPaymentModal(expense)}
@@ -1128,6 +1141,14 @@ const Expenses = () => {
                           >
                             <FiX className="mr-1" size={16} />
                             Reject
+                          </button>
+                          <button
+                            onClick={() => handleDeleteExpense(expense._id)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm"
+                            title="Delete Expense"
+                          >
+                            <FiTrash2 className="mr-1" size={16} />
+                            Delete
                           </button>
                         </>
                       )}
