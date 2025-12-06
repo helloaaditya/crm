@@ -392,15 +392,15 @@ function MyExpenses() {
                 onClick={openDirectPayModal}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
-                <FiCheck className="mr-2" />
-                Pay Expense
+                <FiPlus className="mr-2" />
+                Submit Expense
               </button>
               <button
                 onClick={() => setShowModal(true)}
                 className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
               >
-                <FiPlus className="mr-2" />
-                Submit Expense
+                <FiCheck className="mr-2" />
+                Pay Expense
               </button>
             </div>
       </div>

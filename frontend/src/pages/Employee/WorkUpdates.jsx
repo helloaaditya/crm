@@ -536,14 +536,14 @@ function WorkUpdates() {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-semibold text-gray-800">
-                        {assignment.project?.projectId}
-                      </h3>
                       {assignment.project?.name && (
-                        <p className="text-sm font-semibold text-gray-700 mt-1">
+                        <h3 className="font-bold text-lg text-gray-800">
                           {assignment.project.name}
-                        </p>
+                        </h3>
                       )}
+                      <p className="text-sm font-semibold text-gray-600 mt-1">
+                        {assignment.project?.projectId}
+                      </p>
                       <p className="text-sm text-gray-600 mt-1">
                         {assignment.project?.description}
                       </p>
@@ -614,7 +614,7 @@ function WorkUpdates() {
                     <option value="">-- Select Project --</option>
                     {projects.map((assignment) => (
                       <option key={assignment._id} value={assignment.project._id}>
-                        {assignment.project.projectId} {assignment.project.name ? `- ${assignment.project.name}` : ''} - {assignment.project.description}
+                        {assignment.project.name || 'Unnamed Project'} - {assignment.project.projectId} {assignment.project.description ? `- ${assignment.project.description}` : ''}
                       </option>
                     ))}
                   </select>

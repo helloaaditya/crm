@@ -302,12 +302,14 @@ const MyProjects = () => {
                 <div key={project._id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-bold text-lg text-gray-800">{project.project?.projectId}</h3>
                       {project.project?.name && (
-                        <p className="text-sm font-semibold text-gray-700 mt-1">
+                        <h3 className="font-bold text-lg text-gray-800">
                           {project.project.name}
-                        </p>
+                        </h3>
                       )}
+                      <p className="text-sm font-semibold text-gray-600 mt-1">
+                        {project.project?.projectId}
+                      </p>
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                         {project.project?.description}
                       </p>

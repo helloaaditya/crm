@@ -589,10 +589,10 @@ const MyDashboard = () => {
                 {filteredProjects.slice(0, 5).map((ap) => (
                   <div key={ap._id} className="flex items-center justify-between p-4 bg-gray-50 rounded">
                     <div>
-                      <h3 className="font-medium text-gray-800">{ap.project?.projectId}</h3>
                       {ap.project?.name && (
-                        <p className="text-sm font-semibold text-gray-700">{ap.project.name}</p>
+                        <h3 className="font-bold text-lg text-gray-800">{ap.project.name}</h3>
                       )}
+                      <p className="text-sm font-semibold text-gray-600 mt-1">{ap.project?.projectId}</p>
                       <p className="text-sm text-gray-600">{ap.project?.description}</p>
                       <p className="text-xs text-gray-500 mt-1">Role: {ap.role}</p>
                     </div>
