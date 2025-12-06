@@ -359,7 +359,8 @@ export const updateInvoice = asyncHandler(async (req, res) => {
     totalAmount, 
     dueDate, 
     terms, 
-    notes 
+    notes,
+    quotationFileUrl 
   } = req.body;
 
   // Update invoice
@@ -405,6 +406,49 @@ export const updateInvoice = asyncHandler(async (req, res) => {
   }
   
   invoice.notes = notes || invoice.notes;
+
+  // Handle quotation file URL update - delete old file if new one is provided
+  if (quotationFileUrl !== undefined) {
+    const oldQuotationFileUrl = invoice.quotationFileUrl;
+    
+    // If a new quotation file URL is provided and it's different from the existing one
+    if (quotationFileUrl && quotationFileUrl !== oldQuotationFileUrl) {
+      // Delete old quotation file from S3 if it exists
+      if (oldQuotationFileUrl) {
+        try {
+          const { deleteFromS3 } = await import('../utils/s3Service.js');
+          const extractS3Key = (url) => {
+            try {
+              const urlObj = new URL(url);
+              // Extract key from S3 URL (e.g., quotation-files/filename.pdf)
+              const pathParts = urlObj.pathname.split('/');
+              return pathParts.slice(1).join('/'); // Remove leading slash
+            } catch (error) {
+              console.error('Error extracting S3 key from URL:', url);
+              return null;
+            }
+          };
+          
+          const fileKey = extractS3Key(oldQuotationFileUrl);
+          if (fileKey) {
+            await deleteFromS3(fileKey);
+            console.log('Deleted old quotation file from S3:', fileKey);
+          }
+        } catch (error) {
+          console.error('Error deleting old quotation file from S3:', error);
+          // Continue with update even if file deletion fails
+        }
+      }
+      
+      // Update with new quotation file URL
+      invoice.quotationFileUrl = quotationFileUrl;
+      console.log('Updated quotation file URL:', quotationFileUrl);
+    } else if (quotationFileUrl === null || quotationFileUrl === '') {
+      // If quotationFileUrl is explicitly set to null/empty, clear it
+      invoice.quotationFileUrl = undefined;
+    }
+    // If quotationFileUrl is the same, no change needed
+  }
 
   // Clear PDF URL when invoice is updated so it regenerates with new data
   // This ensures the PDF always reflects the latest invoice data
