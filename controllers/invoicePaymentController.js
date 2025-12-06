@@ -341,10 +341,8 @@ export const updateInvoice = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Invoice not found' });
   }
 
-  // Prevent updating paid invoices
-  if (invoice.paymentStatus === 'paid') {
-    return res.status(400).json({ message: 'Cannot update paid invoice' });
-  }
+  // Allow editing all invoices and quotations, including paid ones
+  // Removed restriction to allow editing in all cases
 
   const { 
     customer, 

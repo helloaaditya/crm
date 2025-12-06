@@ -441,14 +441,18 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
         }
       }
 
-      // If editing an invoice, update it. Otherwise create new.
-      // Check if we have an invoice to edit (and it's not a quotation conversion)
-      const isEditingInvoice = invoice && !quotation && invoice.invoiceType !== 'quotation'
+      // If editing an invoice or quotation, update it. Otherwise create new.
+      // Allow editing both invoices and quotations in all cases
+      const isEditing = invoice && !quotation
       
-      if (isEditingInvoice) {
-        // Update existing invoice (including converted invoices)
+      if (isEditing) {
+        // Update existing invoice or quotation
         const response = await API.invoices.update(invoice._id, invoiceData)
-        toast.success(`Invoice updated! Number: ${response.data.data.invoiceNumber}`)
+        const docType = invoice.invoiceType === 'quotation' ? 'Quotation' : 'Invoice'
+        const docNumber = invoice.invoiceType === 'quotation' 
+          ? (response.data.data.quotationNumber || response.data.data.invoiceNumber)
+          : response.data.data.invoiceNumber
+        toast.success(`${docType} updated! Number: ${docNumber}`)
       } else {
         // Create new invoice
         const response = await API.invoices.create(invoiceData)

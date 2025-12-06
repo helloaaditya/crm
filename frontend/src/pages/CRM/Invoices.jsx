@@ -306,17 +306,16 @@ Sanjana Enterprises`;
       const response = await API.invoices.getById(invoice._id)
       const fullInvoice = response.data.data
       
-      // Ensure we're editing an invoice, not a quotation
-      // Even if it was converted from a quotation, treat it as a regular invoice
+      // Allow editing both quotations and invoices
       if (fullInvoice.invoiceType === 'quotation') {
-        // This shouldn't happen for converted invoices, but handle it
-        toast.error('Cannot edit quotation. Please convert it to an invoice first.')
-        return
+        // Edit as quotation
+        handleEditQuotation(fullInvoice)
+      } else {
+        // Edit as invoice
+        setSelectedInvoice(fullInvoice)
+        setQuotationToConvert(null) // Explicitly clear any quotation conversion
+        setShowInvoiceModal(true)
       }
-      
-      setSelectedInvoice(fullInvoice)
-      setQuotationToConvert(null) // Explicitly clear any quotation conversion
-      setShowInvoiceModal(true)
     } catch (error) {
       console.error('Error fetching invoice:', error)
       toast.error('Failed to load invoice details')
@@ -833,7 +832,6 @@ Best Regards,
                             }}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title={invoice.invoiceType === 'quotation' ? 'Edit Quotation' : 'Edit Invoice'}
-                            disabled={invoice.status === 'cancelled' || (invoice.invoiceType !== 'quotation' && invoice.paymentStatus === 'paid' && invoice.paidAmount > 0)}
                           >
                             <FiEdit />
                           </button>
@@ -991,8 +989,7 @@ Best Regards,
                           handleEditInvoice(invoice)
                         }
                       }}
-                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs disabled:opacity-50"
-                      disabled={invoice.status === 'cancelled' || (invoice.invoiceType !== 'quotation' && invoice.paymentStatus === 'paid' && invoice.paidAmount > 0)}
+                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
                       title={invoice.invoiceType === 'quotation' ? 'Edit Quotation' : 'Edit Invoice'}
                     >
                       <FiEdit className="mr-1" size={12} />
