@@ -5,7 +5,7 @@ import api from '../../api/axios'
 import { toast } from 'react-toastify'
 import SearchableSelect from '../SearchableSelect'
 
-const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
+const QuotationModal = ({ isOpen, onClose, onSuccess, quotation = null }) => {
   const [customers, setCustomers] = useState([])
   const [projects, setProjects] = useState([])
   const [formData, setFormData] = useState({
@@ -15,19 +15,32 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
   const [quotationFile, setQuotationFile] = useState(null)
   const [uploadingFile, setUploadingFile] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [existingQuotationFileUrl, setExistingQuotationFileUrl] = useState('')
 
   useEffect(() => {
     if (isOpen) {
       fetchCustomers()
       fetchProjects()
-      // Reset form when modal opens
-      setFormData({
-        customer: '',
-        project: ''
-      })
-      setQuotationFile(null)
+      
+      // Load quotation data if editing
+      if (quotation) {
+        setFormData({
+          customer: quotation.customer?._id || quotation.customer || '',
+          project: quotation.project?._id || quotation.project || ''
+        })
+        setExistingQuotationFileUrl(quotation.quotationFileUrl || '')
+        setQuotationFile(null)
+      } else {
+        // Reset form when creating new
+        setFormData({
+          customer: '',
+          project: ''
+        })
+        setExistingQuotationFileUrl('')
+        setQuotationFile(null)
+      }
     }
-  }, [isOpen])
+  }, [isOpen, quotation])
 
   const fetchCustomers = async () => {
     try {
@@ -140,7 +153,8 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
       return
     }
 
-    if (!quotationFile) {
+    // For new quotations, file is required. For editing, use existing file if no new file uploaded
+    if (!quotation && !quotationFile) {
       toast.error('Please upload a quotation file')
       return
     }
@@ -148,71 +162,56 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true)
 
     try {
-      // Upload quotation file
-      console.log('🔄 Starting quotation creation process...')
-      const quotationFileUrl = await uploadQuotationFile()
+      let quotationFileUrl = existingQuotationFileUrl
       
-      if (!quotationFileUrl) {
-        console.error('❌ File upload failed or returned no URL')
-        setLoading(false)
-        toast.error('File upload failed. Please try again.')
-        return
+      // Upload new file if one was selected
+      if (quotationFile) {
+        console.log('🔄 Starting file upload...')
+        quotationFileUrl = await uploadQuotationFile()
+        
+        if (!quotationFileUrl) {
+          console.error('❌ File upload failed or returned no URL')
+          setLoading(false)
+          toast.error('File upload failed. Please try again.')
+          return
+        }
+        console.log('✅ Uploaded quotation file URL:', quotationFileUrl)
       }
 
-      console.log('✅ Uploaded quotation file URL:', quotationFileUrl)
-
-      // Create quotation with minimal data
+      // Prepare quotation data
       const quotationData = {
         customer: formData.customer,
         project: formData.project || undefined,
         invoiceType: 'quotation',
         billType: 'service_bill',
         isGST: true,
-        items: [], // No items for quotations
-        subtotal: 0,
-        cgst: 0,
-        sgst: 0,
-        igst: 0,
-        discount: 0,
-        totalAmount: 0,
-        quotationFileUrl: quotationFileUrl // Explicitly set the URL
+        items: quotation?.items || [], // Keep existing items if editing
+        subtotal: quotation?.subtotal || 0,
+        cgst: quotation?.cgst || 0,
+        sgst: quotation?.sgst || 0,
+        igst: quotation?.igst || 0,
+        discount: quotation?.discount || 0,
+        totalAmount: quotation?.totalAmount || 0,
+        quotationFileUrl: quotationFileUrl // Use new or existing URL
       }
 
-      console.log('📝 Creating quotation with data:', JSON.stringify(quotationData, null, 2))
-      console.log('📄 quotationFileUrl in request:', quotationData.quotationFileUrl)
-      console.log('📄 quotationData object keys:', Object.keys(quotationData))
-      console.log('📄 quotationData.quotationFileUrl value:', quotationData.quotationFileUrl)
-      console.log('📄 quotationData.quotationFileUrl type:', typeof quotationData.quotationFileUrl)
-
-      // Double-check the URL is actually set
-      if (!quotationData.quotationFileUrl) {
-        console.error('❌ CRITICAL: quotationFileUrl is missing before API call!')
-        console.error('❌ quotationFileUrl variable:', quotationFileUrl)
-        toast.error('File URL is missing. Please try uploading again.')
-        setLoading(false)
-        return
+      if (quotation) {
+        // Update existing quotation
+        console.log('📝 Updating quotation:', quotation._id)
+        const response = await API.invoices.update(quotation._id, quotationData)
+        toast.success(`Quotation updated! Number: ${response.data.data.quotationNumber || response.data.data.invoiceNumber}`)
+      } else {
+        // Create new quotation
+        console.log('📝 Creating new quotation')
+        const response = await API.invoices.create(quotationData)
+        toast.success(`Quotation created! Number: ${response.data.data.quotationNumber || response.data.data.invoiceNumber}`)
       }
-
-      const response = await API.invoices.create(quotationData)
-      
-      // Log the actual request that was sent
-      console.log('📤 API request sent with quotationFileUrl:', quotationData.quotationFileUrl)
-      
-      console.log('✅ Quotation created, response:', response.data)
-      console.log('📄 Quotation file URL in response:', response.data.data?.quotationFileUrl)
-      
-      if (!response.data.data?.quotationFileUrl) {
-        console.error('⚠️ WARNING: Quotation created but quotationFileUrl is missing in response!')
-        console.error('📄 Full response:', JSON.stringify(response.data, null, 2))
-      }
-      
-      toast.success(`Quotation created! Number: ${response.data.data.quotationNumber || response.data.data.invoiceNumber}`)
       
       onSuccess()
       onClose()
     } catch (error) {
-      console.error('Error creating quotation:', error)
-      toast.error(error.response?.data?.message || 'Failed to create quotation')
+      console.error('Error saving quotation:', error)
+      toast.error(error.response?.data?.message || `Failed to ${quotation ? 'update' : 'create'} quotation`)
     } finally {
       setLoading(false)
     }
@@ -226,7 +225,7 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b sticky top-0 bg-white z-10">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800">
-            Create New Quotation
+            {quotation ? 'Edit Quotation' : 'Create New Quotation'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
             <FiX size={20} />
@@ -269,9 +268,25 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
           {/* File Upload */}
           <div className="border-t pt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Quotation File <span className="text-red-500">*</span>
+              Upload Quotation File {!quotation && <span className="text-red-500">*</span>}
             </label>
             <div className="space-y-2">
+              {existingQuotationFileUrl && !quotationFile && (
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <FiFile className="text-green-600" size={20} />
+                    <a
+                      href={existingQuotationFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-green-700 hover:underline"
+                    >
+                      Current Quotation File
+                    </a>
+                  </div>
+                  <span className="text-xs text-green-600">(Existing)</span>
+                </div>
+              )}
               {quotationFile && (
                 <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-2">
@@ -305,7 +320,7 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
                     accept=".xls,.xlsx,.doc,.docx,.pdf,.txt,.jpg,.jpeg,.png"
                     className="hidden"
                     disabled={uploadingFile || loading}
-                    required
+                    required={!quotation}
                   />
                 </label>
               )}
@@ -317,7 +332,7 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
               )}
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Upload your quotation file. You can add items and details when converting to invoice.
+              {quotation ? 'Upload a new file to replace the existing one, or leave empty to keep the current file.' : 'Upload your quotation file. You can add items and details when converting to invoice.'}
             </p>
           </div>
 
@@ -342,7 +357,7 @@ const QuotationModal = ({ isOpen, onClose, onSuccess }) => {
                   {uploadingFile ? 'Uploading...' : 'Creating...'}
                 </>
               ) : (
-                'Create Quotation'
+                quotation ? 'Update Quotation' : 'Create Quotation'
               )}
             </button>
           </div>

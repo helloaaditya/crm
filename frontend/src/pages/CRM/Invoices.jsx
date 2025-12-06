@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck, FiUpload, FiEye, FiX, FiFileText } from 'react-icons/fi'
+import { FiPlus, FiDownload, FiMail, FiTrash2, FiDollarSign, FiSearch, FiCalendar, FiFilter, FiCheck, FiUpload, FiEye, FiX, FiFileText, FiEdit } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import API from '../../api'
 import { toast } from 'react-toastify'
@@ -18,6 +18,7 @@ const Invoices = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [showQuotationModal, setShowQuotationModal] = useState(false)
+  const [selectedQuotation, setSelectedQuotation] = useState(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [viewingInvoice, setViewingInvoice] = useState(null)
   const [quotationToConvert, setQuotationToConvert] = useState(null)
@@ -282,7 +283,35 @@ Sanjana Enterprises`;
   }
 
   const handleAddQuotation = () => {
+    setSelectedQuotation(null)
     setShowQuotationModal(true)
+  }
+
+  const handleEditQuotation = async (quotation) => {
+    try {
+      // Fetch full quotation data
+      const response = await API.invoices.getById(quotation._id)
+      const fullQuotation = response.data.data
+      setSelectedQuotation(fullQuotation)
+      setShowQuotationModal(true)
+    } catch (error) {
+      console.error('Error fetching quotation:', error)
+      toast.error('Failed to load quotation details')
+    }
+  }
+
+  const handleEditInvoice = async (invoice) => {
+    try {
+      // Fetch full invoice data
+      const response = await API.invoices.getById(invoice._id)
+      const fullInvoice = response.data.data
+      setSelectedInvoice(fullInvoice)
+      setQuotationToConvert(null) // Clear any quotation conversion
+      setShowInvoiceModal(true)
+    } catch (error) {
+      console.error('Error fetching invoice:', error)
+      toast.error('Failed to load invoice details')
+    }
   }
 
   const handleWhatsAppReminder = async (invoice) => {
@@ -401,6 +430,11 @@ Best Regards,
     setShowInvoiceModal(false)
     setSelectedInvoice(null)
     setQuotationToConvert(null)
+  }
+
+  const handleQuotationModalClose = () => {
+    setShowQuotationModal(false)
+    setSelectedQuotation(null)
   }
 
   const handleModalSuccess = () => {
@@ -780,6 +814,20 @@ Best Regards,
                           >
                             <FiEye />
                           </button>
+                          <button 
+                            onClick={() => {
+                              if (invoice.invoiceType === 'quotation') {
+                                handleEditQuotation(invoice)
+                              } else {
+                                handleEditInvoice(invoice)
+                              }
+                            }}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title={invoice.invoiceType === 'quotation' ? 'Edit Quotation' : 'Edit Invoice'}
+                            disabled={invoice.status === 'cancelled' || (invoice.invoiceType !== 'quotation' && invoice.paymentStatus === 'paid' && invoice.paidAmount > 0)}
+                          >
+                            <FiEdit />
+                          </button>
                           {/* Convert to Invoice button - Only show in Invoice tab for quotations that haven't been converted */}
                           {activeTab === 'invoice' && invoice.invoiceType === 'quotation' && !invoice.isConvertedToInvoice && (
                             <button 
@@ -927,9 +975,24 @@ Best Regards,
                       View
                     </button>
                     <button 
+                      onClick={() => {
+                        if (invoice.invoiceType === 'quotation') {
+                          handleEditQuotation(invoice)
+                        } else {
+                          handleEditInvoice(invoice)
+                        }
+                      }}
+                      className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs disabled:opacity-50"
+                      disabled={invoice.status === 'cancelled' || (invoice.invoiceType !== 'quotation' && invoice.paymentStatus === 'paid' && invoice.paidAmount > 0)}
+                      title={invoice.invoiceType === 'quotation' ? 'Edit Quotation' : 'Edit Invoice'}
+                    >
+                      <FiEdit className="mr-1" size={12} />
+                      Edit
+                    </button>
+                    <button 
                       onClick={() => handleRecordPayment(invoice)}
                       className="flex items-center justify-center px-2 py-2 text-green-600 hover:bg-green-50 rounded-lg text-xs"
-                      disabled={invoice.status === 'cancelled'}
+                      disabled={invoice.status === 'cancelled' || invoice.invoiceType === 'quotation'}
                     >
                       <FiDollarSign className="mr-1" size={12} />
                       Payment
@@ -1029,8 +1092,9 @@ Best Regards,
       {/* Quotation Modal */}
       <QuotationModal
         isOpen={showQuotationModal}
-        onClose={() => setShowQuotationModal(false)}
+        onClose={handleQuotationModalClose}
         onSuccess={handleModalSuccess}
+        quotation={selectedQuotation}
       />
 
       {/* Invoice Modal */}

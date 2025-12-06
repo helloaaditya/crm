@@ -319,12 +319,6 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // If we're in view mode, don't submit
-    if (invoice) {
-      onClose();
-      return;
-    }
-    
     setLoading(true)
 
     // For quotations, items are optional - allow creation with just uploaded file
@@ -447,21 +441,28 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
         }
       }
 
-      // Only create new invoices, no updates allowed
-      const response = await API.invoices.create(invoiceData)
-      toast.success(`Invoice created! Number: ${response.data.data.invoiceNumber}`)
-      
-      // Mark quotation as converted if converting
-      if (quotation) {
-        try {
-          await API.invoices.update(quotation._id, {
-            isConvertedToInvoice: true,
-            convertedInvoiceId: response.data.data._id,
-            status: 'sent'
-          })
-        } catch (error) {
-          console.error('Error marking quotation as converted:', error)
-          // Don't fail the invoice creation if this fails
+      // If editing an invoice, update it. Otherwise create new.
+      if (invoice && !quotation) {
+        // Update existing invoice
+        const response = await API.invoices.update(invoice._id, invoiceData)
+        toast.success(`Invoice updated! Number: ${response.data.data.invoiceNumber}`)
+      } else {
+        // Create new invoice
+        const response = await API.invoices.create(invoiceData)
+        toast.success(`Invoice created! Number: ${response.data.data.invoiceNumber}`)
+        
+        // Mark quotation as converted if converting
+        if (quotation) {
+          try {
+            await API.invoices.update(quotation._id, {
+              isConvertedToInvoice: true,
+              convertedInvoiceId: response.data.data._id,
+              status: 'sent'
+            })
+          } catch (error) {
+            console.error('Error marking quotation as converted:', error)
+            // Don't fail the invoice creation if this fails
+          }
         }
       }
       
