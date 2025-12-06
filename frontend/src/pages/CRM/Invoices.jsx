@@ -159,17 +159,35 @@ const Invoices = () => {
       
       // Always force regenerate to ensure we get the latest invoice data
       // This ensures updated invoices always show the latest PDF
-      const url = `${id}?force=true`
-      const response = await API.invoices.generatePDF(url)
+      const response = await API.invoices.generatePDF(id, { params: { force: 'true' } })
       
+      // Validate response and PDF URL
+      if (!response || !response.data || !response.data.data || !response.data.data.pdfUrl) {
+        console.error('Invalid PDF response:', response)
+        toast.error('Failed to generate PDF: Invalid response from server')
+        return
+      }
+      
+      const pdfUrl = response.data.data.pdfUrl
+      
+      // Validate PDF URL
+      if (!pdfUrl || typeof pdfUrl !== 'string' || pdfUrl.trim() === '') {
+        console.error('Invalid PDF URL:', pdfUrl)
+        toast.error('Failed to generate PDF: Invalid PDF URL')
+        return
+      }
+      
+      console.log('Opening PDF URL:', pdfUrl)
       toast.success('PDF generated successfully!')
       
-      window.open(response.data.data.pdfUrl, '_blank')
+      // Open PDF in new tab
+      window.open(pdfUrl, '_blank')
       
       // Refresh invoice list to get updated PDF URL
       fetchInvoices()
     } catch (error) {
       console.error('PDF generation error:', error)
+      console.error('Error details:', error.response?.data)
       toast.error(error.response?.data?.message || 'Failed to generate PDF')
     } finally {
       setDownloadingPDF(null)

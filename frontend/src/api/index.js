@@ -206,7 +206,7 @@ export const invoiceAPI = {
   create: (data) => api.post('/invoices', data),
   update: (id, data) => api.put(`/invoices/${id}`, data),
   delete: (id) => api.delete(`/invoices/${id}`),
-  generatePDF: (id) => api.get(`/invoices/${id}/pdf`),
+  generatePDF: (id, config = {}) => api.get(`/invoices/${id}/pdf`, config),
   sendEmail: (id) => api.post(`/invoices/${id}/send-email`),
   convertToInvoice: (id) => api.post(`/invoices/${id}/convert-to-invoice`),
   bulk: {
