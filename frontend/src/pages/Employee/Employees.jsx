@@ -469,7 +469,14 @@ const Employees = () => {
               {viewingEmployee.address && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingEmployee.address}</p>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                    {[
+                      viewingEmployee.address.street,
+                      viewingEmployee.address.city,
+                      viewingEmployee.address.state,
+                      viewingEmployee.address.pincode
+                    ].filter(Boolean).join(', ') || 'N/A'}
+                  </p>
                 </div>
               )}
 
