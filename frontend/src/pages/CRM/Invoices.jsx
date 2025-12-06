@@ -305,8 +305,17 @@ Sanjana Enterprises`;
       // Fetch full invoice data
       const response = await API.invoices.getById(invoice._id)
       const fullInvoice = response.data.data
+      
+      // Ensure we're editing an invoice, not a quotation
+      // Even if it was converted from a quotation, treat it as a regular invoice
+      if (fullInvoice.invoiceType === 'quotation') {
+        // This shouldn't happen for converted invoices, but handle it
+        toast.error('Cannot edit quotation. Please convert it to an invoice first.')
+        return
+      }
+      
       setSelectedInvoice(fullInvoice)
-      setQuotationToConvert(null) // Clear any quotation conversion
+      setQuotationToConvert(null) // Explicitly clear any quotation conversion
       setShowInvoiceModal(true)
     } catch (error) {
       console.error('Error fetching invoice:', error)
