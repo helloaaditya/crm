@@ -43,6 +43,7 @@ const Expenses = () => {
   const [selectedEmployeeHistory, setSelectedEmployeeHistory] = useState(null)
   const [employeeFundHistory, setEmployeeFundHistory] = useState([])
   const [editingTransaction, setEditingTransaction] = useState(null)
+  const [activeTab, setActiveTab] = useState('expenses') // 'expenses' or 'funds'
   const [editTransactionData, setEditTransactionData] = useState({
     amount: '',
     paymentMode: 'bank_transfer',
@@ -505,83 +506,226 @@ const Expenses = () => {
             {hasExpenseAccess ? 'Manage and approve employee expenses' : 'Submit and track your expenses'}
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
-        >
-          <FiPlus className="mr-2" />
-          Submit Expense
-        </button>
+        {activeTab === 'expenses' && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+          >
+            <FiPlus className="mr-2" />
+            Submit Expense
+          </button>
+        )}
       </div>
-      
-      {/* Available Funds Box (Admin Only) */}
-      {hasExpenseAccess && (
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-4 sm:p-6 mb-6 text-white">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-xs sm:text-sm opacity-90 mb-1">Available Funds</p>
-              <p className="text-2xl sm:text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
-              <p className="text-xs opacity-75 mt-1">Auto-deducted when expenses are paid</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setShowFundHistory(true)
-                  fetchFundHistory()
-                }}
-                className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm"
-              >
-                <FiClock className="mr-1 sm:mr-2" size={16} />
-                <span className="hidden sm:inline">History</span>
-              </button>
-              <button
-                onClick={openEditFundModal}
-                className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm"
-                title="Edit/Adjust Funds"
-              >
-                <FiEdit className="mr-1 sm:mr-2" size={16} />
-                <span className="hidden sm:inline">Edit</span>
-              </button>
-              <button
-                onClick={() => setShowFundModal(true)}
-                className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition text-sm"
-              >
-                <FiPlus className="mr-1 sm:mr-2" size={16} />
-                Add Funds
-              </button>
-            </div>
-          </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="flex border-b">
+          <button
+            onClick={() => setActiveTab('expenses')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'expenses'
+                ? 'text-primary border-b-2 border-primary bg-blue-50'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            Expenses Requests
+          </button>
+          {hasExpenseAccess && (
+            <button
+              onClick={() => {
+                setActiveTab('funds')
+                if (employeesFunds.length === 0) {
+                  fetchAllEmployeesFunds()
+                }
+              }}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'funds'
+                  ? 'text-primary border-b-2 border-primary bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              }`}
+            >
+              Employee Funds
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Expenses Requests Tab Content */}
+      {activeTab === 'expenses' && (
+        <>
+          {/* Statistics (Admin Only) */}
+          {hasExpenseAccess && stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <p className="text-xs sm:text-sm text-gray-600">Total Expenses</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-800">{stats.totalExpenses}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <p className="text-xs sm:text-sm text-gray-600">Pending</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.pendingExpenses}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <p className="text-xs sm:text-sm text-gray-600">Approved</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.approvedExpenses}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <p className="text-xs sm:text-sm text-gray-600">Paid</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats.paidExpenses}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 col-span-2 sm:col-span-1">
+                <p className="text-xs sm:text-sm text-gray-600">Total Amount</p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-600">₹{stats.totalAmount?.total?.toLocaleString() || 0}</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Statistics (Admin Only) */}
-      {hasExpenseAccess && stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            <p className="text-xs sm:text-sm text-gray-600">Total Expenses</p>
-            <p className="text-xl sm:text-2xl font-bold text-gray-800">{stats.totalExpenses}</p>
+      {/* Employee Funds Tab Content */}
+      {activeTab === 'funds' && hasExpenseAccess && (
+        <>
+          {/* Available Funds Box */}
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-4 sm:p-6 mb-6 text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm opacity-90 mb-1">Available Funds</p>
+                <p className="text-2xl sm:text-4xl font-bold">₹{availableFunds.toLocaleString('en-IN')}</p>
+                <p className="text-xs opacity-75 mt-1">Auto-deducted when expenses are paid</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setShowFundHistory(true)
+                    fetchFundHistory()
+                  }}
+                  className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm"
+                >
+                  <FiClock className="mr-1 sm:mr-2" size={16} />
+                  <span className="hidden sm:inline">History</span>
+                </button>
+                <button
+                  onClick={openEditFundModal}
+                  className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm"
+                  title="Edit/Adjust Funds"
+                >
+                  <FiEdit className="mr-1 sm:mr-2" size={16} />
+                  <span className="hidden sm:inline">Edit</span>
+                </button>
+                <button
+                  onClick={() => setShowFundModal(true)}
+                  className="flex items-center justify-center px-3 sm:px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-gray-100 font-semibold transition text-sm"
+                >
+                  <FiPlus className="mr-1 sm:mr-2" size={16} />
+                  Add Funds
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            <p className="text-xs sm:text-sm text-gray-600">Pending</p>
-            <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.pendingExpenses}</p>
+
+          {/* Employee Funds Summary */}
+          <div className="bg-white rounded-lg shadow mb-6">
+            <div className="p-4 sm:p-6 border-b">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Employee Funds Summary</h2>
+                <p className="text-sm text-gray-600 mt-1">Available funds for each employee</p>
+              </div>
+            </div>
+            <div className="p-4 sm:p-6">
+              {loadingEmployeesFunds ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              ) : employeesFunds.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No employee funds found</p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Employee</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Available Funds</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employeesFunds
+                          .sort((a, b) => b.availableFunds - a.availableFunds)
+                          .map((emp) => (
+                            <tr key={emp._id} className="border-b hover:bg-gray-50">
+                              <td className="py-3 px-4">
+                                <div>
+                                  <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
+                                  <p className="text-xs text-gray-500">{emp.employeeId}</p>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <p className="font-semibold text-green-600 text-sm">₹{emp.availableFunds?.toLocaleString('en-IN') || 0}</p>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => openAddEmployeeFundModal(emp)}
+                                    className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                                  >
+                                    Add Funds
+                                  </button>
+                                  <button
+                                    onClick={() => openHistoryModal(emp)}
+                                    className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                                  >
+                                    History
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="lg:hidden space-y-3">
+                    {employeesFunds
+                      .sort((a, b) => b.availableFunds - a.availableFunds)
+                      .map((emp) => (
+                        <div key={emp._id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
+                              <p className="text-xs text-gray-500">{emp.employeeId}</p>
+                            </div>
+                            <p className="font-semibold text-green-600">₹{emp.availableFunds?.toLocaleString('en-IN') || 0}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openAddEmployeeFundModal(emp)}
+                              className="flex-1 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                            >
+                              Add Funds
+                            </button>
+                            <button
+                              onClick={() => openHistoryModal(emp)}
+                              className="flex-1 px-3 py-2 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                            >
+                              History
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            <p className="text-xs sm:text-sm text-gray-600">Approved</p>
-            <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.approvedExpenses}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            <p className="text-xs sm:text-sm text-gray-600">Paid</p>
-            <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats.paidExpenses}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6 col-span-2 sm:col-span-1">
-            <p className="text-xs sm:text-sm text-gray-600">Total Amount</p>
-            <p className="text-xl sm:text-2xl font-bold text-purple-600">₹{stats.totalAmount?.total?.toLocaleString() || 0}</p>
-          </div>
-        </div>
+        </>
       )}
 
-      {/* Employee Funds Summary (Admin Only) */}
-      {hasExpenseAccess && (
+      {/* Employee Funds Summary (Old Section - Remove this) */}
+      {false && hasExpenseAccess && (
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
@@ -811,7 +955,10 @@ const Expenses = () => {
         </div>
       </div>
       
-      {/* Expenses List */}
+      {/* Expenses List - Only show in Expenses Requests tab */}
+      {activeTab === 'expenses' && (
+        <>
+          {/* Expenses List */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b">
           <h2 className="text-lg font-semibold text-gray-800">
@@ -1001,6 +1148,8 @@ const Expenses = () => {
           )}
         </div>
       </div>
+        </>
+      )}
       
       {/* Submit Expense Modal */}
       {showModal && (
