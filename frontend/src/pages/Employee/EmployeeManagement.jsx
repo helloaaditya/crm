@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
+import API from '../../api';
 
 const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState(''); // Show all by default
+  const [assigningProject, setAssigningProject] = useState({});
 
   useEffect(() => {
     fetchEmployees();
+    fetchProjects();
   }, [filterStatus]);
 
   const fetchEmployees = async () => {
@@ -26,6 +30,37 @@ const EmployeeManagement = () => {
       toast.error('Failed to load employees');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const response = await API.projects.getAll({ limit: 10000, status: 'planning,in_progress' });
+      setProjects(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const handleAssignProject = async (employeeId, projectId, role) => {
+    if (!projectId) {
+      toast.error('Please select a project');
+      return;
+    }
+
+    try {
+      setAssigningProject({ ...assigningProject, [employeeId]: true });
+      await API.employees.assignProject(employeeId, {
+        projectId: projectId,
+        role: role || 'worker'
+      });
+      toast.success('Project assigned successfully');
+      fetchEmployees(); // Refresh employee list
+    } catch (error) {
+      console.error('Error assigning project:', error);
+      toast.error(error.response?.data?.message || 'Failed to assign project');
+    } finally {
+      setAssigningProject({ ...assigningProject, [employeeId]: false });
     }
   };
 
@@ -211,6 +246,44 @@ const EmployeeManagement = () => {
                       <span>🏢 {node.department}</span>
                     )}
                   </div>
+                  
+                  {/* Project Assignment */}
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <select
+                      onChange={(e) => {
+                        const projectId = e.target.value;
+                        if (projectId) {
+                          handleAssignProject(node._id, projectId, node.role || node.designation);
+                          e.target.value = ''; // Reset dropdown
+                        }
+                      }}
+                      disabled={assigningProject[node._id]}
+                      className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white disabled:opacity-50"
+                    >
+                      <option value="">📋 Assign Project...</option>
+                      {projects.map((project) => (
+                        <option key={project._id} value={project._id}>
+                          {project.name || project.projectId} - {project.projectId}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Assigned Projects List */}
+                  {node.assignedProjects && node.assignedProjects.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {node.assignedProjects.slice(0, 3).map((assignment, idx) => (
+                        <div key={idx} className="text-xs bg-blue-50 px-2 py-1 rounded">
+                          📊 {assignment.project?.name || assignment.project?.projectId || 'Unknown Project'}
+                        </div>
+                      ))}
+                      {node.assignedProjects.length > 3 && (
+                        <div className="text-xs text-gray-500">
+                          +{node.assignedProjects.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               

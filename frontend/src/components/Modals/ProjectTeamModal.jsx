@@ -165,7 +165,10 @@ const ProjectTeamModal = ({ isOpen, onClose, project }) => {
         <div className="flex items-center justify-between p-6 border-b">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Manage Project Team</h2>
-            <p className="text-sm text-gray-600 mt-1">Project: {project?.projectId}</p>
+            {project?.name && (
+              <p className="text-sm font-semibold text-gray-800 mt-1">{project.name}</p>
+            )}
+            <p className="text-sm text-gray-600 mt-1">Project ID: {project?.projectId}</p>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <FiX size={24} />

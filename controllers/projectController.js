@@ -473,6 +473,19 @@ export const assignEmployee = asyncHandler(async (req, res) => {
     // Assign employee to project
     project.assignEmployee(employeeId, role, req.user._id);
     
+    // Log activity
+    project.activityHistory.push({
+      action: 'employee_assigned',
+      description: `Employee ${employee.name} (${employee.employeeId}) assigned as ${role}`,
+      performedBy: req.user._id,
+      details: {
+        employeeId: employee.employeeId,
+        employeeName: employee.name,
+        role: role
+      },
+      date: new Date()
+    });
+    
     // Save project with validation disabled to avoid issues with optional fields
     try {
       await project.save({ validateBeforeSave: true });
@@ -602,13 +615,30 @@ export const removeEmployee = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Project not found' });
   }
 
+  // Get employee info before removal for logging
+  const employee = await Employee.findById(employeeId);
+  
   // Remove from project
   project.removeEmployee(employeeId, req.user._id);
+  
+  // Log activity
+  if (employee) {
+    project.activityHistory.push({
+      action: 'employee_removed',
+      description: `Employee ${employee.name} (${employee.employeeId}) removed from project`,
+      performedBy: req.user._id,
+      details: {
+        employeeId: employee.employeeId,
+        employeeName: employee.name
+      },
+      date: new Date()
+    });
+  }
+  
   await project.save();
   console.log('Employee removed from project');
 
   // Also update employee's assignedProjects status
-  const employee = await Employee.findById(employeeId);
   if (employee) {
     console.log('Employee found for removal:', employee._id);
     const projectAssignment = employee.assignedProjects.find(
@@ -873,6 +903,7 @@ export const getProjectHistory = asyncHandler(async (req, res) => {
     success: true,
     data: {
       projectId: project.projectId,
+      projectName: project.name,
       activityHistory: sortedActivity,
       workUpdates: sortedWorkUpdates,
       comments: sortedComments

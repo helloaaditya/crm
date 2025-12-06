@@ -177,6 +177,21 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
               <p className="text-xs text-gray-600">
                 By: {item.performedBy?.name || 'Unknown'}
               </p>
+              {/* Show employee details for employee_assigned/employee_removed actions */}
+              {(item.action === 'employee_assigned' || item.action === 'employee_removed') && item.details && (
+                <div className="mt-2 text-xs bg-blue-50 p-2 rounded">
+                  {item.details.employeeName && (
+                    <p className="text-gray-700">
+                      <strong>Employee:</strong> {item.details.employeeName} ({item.details.employeeId || 'N/A'})
+                    </p>
+                  )}
+                  {item.details.role && (
+                    <p className="text-gray-700">
+                      <strong>Role:</strong> {item.details.role}
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Images */}
               {item.images && item.images.length > 0 && (
                 <MediaGallery 
@@ -353,7 +368,10 @@ const ProjectHistoryModal = ({ isOpen, onClose, projectId }) => {
         <div className="flex items-center justify-between p-6 border-b">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Project History & Activities</h2>
-            <p className="text-sm text-gray-600 mt-1">Project: {history?.projectId}</p>
+            {history?.projectName && (
+              <p className="text-sm font-semibold text-gray-800 mt-1">{history.projectName}</p>
+            )}
+            <p className="text-sm text-gray-600 mt-1">Project ID: {history?.projectId}</p>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <FiX size={24} />
