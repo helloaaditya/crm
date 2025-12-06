@@ -492,7 +492,9 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
   if (!isOpen) return null
 
   // Determine if we're in view mode (when invoice is provided but we're not editing)
-  const isViewMode = !!invoice;
+  // isViewMode should be false when editing - we want to allow editing
+  // Only use view mode if explicitly set (which we don't do for editing)
+  const isViewMode = false; // Always allow editing when modal is open
 
   const { subtotal, cgst, sgst, totalAmount } = calculateTotals()
 
