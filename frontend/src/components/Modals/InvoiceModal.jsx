@@ -523,13 +523,16 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Customer <span className="text-red-500">*</span>
+                {invoice && invoice.invoiceType !== 'quotation' && (
+                  <span className="ml-2 text-xs text-gray-500">(Locked)</span>
+                )}
               </label>
               <SearchableSelect
                 options={customers.map(c => ({ value: c._id, label: `${c.name} - ${c.contactNumber || ''}` }))}
                 value={formData.customer}
                 onChange={(val) => handleChange({ target: { name: 'customer', value: val, type: 'text' } })}
                 placeholder="Select Customer"
-                disabled={isViewMode}
+                disabled={isViewMode || (invoice && invoice.invoiceType !== 'quotation')}
                 required
               />
             </div>
@@ -537,6 +540,9 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Project
+                {invoice && invoice.invoiceType !== 'quotation' && (
+                  <span className="ml-2 text-xs text-gray-500">(Locked)</span>
+                )}
               </label>
               <SearchableSelect
                 options={projects.map(p => ({ 
@@ -546,21 +552,24 @@ const InvoiceModal = ({ isOpen, onClose, onSuccess, invoice = null, quotation = 
                 value={formData.project}
                 onChange={(val) => handleChange({ target: { name: 'project', value: val, type: 'text' } })}
                 placeholder="Select Project (Optional)"
-                disabled={isViewMode}
+                disabled={isViewMode || (invoice && invoice.invoiceType !== 'quotation')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Invoice Type <span className="text-red-500">*</span>
+                {invoice && invoice.invoiceType !== 'quotation' && (
+                  <span className="ml-2 text-xs text-gray-500">(Locked)</span>
+                )}
               </label>
               <select
                 name="invoiceType"
                 value={formData.invoiceType}
                 onChange={handleChange}
                 required
-                disabled={isViewMode}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                disabled={isViewMode || (invoice && invoice.invoiceType !== 'quotation')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${isViewMode || (invoice && invoice.invoiceType !== 'quotation') ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               >
                 <option value="quotation">Quotation</option>
                 <option value="proforma">Proforma Invoice</option>

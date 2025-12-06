@@ -363,9 +363,16 @@ export const updateInvoice = asyncHandler(async (req, res) => {
   } = req.body;
 
   // Update invoice
-  invoice.customer = customer || invoice.customer;
-  invoice.project = project || invoice.project;
-  invoice.invoiceType = invoiceType || invoice.invoiceType;
+  // Prevent changing customer, project, and invoiceType for invoices (allow for quotations)
+  if (invoice.invoiceType === 'quotation') {
+    // Allow all fields to be updated for quotations
+    invoice.customer = customer || invoice.customer;
+    invoice.project = project || invoice.project;
+    invoice.invoiceType = invoiceType || invoice.invoiceType;
+  } else {
+    // For invoices, keep customer, project, and invoiceType unchanged
+    // These fields are locked and cannot be modified
+  }
   invoice.isGST = isGST !== undefined ? isGST : invoice.isGST;
   invoice.gstNumber = gstNumber || invoice.gstNumber;
   invoice.items = items || invoice.items;
