@@ -27,14 +27,38 @@ const activeEmployeeIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-// Custom icon for stop points (red)
+// Custom icon for stop points (orange)
 const stopPointIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
   iconSize: [20, 33],
   iconAnchor: [10, 33],
   popupAnchor: [1, -28],
   shadowSize: [33, 33]
+});
+
+// Custom icon for check-in (green with rocket emoji)
+const checkInIcon = new L.DivIcon({
+  className: 'custom-checkin-icon',
+  html: '<div style="background-color: #10b981; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 18px;">🚀</div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
+});
+
+// Custom icon for check-out (red with flag emoji)
+const checkOutIcon = new L.DivIcon({
+  className: 'custom-checkout-icon',
+  html: '<div style="background-color: #ef4444; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 18px;">🏁</div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
+});
+
+// Custom icon for current location (pulsing blue)
+const currentLocationIcon = new L.DivIcon({
+  className: 'custom-current-icon',
+  html: '<div style="background-color: #3b82f6; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); animation: pulse 2s infinite;"></div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
 });
 
 // Component to auto-fit map bounds
@@ -85,8 +109,12 @@ const LiveTracking = () => {
   const [activityLog, setActivityLog] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [todayStats, setTodayStats] = useState({
-    distance: 0
+    distance: 0,
+    travelTime: 0,
+    numberOfStops: 0
   });
+  const [timeline, setTimeline] = useState([]);
+  const [sessionData, setSessionData] = useState(null);
 
   // Fetch active locations
   const fetchActiveLocations = async () => {
@@ -146,149 +174,76 @@ const LiveTracking = () => {
       const sessions = response.data.data || [];
       
       let allLocations = [];
+      let combinedTimeline = [];
       let totalDistance = 0;
-      const activities = [];
+      let totalTravelTime = 0;
+      let totalStops = 0;
       
       // Fetch today's attendance
       await fetchTodayAttendance(employeeId);
       
-      sessions.forEach(session => {
-        if (session.locations && Array.isArray(session.locations)) {
-          allLocations = [...allLocations, ...session.locations];
-          
-          // Calculate distance for this session
-          for (let i = 1; i < session.locations.length; i++) {
-            const prev = session.locations[i - 1];
-            const curr = session.locations[i];
-            
-            const R = 6371e3;
-            const φ1 = prev.latitude * Math.PI / 180;
-            const φ2 = curr.latitude * Math.PI / 180;
-            const Δφ = (curr.latitude - prev.latitude) * Math.PI / 180;
-            const Δλ = (curr.longitude - prev.longitude) * Math.PI / 180;
-            
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            totalDistance += R * c;
-          }
-          
-          // Process activities (travel segments and stoppages)
-          // Group consecutive locations to detect movement vs stops
-          let travelStart = null;
-          let lastLocation = null;
-          
-          for (let i = 0; i < session.locations.length; i++) {
-            const loc = session.locations[i];
-            
-            if (!lastLocation) {
-              // First location - start tracking
-              travelStart = loc;
-              lastLocation = loc;
-              continue;
-            }
-            
-            // Calculate distance from last location
-            const distance = calculateDistance(
-              lastLocation.latitude,
-              lastLocation.longitude,
-              loc.latitude,
-              loc.longitude
-            );
-            
-            const timeDiff = (new Date(loc.timestamp) - new Date(lastLocation.timestamp)) / 1000; // seconds
-            
-            // If location moved significantly (> 20 meters), it's travel
-            if (distance > 0.02) { // 20 meters = 0.02 km
-              // If we were in a stop, end it first
-              if (travelStart && travelStart !== lastLocation) {
-                const stopDuration = (new Date(lastLocation.timestamp) - new Date(travelStart.timestamp)) / 1000;
-                if (stopDuration > 30) { // Only show stops > 30 seconds
-                  activities.push({
-                    type: 'stoppage',
-                    duration: Math.round(stopDuration),
-                    address: lastLocation.address || travelStart.address,
-                    timestamp: lastLocation.timestamp,
-                    coordinates: [lastLocation.latitude, lastLocation.longitude]
-                  });
-                }
-              }
-              
-              // Start new travel segment
-              travelStart = lastLocation;
-              lastLocation = loc;
-            } else {
-              // Location hasn't moved much - could be a stop
-              // Check if we have a travel segment to close
-              if (travelStart && travelStart !== lastLocation) {
-                const travelDistance = calculateDistance(
-                  travelStart.latitude,
-                  travelStart.longitude,
-                  lastLocation.latitude,
-                  lastLocation.longitude
-                );
-                const travelDuration = (new Date(lastLocation.timestamp) - new Date(travelStart.timestamp)) / 1000;
-                
-                // Only add travel if distance > 50m and duration > 30s
-                if (travelDistance > 0.05 && travelDuration > 30) {
-                  activities.push({
-                    type: 'travel',
-                    distance: travelDistance,
-                    startTime: travelStart.timestamp,
-                    endTime: lastLocation.timestamp,
-                    duration: Math.round(travelDuration)
-                  });
-                }
-              }
-              
-              // Update last location but keep travelStart for stop detection
-              lastLocation = loc;
-            }
-          }
-          
-          // Handle final segment
-          if (travelStart && lastLocation && travelStart !== lastLocation) {
-            const finalDistance = calculateDistance(
-              travelStart.latitude,
-              travelStart.longitude,
-              lastLocation.latitude,
-              lastLocation.longitude
-            );
-            const finalDuration = (new Date(lastLocation.timestamp) - new Date(travelStart.timestamp)) / 1000;
-            
-            // Check if it's a stop or travel
-            if (finalDistance <= 0.02) {
-              // It's a stop
-              if (finalDuration > 30) {
-                activities.push({
-                  type: 'stoppage',
-                  duration: Math.round(finalDuration),
-                  address: lastLocation.address || travelStart.address,
-                  timestamp: lastLocation.timestamp,
-                  coordinates: [lastLocation.latitude, lastLocation.longitude]
-                });
-              }
-            } else {
-              // It's travel
-              if (finalDistance > 0.05 && finalDuration > 30) {
-                activities.push({
-                  type: 'travel',
-                  distance: finalDistance,
-                  startTime: travelStart.timestamp,
-                  endTime: lastLocation.timestamp,
-                  duration: Math.round(finalDuration)
-                });
-              }
-            }
-          }
+      // Process sessions - backend now returns unified session object
+      if (sessions && sessions.timeline) {
+        // Unified session object (handles multiple sessions for the day)
+        if (sessions.locations) {
+          allLocations = sessions.locations;
         }
+        combinedTimeline = sessions.timeline || [];
+        totalDistance = parseFloat(sessions.totalDistance || 0);
+        totalTravelTime = parseInt(sessions.totalTravelTime || 0);
+        totalStops = parseInt(sessions.numberOfStops || 0);
+        setSessionData(sessions);
+      } else if (Array.isArray(sessions) && sessions.length > 0) {
+        // Fallback: if backend still returns array (backward compatibility)
+        sessions.forEach(session => {
+          if (session.locations && Array.isArray(session.locations)) {
+            allLocations = [...allLocations, ...session.locations];
+          }
+          
+          // Use timeline from backend if available
+          if (session.timeline && Array.isArray(session.timeline)) {
+            // Filter out duplicate check-ins/check-outs - only keep first check-in and last check-out
+            session.timeline.forEach(event => {
+              if (event.type === 'check-in') {
+                // Only add if we don't already have a check-in
+                if (!combinedTimeline.some(e => e.type === 'check-in')) {
+                  combinedTimeline.push(event);
+                }
+              } else if (event.type === 'check-out') {
+                // Remove any existing check-out and add this one (will be the last one)
+                combinedTimeline = combinedTimeline.filter(e => e.type !== 'check-out');
+                combinedTimeline.push(event);
+              } else {
+                // Add travel and stop events normally
+                combinedTimeline.push(event);
+              }
+            });
+            totalDistance += parseFloat(session.totalDistance || 0);
+            totalTravelTime += parseInt(session.totalTravelTime || 0);
+            totalStops += parseInt(session.numberOfStops || 0);
+          }
+          
+          // Store first session data for map markers
+          if (!sessionData) {
+            setSessionData(session);
+          }
+        });
+      }
+      
+      // Sort timeline by timestamp
+      combinedTimeline.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.startTime || 0);
+        const timeB = new Date(b.timestamp || b.startTime || 0);
+        return timeA - timeB;
       });
       
       setHistoricalRoute(allLocations);
-      setActivityLog(activities);
+      setTimeline(combinedTimeline);
+      setActivityLog(combinedTimeline); // For backward compatibility
       setTodayStats({
-        distance: (totalDistance / 1000).toFixed(2)
+        distance: totalDistance.toFixed(2),
+        travelTime: totalTravelTime,
+        numberOfStops: totalStops
       });
       
       if (allLocations.length === 0) {
@@ -374,12 +329,15 @@ const LiveTracking = () => {
     return () => window.removeEventListener('app-refresh', handleRefresh)
   }, [selectedEmployeeId, selectedDate]);
 
-  // Auto-refresh every 5 seconds
+  // Auto-refresh every 30 seconds
   useEffect(() => {
     if (autoRefresh) {
       intervalRef.current = setInterval(() => {
         fetchActiveLocations();
-      }, 5000);
+        if (selectedEmployeeId) {
+          fetchHistoricalRoute(selectedEmployeeId, selectedDate);
+        }
+      }, 30000); // 30 seconds
     }
 
     return () => {
@@ -387,7 +345,7 @@ const LiveTracking = () => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [autoRefresh, selectedEmployeeId]);
+  }, [autoRefresh, selectedEmployeeId, selectedDate]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -456,42 +414,8 @@ const LiveTracking = () => {
     ? activeLocations.find(loc => loc.employeeDetails?._id === selectedEmployeeId)
     : null;
 
-  // Build activity log with check-in/check-out
-  const buildActivityLog = () => {
-    const activities = [];
-    
-    // Add check-in
-    if (todayAttendance?.checkInTime) {
-      activities.push({
-        type: 'checkin',
-        timestamp: todayAttendance.checkInTime,
-        address: todayAttendance.checkInLocation?.address,
-        coordinates: todayAttendance.checkInLocation?.coordinates
-      });
-    }
-    
-    // Add travel and stoppage activities (sorted by time)
-    activities.push(...activityLog);
-    
-    // Add check-out
-    if (todayAttendance?.checkOutTime) {
-      activities.push({
-        type: 'checkout',
-        timestamp: todayAttendance.checkOutTime,
-        address: todayAttendance.checkOutLocation?.address,
-        coordinates: todayAttendance.checkOutLocation?.coordinates
-      });
-    }
-    
-    // Sort by timestamp
-    return activities.sort((a, b) => {
-      const timeA = new Date(a.timestamp || a.startTime || 0);
-      const timeB = new Date(b.timestamp || b.startTime || 0);
-      return timeA - timeB;
-    });
-  };
-
-  const sortedActivities = buildActivityLog();
+  // Use timeline from backend (already sorted)
+  const sortedActivities = timeline.length > 0 ? timeline : activityLog;
 
   return (
     <div className="p-4 sm:p-6">
@@ -611,91 +535,154 @@ const LiveTracking = () => {
         </div>
       </div>
 
+      {/* Stats Cards */}
+      {selectedEmployee && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Total Distance</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">{todayStats.distance} Km</p>
+              </div>
+              <FiTruck className="text-blue-500" size={24} />
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Travel Time</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{formatDuration(todayStats.travelTime)}</p>
+              </div>
+              <FiClock className="text-green-500" size={24} />
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-gray-600">Number of Stops</p>
+                <p className="text-xl sm:text-2xl font-bold text-orange-600">{todayStats.numberOfStops}</p>
+              </div>
+              <FiMapPin className="text-orange-500" size={24} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content - Map and Activity Log */}
       {selectedEmployee ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Activity Log */}
+          {/* Left Column - Timeline */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <FiCalendar size={18} />
-                  Activity Log
+                  Timeline
                 </h2>
-                <div className="text-xs text-gray-600">
-                  Distance: {todayStats.distance}Km
-                </div>
               </div>
 
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {sortedActivities.length === 0 && !loading ? (
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="text-gray-500 text-sm mt-2">Loading timeline...</p>
+                  </div>
+                ) : sortedActivities.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 text-sm">
                     No activity data available
                   </div>
                 ) : (
                   sortedActivities.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      {activity.type === 'checkin' ? (
-                        <>
-                          <FiCheckCircle className="text-green-600 mt-0.5 flex-shrink-0" size={16} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900">
-                              Checked In
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </div>
-                            {activity.address && (
-                              <div className="text-xs text-gray-500 mt-1 break-words">
-                                {activity.address}
+                    <div key={index} className="relative pl-8 border-l-2 border-gray-200 pb-4 last:border-l-0 last:pb-0">
+                      <div className="absolute left-[-6px] top-0">
+                        {activity.type === 'check-in' ? (
+                          <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow"></div>
+                        ) : activity.type === 'check-out' ? (
+                          <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow"></div>
+                        ) : activity.type === 'travel' ? (
+                          <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow"></div>
+                        ) : (
+                          <div className="w-3 h-3 rounded-full bg-orange-500 border-2 border-white shadow"></div>
+                        )}
+                      </div>
+                      <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        {activity.type === 'check-in' ? (
+                          <>
+                            <div className="text-lg">🚀</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900">
+                                Check-In
                               </div>
-                            )}
-                          </div>
-                        </>
-                      ) : activity.type === 'checkout' ? (
-                        <>
-                          <FiClock className="text-red-600 mt-0.5 flex-shrink-0" size={16} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900">
-                              Checked Out
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </div>
-                            {activity.address && (
-                              <div className="text-xs text-gray-500 mt-1 break-words">
-                                {activity.address}
+                              <div className="text-xs text-gray-600">
+                                {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                               </div>
-                            )}
-                          </div>
-                        </>
-                      ) : activity.type === 'travel' ? (
-                        <>
-                          <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900">
-                              Travelled ({formatDistance(activity.distance)}Km)
+                              {activity.address && (
+                                <div className="text-xs text-gray-500 mt-1 break-words">
+                                  {activity.address}
+                                </div>
+                              )}
                             </div>
-                            <div className="text-xs text-gray-600">
-                              {new Date(activity.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - 
-                              {new Date(activity.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                              <span className="ml-2">({formatDuration(activity.duration)})</span>
+                          </>
+                        ) : activity.type === 'check-out' ? (
+                          <>
+                            <div className="text-lg">🏁</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900">
+                                Check-Out
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </div>
+                              {activity.address && (
+                                <div className="text-xs text-gray-500 mt-1 break-words">
+                                  {activity.address}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <FiMapPin className="text-red-600 mt-0.5 flex-shrink-0" size={16} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900">
-                              Stoppage of {formatDuration(activity.duration)}
+                          </>
+                        ) : activity.type === 'travel' ? (
+                          <>
+                            <FiTruck className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900">
+                                Travelled {activity.distance} Km
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {new Date(activity.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - 
+                                {new Date(activity.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                <span className="ml-2">({formatDuration(activity.duration)})</span>
+                              </div>
+                              {activity.startLocation?.address && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  From: {activity.startLocation.address}
+                                </div>
+                              )}
+                              {activity.endLocation?.address && (
+                                <div className="text-xs text-gray-500">
+                                  To: {activity.endLocation.address}
+                                </div>
+                              )}
                             </div>
-                            <div className="text-xs text-gray-600 mt-1 break-words">
-                              {activity.address || 'Location not available'}
+                          </>
+                        ) : activity.type === 'stop' ? (
+                          <>
+                            <FiMapPin className="text-orange-600 mt-0.5 flex-shrink-0" size={16} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900">
+                                Stop ({formatDuration(activity.duration)})
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {new Date(activity.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </div>
+                              {activity.address && (
+                                <div className="text-xs text-gray-500 mt-1 break-words">
+                                  {activity.address}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </>
-                      )}
+                          </>
+                        ) : null}
+                      </div>
                     </div>
                   ))
                 )}
@@ -732,88 +719,94 @@ const LiveTracking = () => {
                       smoothFactor={1.5}
                     />
                     
-                    {/* Start marker - Use check-in location if available, otherwise first GPS point */}
-                    {todayAttendance?.checkInLocation?.coordinates ? (
+                    {/* Check-in marker from timeline */}
+                    {sessionData?.checkIn && (
                       <Marker
-                        position={[
-                          todayAttendance.checkInLocation.coordinates[1],
-                          todayAttendance.checkInLocation.coordinates[0]
-                        ]}
-                        icon={activeEmployeeIcon}
+                        position={[sessionData.checkIn.latitude, sessionData.checkIn.longitude]}
+                        icon={checkInIcon}
                       >
                         <Popup>
                           <div className="p-2">
-                            <h3 className="font-semibold text-green-600">🚀 Journey Start (Check-In)</h3>
+                            <h3 className="font-semibold text-green-600">🚀 Check-In</h3>
                             <p className="text-xs text-gray-600 mt-1">
-                              {new Date(todayAttendance.checkInTime).toLocaleString()}
+                              {new Date(sessionData.checkIn.timestamp).toLocaleString()}
                             </p>
-                            {todayAttendance.checkInLocation.address && (
-                              <p className="text-xs text-gray-500 mt-1">{todayAttendance.checkInLocation.address}</p>
+                            {sessionData.checkIn.address && (
+                              <p className="text-xs text-gray-500 mt-1">{sessionData.checkIn.address}</p>
                             )}
-                          </div>
-                        </Popup>
-                      </Marker>
-                    ) : (
-                      <Marker
-                        position={[historicalRoute[0].latitude, historicalRoute[0].longitude]}
-                        icon={activeEmployeeIcon}
-                      >
-                        <Popup>
-                          <div className="p-2">
-                            <h3 className="font-semibold text-green-600">🚀 Journey Start</h3>
-                            <p className="text-xs text-gray-600 mt-1">
-                              {new Date(historicalRoute[0].timestamp).toLocaleString()}
-                            </p>
                           </div>
                         </Popup>
                       </Marker>
                     )}
                     
-                    {/* Stop points */}
-                    {historicalRoute
-                      .filter(loc => loc.isStopPoint)
-                      .map((loc, idx) => (
+                    {/* Stop points from timeline */}
+                    {timeline
+                      .filter(activity => activity.type === 'stop')
+                      .map((activity, idx) => (
                         <Marker
                           key={`stop-${idx}`}
-                          position={[loc.latitude, loc.longitude]}
+                          position={[activity.latitude, activity.longitude]}
                           icon={stopPointIcon}
                         >
                           <Popup>
                             <div className="p-2">
-                              <h3 className="font-semibold text-red-600">⏸️ Stop Point</h3>
+                              <h3 className="font-semibold text-orange-600">⏸️ Stop</h3>
                               <p className="text-xs text-gray-600 mt-1">
-                                {new Date(loc.timestamp).toLocaleTimeString()}
+                                {new Date(activity.timestamp).toLocaleString()}
                               </p>
-                              {loc.address && (
-                                <p className="text-xs text-gray-500 mt-1">{loc.address}</p>
+                              <p className="text-xs text-gray-600">
+                                Duration: {formatDuration(activity.duration)}
+                              </p>
+                              {activity.address && (
+                                <p className="text-xs text-gray-500 mt-1">{activity.address}</p>
                               )}
                             </div>
                           </Popup>
                         </Marker>
                       ))}
                     
-                    {/* End marker - Only show if checked out */}
-                    {todayAttendance?.checkOutTime && todayAttendance?.checkOutLocation?.coordinates ? (
+                    {/* Check-out marker from timeline */}
+                    {sessionData?.checkOut && (
                       <Marker
-                        position={[
-                          todayAttendance.checkOutLocation.coordinates[1],
-                          todayAttendance.checkOutLocation.coordinates[0]
-                        ]}
-                        icon={stopPointIcon}
+                        position={[sessionData.checkOut.latitude, sessionData.checkOut.longitude]}
+                        icon={checkOutIcon}
                       >
                         <Popup>
                           <div className="p-2">
-                            <h3 className="font-semibold text-red-600">🏁 Journey End (Check-Out)</h3>
+                            <h3 className="font-semibold text-red-600">🏁 Check-Out</h3>
                             <p className="text-xs text-gray-600 mt-1">
-                              {new Date(todayAttendance.checkOutTime).toLocaleString()}
+                              {new Date(sessionData.checkOut.timestamp).toLocaleString()}
                             </p>
-                            {todayAttendance.checkOutLocation.address && (
-                              <p className="text-xs text-gray-500 mt-1">{todayAttendance.checkOutLocation.address}</p>
+                            {sessionData.checkOut.address && (
+                              <p className="text-xs text-gray-500 mt-1">{sessionData.checkOut.address}</p>
                             )}
                           </div>
                         </Popup>
                       </Marker>
-                    ) : null}
+                    )}
+                    
+                    {/* Current/Last location marker (pulsing blue) */}
+                    {historicalRoute.length > 0 && (
+                      <Marker
+                        position={[
+                          historicalRoute[historicalRoute.length - 1].latitude,
+                          historicalRoute[historicalRoute.length - 1].longitude
+                        ]}
+                        icon={currentLocationIcon}
+                      >
+                        <Popup>
+                          <div className="p-2">
+                            <h3 className="font-semibold text-blue-600">📍 Current Location</h3>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {new Date(historicalRoute[historicalRoute.length - 1].timestamp).toLocaleString()}
+                            </p>
+                            {historicalRoute[historicalRoute.length - 1].address && (
+                              <p className="text-xs text-gray-500 mt-1">{historicalRoute[historicalRoute.length - 1].address}</p>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
                   </>
                 )}
                 

@@ -214,15 +214,22 @@ export const autoGenerateAttendanceRecords = async () => {
           // Check if attendance already exists for this date (using normalized date comparison)
           const existingAttendance = hasAttendanceForDate(employee.attendance, currentDate);
           
-          // If no attendance record exists, create one marked as 'absent'
+          // If no attendance record exists, create one marked as 'absent' or 'weekoff'
           if (!existingAttendance) {
+            // Check if the day is Sunday (day 0)
+            const dayOfWeek = currentDate.getDay();
+            const status = dayOfWeek === 0 ? 'weekoff' : 'absent';
+            const notes = dayOfWeek === 0 
+              ? 'Auto-generated - Sunday (Week Off)' 
+              : 'Auto-generated - No check-in recorded';
+            
             employee.attendance.push({
               date: new Date(currentDate),
-              status: 'absent',
+              status: status,
               checkInTime: null,
               checkOutTime: null,
               workHours: 0,
-              notes: 'Auto-generated - No check-in recorded',
+              notes: notes,
               markedBy: null
             });
             createdForEmployee++;
@@ -327,13 +334,20 @@ export const generateMissingAttendanceForEmployee = async (employeeId) => {
       
       // Create if missing
       if (!existingAttendance) {
+        // Check if the day is Sunday (day 0)
+        const dayOfWeek = currentDate.getDay();
+        const status = dayOfWeek === 0 ? 'weekoff' : 'absent';
+        const notes = dayOfWeek === 0 
+          ? 'Auto-generated - Sunday (Week Off)' 
+          : 'Auto-generated - No check-in recorded';
+        
         employee.attendance.push({
           date: new Date(currentDate),
-          status: 'absent',
+          status: status,
           checkInTime: null,
           checkOutTime: null,
           workHours: 0,
-          notes: 'Auto-generated - No check-in recorded',
+          notes: notes,
           markedBy: null
         });
         created++;
@@ -423,5 +437,80 @@ export const validateAndUpdateAttendance = (employee, date, checkInTime, checkOu
   }
   
   return employee;
+};
+
+/**
+ * Update existing attendance records: Mark Sundays as 'weekoff' instead of 'absent'
+ * This function migrates existing data to the new weekoff status
+ */
+export const updateSundaysToWeekoff = async (employeeId = null) => {
+  try {
+    console.log('🔄 Starting Sunday attendance update...');
+    
+    let employees;
+    if (employeeId) {
+      const employee = await Employee.findById(employeeId);
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+      employees = [employee];
+    } else {
+      employees = await Employee.find({ isActive: true }).select('_id name attendance');
+    }
+    
+    let totalUpdated = 0;
+    let totalProcessed = 0;
+    
+    for (const employee of employees) {
+      if (!employee.attendance || employee.attendance.length === 0) {
+        continue;
+      }
+      
+      let updatedForEmployee = 0;
+      
+      // Process each attendance record
+      employee.attendance.forEach((attendance) => {
+        const attendanceDate = new Date(attendance.date);
+        const dayOfWeek = attendanceDate.getDay(); // 0 = Sunday
+        
+        // Check if it's a Sunday and marked as absent
+        if (dayOfWeek === 0 && attendance.status === 'absent') {
+          attendance.status = 'weekoff';
+          
+          // Update notes if it was auto-generated
+          if (attendance.notes?.includes('Auto-generated')) {
+            attendance.notes = 'Auto-generated - Sunday (Week Off)';
+          } else if (!attendance.notes || attendance.notes.trim() === '') {
+            attendance.notes = 'Updated - Sunday (Week Off)';
+          }
+          
+          updatedForEmployee++;
+          totalUpdated++;
+        }
+      });
+      
+      // Save employee if any records were updated
+      if (updatedForEmployee > 0) {
+        console.log(`💾 Updating ${updatedForEmployee} records for employee ${employee.name || employee._id}...`);
+        await employee.save();
+        console.log(`✅ Updated ${updatedForEmployee} Sunday records`);
+      }
+      
+      totalProcessed++;
+    }
+    
+    console.log(`✅ Sunday update complete: ${totalUpdated} records updated for ${totalProcessed} employees`);
+    
+    return {
+      success: true,
+      processed: totalProcessed,
+      updated: totalUpdated,
+      message: `Updated ${totalUpdated} Sunday attendance records from 'absent' to 'weekoff' for ${totalProcessed} employees`
+    };
+    
+  } catch (error) {
+    console.error('❌ Sunday update failed:', error);
+    throw error;
+  }
 };
 

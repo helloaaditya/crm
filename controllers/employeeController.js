@@ -5,7 +5,7 @@ import Customer from '../models/Customer.js';
 import CalendarReminder from '../models/CalendarReminder.js';
 import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, validateAndUpdateAttendance, deduplicateAttendance } from '../utils/attendanceService.js';
+import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, validateAndUpdateAttendance, deduplicateAttendance, updateSundaysToWeekoff } from '../utils/attendanceService.js';
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -451,6 +451,42 @@ export const deduplicateAttendanceRecords = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Update existing Sunday attendance records to weekoff
+// @route   POST /api/employees/attendance/update-sundays
+// @route   POST /api/employees/:id/attendance/update-sundays
+// @access  Private (Admin)
+export const updateSundaysToWeekoffEndpoint = asyncHandler(async (req, res) => {
+  try {
+    const employeeId = req.params.id || null;
+    console.log(`🔄 Update Sundays to weekoff${employeeId ? ` for employee: ${employeeId}` : ' (all employees)'}`);
+    
+    // Set a timeout of 60 seconds for bulk operations
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Operation timed out after 60 seconds')), 60000);
+    });
+    
+    // Race between the actual operation and timeout
+    const result = await Promise.race([
+      updateSundaysToWeekoff(employeeId),
+      timeoutPromise
+    ]);
+    
+    console.log('✅ Update Sundays completed:', result);
+    
+    res.json({
+      success: true,
+      data: result,
+      message: result.message || 'Sunday attendance records updated successfully'
+    });
+  } catch (error) {
+    console.error('❌ Update Sundays error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update Sunday attendance records'
+    });
+  }
+});
+
 // @desc    Apply for leave
 // @route   POST /api/employees/:id/leave
 // @access  Private
@@ -668,12 +704,14 @@ export const processSalary = asyncHandler(async (req, res) => {
   });
   const halfDays = attendanceThisMonth.filter(a => a.status === 'half_day').length;
   const absents = attendanceThisMonth.filter(a => a.status === 'absent').length;
+  // Exclude weekoff from absent deductions
   // Daily rate approximation of 26 working days
   const dailyRate = (employee.basicSalary + totalAllowances - fixedDeductions) / 26;
   const unpaidSickDays = Math.max(0, sickApprovedDays - 1);
   const leaveDeductions = Math.max(0, Math.round(((unpaidSickDays + otherApprovedLeaveDays + absents) * dailyRate + halfDays * (dailyRate/2)) * 100) / 100);
 
   // Hold (Retention) 5% by default
+  // Hold is calculated on payable net amount (after fixed and leave deductions)
   const holdPercent = employee.holdPercent || 5;
   const prelimNet = grossSalary - fixedDeductions - leaveDeductions;
   const holdAmount = Math.max(0, Math.round((prelimNet * holdPercent / 100) * 100) / 100);
@@ -768,6 +806,8 @@ export const getSalaryPreview = asyncHandler(async (req, res) => {
   const unpaidSickDays = Math.max(0, sickApprovedDays - 1);
   const leaveDeductions = Math.max(0, Math.round(((unpaidSickDays + otherApprovedLeaveDays + absents) * dailyRate + halfDays * (dailyRate/2)) * 100) / 100);
 
+  // Hold (Retention) 5% by default
+  // Hold is calculated on payable net amount (after fixed and leave deductions)
   const holdPercent = employee.holdPercent || 5;
   const prelimNet = grossSalary - fixedDeductions - leaveDeductions;
   const holdAmount = Math.max(0, Math.round((prelimNet * holdPercent / 100) * 100) / 100);

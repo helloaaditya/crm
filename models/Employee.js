@@ -107,7 +107,7 @@ const employeeSchema = new mongoose.Schema({
     date: Date,
     status: {
       type: String,
-      enum: ['present', 'absent', 'half_day', 'leave', 'holiday'],
+      enum: ['present', 'absent', 'half_day', 'leave', 'holiday', 'weekoff'],
       default: 'present'
     },
     checkInTime: Date,

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Pulse animation for current location marker */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
 /* iOS Safari viewport fix */
 @supports (height: 100svh) {
   html, body {
@@ -45,6 +55,20 @@
 ::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 4px;
+}
+
+/* Pulse animation for current location marker */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+.custom-current-icon {
+  animation: pulse 2s infinite;
 }
 
 ::-webkit-scrollbar-thumb:hover {

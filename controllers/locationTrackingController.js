@@ -422,6 +422,242 @@ export const getActiveLocations = asyncHandler(async (req, res) => {
   });
 });
 
+// Helper function to calculate distance between two GPS points using Haversine formula
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  
+  return R * c; // Distance in meters
+};
+
+// Helper function to build timeline from location points
+const buildTimeline = (locations) => {
+  if (!locations || locations.length === 0) {
+    return {
+      timeline: [],
+      totalDistance: 0,
+      totalTravelTime: 0,
+      numberOfStops: 0,
+      checkIn: null,
+      checkOut: null
+    };
+  }
+
+  const timeline = [];
+  let totalDistance = 0;
+  let totalTravelTime = 0;
+  let numberOfStops = 0;
+  
+  // Sort locations by timestamp
+  const sortedLocations = [...locations].sort((a, b) => 
+    new Date(a.timestamp || a.createdAt) - new Date(b.timestamp || b.createdAt)
+  );
+
+  // Check-in event (first location)
+  // Only add check-in if we have multiple locations (to avoid single-point check-ins)
+  const checkIn = sortedLocations[0];
+  if (sortedLocations.length > 1) {
+    timeline.push({
+      type: 'check-in',
+      timestamp: checkIn.timestamp || checkIn.createdAt,
+      latitude: checkIn.latitude || checkIn.location?.coordinates[1],
+      longitude: checkIn.longitude || checkIn.location?.coordinates[0],
+      address: checkIn.address || 'Unknown location',
+      accuracy: checkIn.accuracy
+    });
+  }
+
+  // Process locations to detect travel vs stops
+  let currentStopStart = null;
+  let currentTravelStart = null;
+  let lastLocation = checkIn;
+  const STOP_THRESHOLD_METERS = 30; // 30 meters
+  const STOP_MIN_DURATION_SECONDS = 60; // 1 minute
+
+  for (let i = 1; i < sortedLocations.length; i++) {
+    const current = sortedLocations[i];
+    const prev = sortedLocations[i - 1];
+    
+    const currentLat = current.latitude || current.location?.coordinates[1];
+    const currentLon = current.longitude || current.location?.coordinates[0];
+    const prevLat = prev.latitude || prev.location?.coordinates[1];
+    const prevLon = prev.longitude || prev.location?.coordinates[0];
+    
+    const currentTime = new Date(current.timestamp || current.createdAt);
+    const prevTime = new Date(prev.timestamp || prev.createdAt);
+    const timeDiff = (currentTime - prevTime) / 1000; // seconds
+    
+    const distance = calculateDistance(prevLat, prevLon, currentLat, currentLon);
+    
+    if (distance < STOP_THRESHOLD_METERS) {
+      // Potential stop - location hasn't moved much
+      if (!currentStopStart) {
+        // Start tracking a stop
+        currentStopStart = prev;
+        // If we were in travel, end it first
+        if (currentTravelStart) {
+          const travelDistance = calculateDistance(
+            currentTravelStart.latitude || currentTravelStart.location?.coordinates[1],
+            currentTravelStart.longitude || currentTravelStart.location?.coordinates[0],
+            prevLat,
+            prevLon
+          );
+          const travelTime = (prevTime - new Date(currentTravelStart.timestamp || currentTravelStart.createdAt)) / 1000;
+          
+          if (travelDistance > STOP_THRESHOLD_METERS) {
+            timeline.push({
+              type: 'travel',
+              distance: (travelDistance / 1000).toFixed(2), // km
+              startTime: currentTravelStart.timestamp || currentTravelStart.createdAt,
+              endTime: prev.timestamp || prev.createdAt,
+              duration: Math.round(travelTime),
+              startLocation: {
+                latitude: currentTravelStart.latitude || currentTravelStart.location?.coordinates[1],
+                longitude: currentTravelStart.longitude || currentTravelStart.location?.coordinates[0],
+                address: currentTravelStart.address
+              },
+              endLocation: {
+                latitude: prevLat,
+                longitude: prevLon,
+                address: prev.address
+              }
+            });
+            totalDistance += travelDistance;
+            totalTravelTime += travelTime;
+          }
+          currentTravelStart = null;
+        }
+      }
+      
+      // Check if stop duration is long enough
+      const stopDuration = (currentTime - new Date(currentStopStart.timestamp || currentStopStart.createdAt)) / 1000;
+      if (stopDuration >= STOP_MIN_DURATION_SECONDS && i === sortedLocations.length - 1) {
+        // Last location and it's a stop - add it
+        numberOfStops++;
+        timeline.push({
+          type: 'stop',
+          timestamp: current.timestamp || current.createdAt,
+          latitude: currentLat,
+          longitude: currentLon,
+          address: current.address || currentStopStart.address || 'Unknown location',
+          duration: Math.round(stopDuration),
+          startTime: currentStopStart.timestamp || currentStopStart.createdAt,
+          endTime: current.timestamp || current.createdAt
+        });
+        currentStopStart = null;
+      }
+    } else {
+      // Movement detected - it's travel
+      if (currentStopStart) {
+        // End the stop first
+        const stopDuration = (prevTime - new Date(currentStopStart.timestamp || currentStopStart.createdAt)) / 1000;
+        if (stopDuration >= STOP_MIN_DURATION_SECONDS) {
+          numberOfStops++;
+          timeline.push({
+            type: 'stop',
+            timestamp: prev.timestamp || prev.createdAt,
+            latitude: prevLat,
+            longitude: prevLon,
+            address: prev.address || currentStopStart.address || 'Unknown location',
+            duration: Math.round(stopDuration),
+            startTime: currentStopStart.timestamp || currentStopStart.createdAt,
+            endTime: prev.timestamp || prev.createdAt
+          });
+        }
+        currentStopStart = null;
+      }
+      
+      // Start or continue travel
+      if (!currentTravelStart) {
+        currentTravelStart = prev;
+      }
+      
+      // If this is the last location, finalize travel segment
+      if (i === sortedLocations.length - 1) {
+        const travelDistance = calculateDistance(
+          currentTravelStart.latitude || currentTravelStart.location?.coordinates[1],
+          currentTravelStart.longitude || currentTravelStart.location?.coordinates[0],
+          currentLat,
+          currentLon
+        );
+        const travelTime = (currentTime - new Date(currentTravelStart.timestamp || currentTravelStart.createdAt)) / 1000;
+        
+        if (travelDistance > STOP_THRESHOLD_METERS) {
+          timeline.push({
+            type: 'travel',
+            distance: (travelDistance / 1000).toFixed(2), // km
+            startTime: currentTravelStart.timestamp || currentTravelStart.createdAt,
+            endTime: current.timestamp || current.createdAt,
+            duration: Math.round(travelTime),
+            startLocation: {
+              latitude: currentTravelStart.latitude || currentTravelStart.location?.coordinates[1],
+              longitude: currentTravelStart.longitude || currentTravelStart.location?.coordinates[0],
+              address: currentTravelStart.address
+            },
+            endLocation: {
+              latitude: currentLat,
+              longitude: currentLon,
+              address: current.address
+            }
+          });
+          totalDistance += travelDistance;
+          totalTravelTime += travelTime;
+        }
+      }
+    }
+    
+    lastLocation = current;
+  }
+
+  // Check-out event (last location)
+  // Only add check-out if it's different from check-in (avoid duplicate if only one location)
+  const checkOut = sortedLocations[sortedLocations.length - 1];
+  if (sortedLocations.length > 1) {
+    const checkInTime = new Date(checkIn.timestamp || checkIn.createdAt);
+    const checkOutTime = new Date(checkOut.timestamp || checkOut.createdAt);
+    const timeDiff = (checkOutTime - checkInTime) / 1000; // seconds
+    
+    // Only add check-out if it's at least 30 seconds after check-in
+    if (timeDiff >= 30) {
+      timeline.push({
+        type: 'check-out',
+        timestamp: checkOut.timestamp || checkOut.createdAt,
+        latitude: checkOut.latitude || checkOut.location?.coordinates[1],
+        longitude: checkOut.longitude || checkOut.location?.coordinates[0],
+        address: checkOut.address || 'Unknown location',
+        accuracy: checkOut.accuracy
+      });
+    }
+  }
+
+  return {
+    timeline,
+    totalDistance: (totalDistance / 1000).toFixed(2), // km
+    totalTravelTime: Math.round(totalTravelTime), // seconds
+    numberOfStops,
+    checkIn: {
+      timestamp: checkIn.timestamp || checkIn.createdAt,
+      latitude: checkIn.latitude || checkIn.location?.coordinates[1],
+      longitude: checkIn.longitude || checkIn.location?.coordinates[0],
+      address: checkIn.address || 'Unknown location'
+    },
+    checkOut: sortedLocations.length > 1 ? {
+      timestamp: checkOut.timestamp || checkOut.createdAt,
+      latitude: checkOut.latitude || checkOut.location?.coordinates[1],
+      longitude: checkOut.longitude || checkOut.location?.coordinates[0],
+      address: checkOut.address || 'Unknown location'
+    } : null
+  };
+};
+
 // @desc    Get location history for a specific employee and date
 // @route   GET /api/location-tracking/history/:employeeId
 // @access  Private (Admin)
@@ -510,32 +746,145 @@ export const getLocationHistory = asyncHandler(async (req, res) => {
       }
     });
     
-    // Calculate distance for each session
-    Object.values(sessions).forEach(session => {
-      let totalDistance = 0;
-      for (let i = 1; i < session.locations.length; i++) {
-        const prev = session.locations[i - 1];
-        const curr = session.locations[i];
-        
-        const R = 6371e3;
-        const φ1 = prev.latitude * Math.PI / 180;
-        const φ2 = curr.latitude * Math.PI / 180;
-        const Δφ = (curr.latitude - prev.latitude) * Math.PI / 180;
-        const Δλ = (curr.longitude - prev.longitude) * Math.PI / 180;
-        
-        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                  Math.cos(φ1) * Math.cos(φ2) *
-                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        totalDistance += R * c;
-      }
-      
-      session.totalDistance = (totalDistance / 1000).toFixed(2); // km
-      session.duration = Math.round((new Date(session.endTime) - new Date(session.startTime)) / 1000 / 60); // minutes
-      session.avgSpeed = session.duration > 0 ? ((totalDistance / 1000) / (session.duration / 60)).toFixed(1) : '0'; // km/h
+    // Sort sessions by start time
+    const sortedSessions = Object.values(sessions).sort((a, b) => 
+      new Date(a.startTime) - new Date(b.startTime)
+    );
+    
+    // Combine all locations from all sessions into one timeline
+    // This ensures only one check-in and one check-out for the entire day
+    let allLocations = [];
+    sortedSessions.forEach(session => {
+      allLocations = [...allLocations, ...session.locations];
     });
     
-    groupedData = Object.values(sessions);
+    // Build unified timeline from all locations
+    const unifiedTimelineData = buildTimeline(allLocations);
+    
+    // Filter timeline to remove duplicate check-ins/check-outs that are too close together
+    const filteredTimeline = [];
+    let lastCheckInTime = null;
+    let lastCheckOutTime = null;
+    const MIN_TIME_BETWEEN_EVENTS = 60; // 60 seconds minimum between check-in/check-out events
+    
+    unifiedTimelineData.timeline.forEach(event => {
+      if (event.type === 'check-in') {
+        if (!lastCheckInTime) {
+          // First check-in - always add
+          filteredTimeline.push(event);
+          lastCheckInTime = new Date(event.timestamp);
+        } else {
+          // Only add if it's been at least MIN_TIME_BETWEEN_EVENTS seconds since last check-in
+          const timeSinceLastCheckIn = (new Date(event.timestamp) - lastCheckInTime) / 1000;
+          if (timeSinceLastCheckIn >= MIN_TIME_BETWEEN_EVENTS) {
+            // Remove previous check-in and add this one (keep the latest)
+            filteredTimeline.pop(); // Remove last check-in
+            filteredTimeline.push(event);
+            lastCheckInTime = new Date(event.timestamp);
+          }
+          // Otherwise, ignore this duplicate check-in
+        }
+      } else if (event.type === 'check-out') {
+        if (!lastCheckOutTime) {
+          // First check-out - always add
+          filteredTimeline.push(event);
+          lastCheckOutTime = new Date(event.timestamp);
+        } else {
+          // Only add if it's been at least MIN_TIME_BETWEEN_EVENTS seconds since last check-out
+          const timeSinceLastCheckOut = (new Date(event.timestamp) - lastCheckOutTime) / 1000;
+          if (timeSinceLastCheckOut >= MIN_TIME_BETWEEN_EVENTS) {
+            // Remove previous check-out and add this one (keep the latest)
+            const lastCheckOutIndex = filteredTimeline.findIndex(e => e.type === 'check-out');
+            if (lastCheckOutIndex !== -1) {
+              filteredTimeline.splice(lastCheckOutIndex, 1);
+            }
+            filteredTimeline.push(event);
+            lastCheckOutTime = new Date(event.timestamp);
+          }
+          // Otherwise, ignore this duplicate check-out
+        }
+      } else {
+        // Travel and stop events - add normally
+        filteredTimeline.push(event);
+      }
+    });
+    
+    // Calculate totals across all sessions
+    let totalDistance = 0;
+    let totalTravelTime = 0;
+    let totalStops = 0;
+    
+    sortedSessions.forEach(session => {
+      const timelineData = buildTimeline(session.locations);
+      totalDistance += parseFloat(timelineData.totalDistance || 0);
+      totalTravelTime += parseInt(timelineData.totalTravelTime || 0);
+      totalStops += parseInt(timelineData.numberOfStops || 0);
+      
+      // Keep individual session data for reference
+      session.timeline = timelineData.timeline;
+      session.totalDistance = timelineData.totalDistance;
+      session.totalTravelTime = timelineData.totalTravelTime;
+      session.numberOfStops = timelineData.numberOfStops;
+      session.checkIn = timelineData.checkIn;
+      session.checkOut = timelineData.checkOut;
+      
+      // Legacy fields for backward compatibility
+      session.duration = Math.round((new Date(session.endTime) - new Date(session.startTime)) / 1000 / 60); // minutes
+      session.avgSpeed = session.duration > 0 ? ((parseFloat(session.totalDistance)) / (session.duration / 60)).toFixed(1) : '0'; // km/h
+    });
+    
+    // Create a unified session object with combined timeline
+    const unifiedSession = {
+      sessionId: 'unified',
+      employee: sortedSessions[0]?.employee,
+      startTime: sortedSessions[0]?.startTime,
+      endTime: sortedSessions[sortedSessions.length - 1]?.endTime,
+      isActive: sortedSessions.some(s => s.isActive),
+      locations: allLocations,
+      timeline: filteredTimeline, // Filtered timeline with only one check-in and one check-out
+      totalDistance: unifiedTimelineData.totalDistance,
+      totalTravelTime: unifiedTimelineData.totalTravelTime,
+      numberOfStops: unifiedTimelineData.numberOfStops,
+      checkIn: unifiedTimelineData.checkIn,
+      checkOut: unifiedTimelineData.checkOut,
+      sessions: sortedSessions, // Keep individual sessions for reference
+      sessionCount: sortedSessions.length
+    };
+    
+    // Return unified session instead of array of sessions
+    groupedData = unifiedSession;
+  } else if (sessionId && locations.length > 0) {
+    // Single session - build timeline
+    const sessionLocations = locations.map(loc => ({
+      _id: loc._id,
+      latitude: loc.location.coordinates[1],
+      longitude: loc.location.coordinates[0],
+      address: loc.address,
+      accuracy: loc.accuracy,
+      speed: loc.speed,
+      heading: loc.heading,
+      batteryLevel: loc.batteryLevel,
+      isStopPoint: loc.isStopPoint,
+      stopDuration: loc.stopDuration,
+      timestamp: loc.createdAt
+    }));
+    
+    const timelineData = buildTimeline(sessionLocations);
+    
+    groupedData = {
+      sessionId: locations[0].sessionId,
+      employee: locations[0].employee,
+      startTime: locations[0].createdAt,
+      endTime: locations[locations.length - 1].createdAt,
+      isActive: locations[locations.length - 1].isActive,
+      locations: sessionLocations,
+      timeline: timelineData.timeline,
+      totalDistance: timelineData.totalDistance,
+      totalTravelTime: timelineData.totalTravelTime,
+      numberOfStops: timelineData.numberOfStops,
+      checkIn: timelineData.checkIn,
+      checkOut: timelineData.checkOut
+    };
   }
   
   res.json({
