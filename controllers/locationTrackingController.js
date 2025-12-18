@@ -133,8 +133,8 @@ export const updateLocation = asyncHandler(async (req, res) => {
     
     console.log(`📏 Distance from last location: ${distance.toFixed(1)}m`);
     
-    // If distance < 50 meters, consider it a stop
-    if (distance < 50) {
+    // If distance < 75 meters, consider it a stop (reduce jitter travel)
+    if (distance < 75) {
       isStopPoint = true;
       // Calculate stop duration
       const timeDiff = (new Date() - new Date(lastLocation.createdAt)) / 1000; // seconds
@@ -479,8 +479,8 @@ const buildTimeline = (locations) => {
   let currentStopStart = null;
   let currentTravelStart = null;
   let lastLocation = checkIn;
-  const STOP_THRESHOLD_METERS = 30; // 30 meters
-  const STOP_MIN_DURATION_SECONDS = 60; // 1 minute
+  const STOP_THRESHOLD_METERS = 75; // require >75m movement to count as travel
+  const STOP_MIN_DURATION_SECONDS = 120; // need 2 minutes still to count as stop
 
   for (let i = 1; i < sortedLocations.length; i++) {
     const current = sortedLocations[i];
@@ -850,6 +850,12 @@ export const getLocationHistory = asyncHandler(async (req, res) => {
       sessions: sortedSessions, // Keep individual sessions for reference
       sessionCount: sortedSessions.length
     };
+
+    // If any session is still active, don't render a check-out marker/event yet
+    if (unifiedSession.isActive) {
+      unifiedSession.timeline = unifiedSession.timeline.filter(e => e.type !== 'check-out');
+      unifiedSession.checkOut = null;
+    }
     
     // Return unified session instead of array of sessions
     groupedData = unifiedSession;
@@ -885,6 +891,12 @@ export const getLocationHistory = asyncHandler(async (req, res) => {
       checkIn: timelineData.checkIn,
       checkOut: timelineData.checkOut
     };
+
+    // If this session is still active, suppress check-out
+    if (groupedData.isActive) {
+      groupedData.timeline = groupedData.timeline.filter(e => e.type !== 'check-out');
+      groupedData.checkOut = null;
+    }
   }
   
   res.json({

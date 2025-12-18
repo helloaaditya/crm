@@ -7,6 +7,7 @@ import {
   FiChevronDown, FiTruck, FiCheckCircle
 } from 'react-icons/fi';
 import API from '../api';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 
 // Fix for default marker icons in Leaflet
@@ -93,6 +94,7 @@ function MapBounds({ locations, route }) {
 }
 
 const LiveTracking = () => {
+  const { user } = useAuth();
   const [activeLocations, setActiveLocations] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
@@ -315,6 +317,34 @@ const LiveTracking = () => {
     fetchActiveLocations();
     fetchEmployees();
   }, []);
+
+  // Auto-select logged-in employee for self live tracking (non-admin users)
+  useEffect(() => {
+    const initSelfTracking = async () => {
+      if (!user || selectedEmployeeId) return;
+
+      const isAdmin = user.role === 'admin' || user.role === 'main_admin';
+      if (isAdmin) return;
+
+      try {
+        const response = await API.employees.myProfile();
+        const employee = response.data.data;
+        if (employee && employee._id) {
+          setSelectedEmployeeId(employee._id);
+
+          // Try to find in already-fetched employees list; fallback to profile data
+          const empFromList = employees.find(e => e._id === employee._id);
+          setSelectedEmployee(empFromList || employee);
+
+          await fetchHistoricalRoute(employee._id, selectedDate);
+        }
+      } catch (error) {
+        console.error('Failed to auto-select logged-in employee for tracking:', error);
+      }
+    };
+
+    initSelfTracking();
+  }, [user, selectedEmployeeId, employees, selectedDate]);
 
   // Listen for refresh event from Header
   useEffect(() => {
