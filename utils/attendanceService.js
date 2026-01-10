@@ -440,6 +440,101 @@ export const validateAndUpdateAttendance = (employee, date, checkInTime, checkOu
 };
 
 /**
+ * Generate attendance for a specific date range for an employee by employeeId
+ * @param {string} employeeIdCode - Employee ID code (e.g., 'EMP00042')
+ * @param {Date} startDate - Start date (inclusive)
+ * @param {Date} endDate - End date (inclusive)
+ */
+export const generateAttendanceForDateRange = async (employeeIdCode, startDate, endDate) => {
+  try {
+    console.log(`📝 Finding employee with employeeId: ${employeeIdCode}...`);
+    
+    // Find employee by employeeId (not MongoDB _id)
+    const employee = await Employee.findOne({ employeeId: employeeIdCode });
+    
+    if (!employee) {
+      throw new Error(`Employee with employeeId ${employeeIdCode} not found`);
+    }
+    
+    if (!employee.isActive) {
+      throw new Error(`Employee ${employeeIdCode} is not active`);
+    }
+    
+    console.log(`✓ Employee found: ${employee.name} (${employee.employeeId})`);
+    
+    // Normalize dates to start of day (use UTC to avoid timezone issues)
+    const start = new Date(startDate);
+    start.setUTCHours(0, 0, 0, 0);
+    
+    const end = new Date(endDate);
+    end.setUTCHours(23, 59, 59, 999);
+    
+    console.log(`📅 Generating attendance from ${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`);
+    
+    const currentDate = new Date(start);
+    let created = 0;
+    let skipped = 0;
+    
+    while (currentDate <= end) {
+      // Check if attendance exists (using normalized date comparison)
+      const existingAttendance = hasAttendanceForDate(employee.attendance, currentDate);
+      
+      if (!existingAttendance) {
+        // Check if the day is Sunday (day 0) - use UTC date to avoid timezone issues
+        const dayOfWeek = currentDate.getUTCDay();
+        const status = dayOfWeek === 0 ? 'weekoff' : 'absent';
+        const notes = dayOfWeek === 0 
+          ? 'Auto-generated - Sunday (Week Off)' 
+          : 'Auto-generated - No check-in recorded';
+        
+        // Create a new date object set to start of day for this date
+        const attendanceDate = new Date(currentDate);
+        attendanceDate.setUTCHours(0, 0, 0, 0);
+        
+        employee.attendance.push({
+          date: attendanceDate,
+          status: status,
+          checkInTime: null,
+          checkOutTime: null,
+          workHours: 0,
+          notes: notes,
+          markedBy: null
+        });
+        created++;
+        console.log(`  ✓ Created attendance for ${currentDate.toISOString().split('T')[0]} (${status})`);
+      } else {
+        skipped++;
+        console.log(`  ⊗ Skipped ${currentDate.toISOString().split('T')[0]} (already exists)`);
+      }
+      
+      // Move to next day (UTC)
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    }
+    
+    console.log(`📊 Summary: Created ${created} records, Skipped ${skipped} existing records`);
+    
+    if (created > 0) {
+      console.log(`💾 Saving employee with ${created} new attendance records...`);
+      await employee.save();
+      console.log(`✅ Saved successfully`);
+    } else {
+      console.log(`✓ No new records to save`);
+    }
+    
+    return {
+      success: true,
+      created,
+      skipped,
+      message: `Generated ${created} attendance records for ${employee.name} (${employee.employeeId}) from ${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`
+    };
+    
+  } catch (error) {
+    console.error('❌ Error generating attendance for date range:', error);
+    throw error;
+  }
+};
+
+/**
  * Update existing attendance records: Mark Sundays as 'weekoff' instead of 'absent'
  * This function migrates existing data to the new weekoff status
  */
