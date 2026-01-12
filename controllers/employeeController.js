@@ -5,7 +5,7 @@ import Customer from '../models/Customer.js';
 import CalendarReminder from '../models/CalendarReminder.js';
 import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, validateAndUpdateAttendance, deduplicateAttendance, updateSundaysToWeekoff } from '../utils/attendanceService.js';
+import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, generateMissingAttendanceForMonth, validateAndUpdateAttendance, deduplicateAttendance, updateSundaysToWeekoff } from '../utils/attendanceService.js';
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -410,6 +410,51 @@ export const generateMissingAttendance = asyncHandler(async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to generate missing attendance'
+    });
+  }
+});
+
+// @desc    Generate missing attendance for specific employee for a month/year
+// @route   POST /api/employees/:id/attendance/generate-missing-month
+// @access  Private
+export const generateMissingAttendanceForMonthEndpoint = asyncHandler(async (req, res) => {
+  try {
+    const { month, year } = req.body;
+    const employeeId = req.params.id;
+    
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year are required'
+      });
+    }
+    
+    const monthNum = parseInt(month);
+    const yearNum = parseInt(year);
+    
+    if (monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month must be between 1 and 12'
+      });
+    }
+    
+    console.log(`📋 Generate missing attendance for employee: ${employeeId}, month: ${monthNum}, year: ${yearNum}`);
+    
+    const result = await generateMissingAttendanceForMonth(employeeId, monthNum, yearNum);
+    
+    console.log('✅ Generate missing for month completed:', result);
+    
+    res.json({
+      success: true,
+      data: result,
+      message: result.message || `Generated ${result.created} missing attendance records`
+    });
+  } catch (error) {
+    console.error('❌ Generate missing attendance for month error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to generate missing attendance for month'
     });
   }
 });

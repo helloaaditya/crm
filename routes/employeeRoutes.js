@@ -12,6 +12,7 @@ import {
   updateAttendanceEntry,
   autoGenerateAllAttendance,
   generateMissingAttendance,
+  generateMissingAttendanceForMonthEndpoint,
   deduplicateAttendanceRecords,
   updateSundaysToWeekoffEndpoint,
   applyLeave,
@@ -174,6 +175,7 @@ router.post('/attendance/auto-generate', checkPermission('canCreate'), autoGener
 router.post('/attendance/deduplicate', checkPermission('canCreate'), deduplicateAttendanceRecords);
 router.post('/attendance/update-sundays', checkPermission('canCreate'), updateSundaysToWeekoffEndpoint);
 router.post('/:id/attendance/generate-missing', checkPermission('canCreate'), generateMissingAttendance);
+router.post('/:id/attendance/generate-missing-month', checkPermission('canCreate'), generateMissingAttendanceForMonthEndpoint);
 router.post('/:id/attendance/deduplicate', checkPermission('canCreate'), deduplicateAttendanceRecords);
 router.post('/:id/attendance/update-sundays', checkPermission('canCreate'), updateSundaysToWeekoffEndpoint);
 router.post('/:id/attendance', markAttendance);

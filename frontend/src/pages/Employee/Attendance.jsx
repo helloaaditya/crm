@@ -115,6 +115,28 @@ const Attendance = () => {
     }
   }
 
+  const handleGenerateMissingForMonth = async () => {
+    if (!selectedEmployee) {
+      toast.error('Please select an employee first')
+      return
+    }
+    
+    try {
+      setGenerating(true)
+      const response = await API.employees.generateMissingAttendanceForMonth(
+        selectedEmployee,
+        selectedMonth,
+        selectedYear
+      )
+      toast.success(response.data.message || `Missing attendance records generated for ${months[selectedMonth - 1]} ${selectedYear}`)
+      fetchAttendance()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to generate missing attendance for selected month')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const handleGenerateAll = async () => {
     try {
       setGenerating(true)
@@ -344,13 +366,22 @@ const Attendance = () => {
           {isAdmin && (
             <>
               <button
-                onClick={handleGenerateMissing}
+                onClick={handleGenerateMissingForMonth}
                 disabled={generating || !selectedEmployee}
                 className="flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 text-sm"
-                title="Fill missing days for selected employee"
+                title={`Generate missing attendance for ${months[selectedMonth - 1]} ${selectedYear}`}
               >
                 <FiRefreshCw className={`mr-2 ${generating ? 'animate-spin' : ''}`} />
-                Fill Missing
+                Generate Missing
+              </button>
+              <button
+                onClick={handleGenerateMissing}
+                disabled={generating || !selectedEmployee}
+                className="flex items-center justify-center px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 disabled:opacity-50 text-sm"
+                title="Fill missing days from joining date to yesterday for selected employee"
+              >
+                <FiRefreshCw className={`mr-2 ${generating ? 'animate-spin' : ''}`} />
+                Fill All Missing
               </button>
               <button
                 onClick={handleGenerateAll}
