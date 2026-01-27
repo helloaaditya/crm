@@ -21,6 +21,7 @@ export const customerAPI = {
   update: (id, data) => api.put(`/customers/${id}`, data),
   delete: (id) => api.delete(`/customers/${id}`),
   getStats: () => api.get('/customers/stats'),
+  checkReminders: () => api.post('/customers/reminders/check'),
   bulk: {
     sample: () => api.get('/customers/bulk/sample', { responseType: 'text' }),
     upload: (formData) => api.post('/customers/bulk/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
