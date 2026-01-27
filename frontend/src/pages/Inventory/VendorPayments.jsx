@@ -53,6 +53,14 @@ const VendorPayments = () => {
   const [selectedVendorDetails, setSelectedVendorDetails] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [showPayDueModal, setShowPayDueModal] = useState(false);
+  const [payDuePayment, setPayDuePayment] = useState(null);
+  const [payDueAmount, setPayDueAmount] = useState('');
+  const [payDueMode, setPayDueMode] = useState('bank_transfer');
+  const [payDueReference, setPayDueReference] = useState('');
+  const [payDueNotes, setPayDueNotes] = useState('');
+  const [submittingPayDue, setSubmittingPayDue] = useState(false);
   const [invoiceFormData, setInvoiceFormData] = useState({
     invoiceNumber: '',
     vendor: '',
@@ -273,9 +281,18 @@ const VendorPayments = () => {
         reminderNotes: formData.createReminder && calculatedDue > 0 ? (formData.reminderNotes || `Outstanding due: ₹${calculatedDue.toFixed(2)}`) : (formData.reminderNotes || undefined)
       };
 
-      await api.post('/vendor-payments', submitData);
-      toast.success('Payment recorded successfully!');
+      if (editingPayment) {
+        // Update existing payment
+        await api.put(`/vendor-payments/${editingPayment._id}`, submitData);
+        toast.success('Payment updated successfully!');
+      } else {
+        // Create new payment
+        await api.post('/vendor-payments', submitData);
+        toast.success('Payment recorded successfully!');
+      }
+      
       setShowModal(false);
+      setEditingPayment(null);
       setPoBillFile(null);
       setSelectedVendorDetails(null);
       setFormData({
@@ -313,6 +330,7 @@ const VendorPayments = () => {
 
   const handleCloseModal = () => {
     setShowModal(false);
+    setEditingPayment(null);
     setSelectedVendorDetails(null);
     setPoBillFile(null);
     setFormData({
@@ -340,25 +358,122 @@ const VendorPayments = () => {
     });
   };
 
-  const handleViewPayment = (payment) => {
-    setSelectedPayment(payment);
+  const handleViewPayment = async (payment) => {
+    // Fetch fresh payment data to get updated history
+    try {
+      const response = await api.get(`/vendor-payments/${payment._id}`);
+      setSelectedPayment(response.data.data);
+    } catch (error) {
+      console.error('Error fetching payment details:', error);
+      // Fallback to using the payment data we have
+      setSelectedPayment(payment);
+    }
     setShowDetailsModal(true);
   };
 
   const handleDeletePayment = async (paymentId) => {
-    if (!window.confirm('Are you sure you want to cancel this payment? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this payment? This action cannot be undone and will permanently remove the payment record.')) {
       return;
     }
 
     try {
-      await api.put(`/vendor-payments/${paymentId}/cancel`, {
-        notes: 'Cancelled by user'
-      });
-      toast.success('Payment cancelled successfully');
+      await api.delete(`/vendor-payments/${paymentId}`);
+      toast.success('Payment deleted successfully');
       fetchPayments();
     } catch (error) {
-      console.error('Error cancelling payment:', error);
-      toast.error(error.response?.data?.message || 'Failed to cancel payment');
+      console.error('Error deleting payment:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete payment');
+    }
+  };
+
+  const handleEditPayment = (payment) => {
+    setEditingPayment(payment);
+    setFormData({
+      vendor: payment.vendor._id,
+      totalAmount: payment.totalAmount || '',
+      amount: payment.amount || '',
+      dueAmount: payment.dueAmount || 0,
+      paymentMode: payment.paymentMode || 'bank_transfer',
+      referenceNumber: payment.referenceNumber || '',
+      poBillNumber: payment.poBillNumber || '',
+      poBillDate: payment.poBillDate ? new Date(payment.poBillDate).toISOString().split('T')[0] : '',
+      poBillUrl: payment.poBillUrl || '',
+      purpose: payment.purpose || 'material_purchase',
+      description: payment.description || '',
+      isGST: payment.isGST || false,
+      gstAmount: payment.gstAmount || 0,
+      tdsAmount: payment.tdsAmount || 0,
+      notes: payment.notes || '',
+      vendorInvoice: payment.vendorInvoice?._id || payment.vendorInvoice || '',
+      reminderDate: payment.reminderDate ? new Date(payment.reminderDate).toISOString().split('T')[0] : '',
+      reminderAmount: payment.reminderAmount || '',
+      reminderNotes: payment.reminderNotes || '',
+      createReminder: false,
+      payDueLater: payment.payDueLater || false
+    });
+    
+    // Fetch vendor details
+    if (payment.vendor._id) {
+      api.get(`/inventory/vendors/${payment.vendor._id}`)
+        .then(response => {
+          setSelectedVendorDetails(response.data.data);
+        })
+        .catch(error => {
+          console.error('Error fetching vendor details:', error);
+        });
+    }
+    
+    setShowModal(true);
+  };
+
+  const handlePayDue = (payment) => {
+    setPayDuePayment(payment);
+    setPayDueAmount(payment.dueAmount?.toFixed(2) || '0');
+    setPayDueMode(payment.paymentMode || 'bank_transfer');
+    setPayDueReference('');
+    setPayDueNotes(`Payment for outstanding due from ${payment.paymentId}`);
+    setShowPayDueModal(true);
+  };
+
+  const handleSubmitPayDue = async () => {
+    if (!payDuePayment) return;
+    
+    const amount = parseFloat(payDueAmount);
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid payment amount');
+      return;
+    }
+
+    if (amount > payDuePayment.dueAmount) {
+      toast.error(`Payment amount cannot exceed outstanding due amount of ₹${payDuePayment.dueAmount.toFixed(2)}`);
+      return;
+    }
+
+    try {
+      setSubmittingPayDue(true);
+      const response = await api.post(`/vendor-payments/${payDuePayment._id}/pay-due`, {
+        amount,
+        paymentMode: payDueMode,
+        referenceNumber: payDueReference,
+        notes: payDueNotes
+      });
+
+      toast.success(response.data.message || 'Payment added successfully');
+      
+      // Update the payment in the list if it's currently selected
+      if (selectedPayment && selectedPayment._id === payDuePayment._id) {
+        const updatedPayment = response.data.data;
+        setSelectedPayment(updatedPayment);
+      }
+      
+      setShowPayDueModal(false);
+      setPayDuePayment(null);
+      await fetchPayments(); // Refresh the list
+    } catch (error) {
+      console.error('Error adding partial payment:', error);
+      toast.error(error.response?.data?.message || 'Failed to add payment');
+    } finally {
+      setSubmittingPayDue(false);
     }
   };
 
@@ -589,7 +704,8 @@ const VendorPayments = () => {
         <>
       {/* Payments Table - Desktop */}
       <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1200px' }}>
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment ID</th>
@@ -657,7 +773,24 @@ const VendorPayments = () => {
                     {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {payment.reminderDate ? (
+                    {payment.dueAmount > 0 ? (
+                      <div>
+                        <div className="text-orange-600 font-medium mb-1">
+                          Outstanding due: ₹{payment.dueAmount.toFixed(2)}
+                        </div>
+                        <button
+                          onClick={() => handlePayDue(payment)}
+                          className="px-2 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                        >
+                          💰 Pay Due
+                        </button>
+                        {payment.reminderDate && (
+                          <div className="flex items-center gap-1 text-orange-600 mt-2 text-xs">
+                            🔔 {format(new Date(payment.reminderDate), 'dd MMM yyyy')}
+                          </div>
+                        )}
+                      </div>
+                    ) : payment.reminderDate ? (
                       <div>
                         <div className="flex items-center gap-1 text-orange-600">
                           🔔 {format(new Date(payment.reminderDate), 'dd MMM yyyy')}
@@ -676,22 +809,31 @@ const VendorPayments = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex space-x-4">
+                    <div className="flex space-x-3">
                       <button
                         onClick={() => handleViewPayment(payment)}
                         className="text-blue-600 hover:text-blue-800 font-medium"
                         title="View Details"
                       >
-                        <FiEye className="text-blue-600 hover:text-blue-800 font-medium" />
+                        <FiEye size={18} />
                       </button>
                       {payment.status !== 'cancelled' && (
-                        <button
-                          onClick={() => handleDeletePayment(payment._id)}
-                          className="text-red-600 hover:text-red-800 font-medium"
-                          title="Cancel Payment"
-                        >
-                        <FiTrash2 className="text-red-600 hover:text-red-800 font-medium" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleEditPayment(payment)}
+                            className="text-green-600 hover:text-green-800 font-medium"
+                            title="Edit Payment"
+                          >
+                            <FiEdit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePayment(payment._id)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                            title="Delete Payment"
+                          >
+                            <FiTrash2 size={18} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -700,6 +842,7 @@ const VendorPayments = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Payments Cards - Mobile */}
@@ -765,22 +908,65 @@ const VendorPayments = () => {
                   <span className="text-gray-600">Date:</span>
                   <span className="text-gray-900">{format(new Date(payment.paymentDate), 'dd MMM yyyy')}</span>
                 </div>
+                {payment.dueAmount > 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-yellow-800">
+                          Outstanding due: ₹{payment.dueAmount.toFixed(2)}
+                        </div>
+                        {payment.reminderDate && (
+                          <div className="flex items-center gap-1 text-orange-600 text-xs mt-1">
+                            🔔 {format(new Date(payment.reminderDate), 'dd MMM yyyy')}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handlePayDue(payment)}
+                        className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        💰 Pay Due
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {!payment.dueAmount && payment.reminderDate && (
+                  <div className="flex justify-between mt-2">
+                    <span className="text-gray-600">Reminder:</span>
+                    <div className="text-gray-900">
+                      <div className="flex items-center gap-1 text-orange-600">
+                        🔔 {format(new Date(payment.reminderDate), 'dd MMM yyyy')}
+                      </div>
+                      {payment.reminderNotes && (
+                        <div className="text-xs text-gray-500 mt-1">{payment.reminderNotes}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex gap-3 mt-4 pt-3 border-t">
+              <div className="flex gap-2 mt-4 pt-3 border-t">
                 <button
                   onClick={() => handleViewPayment(payment)}
-                  className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm"
+                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm"
                 >
                   <FiEye className="inline mr-1" /> View
                 </button>
                 {payment.status !== 'cancelled' && (
-                  <button
-                    onClick={() => handleDeletePayment(payment._id)}
-                    className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm"
-                  >
-                    <FiTrash2 className="inline mr-1" /> Delete
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleEditPayment(payment)}
+                      className="flex-1 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-medium text-sm"
+                    >
+                      <FiEdit className="inline mr-1" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeletePayment(payment._id)}
+                      className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm"
+                    >
+                      <FiTrash2 className="inline mr-1" /> Delete
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -811,7 +997,8 @@ const VendorPayments = () => {
 
           {/* Invoices Table - Desktop */}
           <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1200px' }}>
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
@@ -901,6 +1088,7 @@ const VendorPayments = () => {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Invoices Cards - Mobile */}
@@ -979,7 +1167,7 @@ const VendorPayments = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
           <div className="bg-white rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Record Vendor Payment</h2>
+              <h2 className="text-xl font-bold">{editingPayment ? 'Edit Vendor Payment' : 'Record Vendor Payment'}</h2>
               <button
                 onClick={handleCloseModal}
                 className="text-gray-500 hover:text-gray-700"
@@ -1510,7 +1698,7 @@ const VendorPayments = () => {
                   {submittingPayment ? (
                     <>
                       <FiLoader className="animate-spin" size={16} />
-                      Recording...
+                      {editingPayment ? 'Updating...' : 'Recording...'}
                     </>
                   ) : uploading ? (
                     <>
@@ -1518,7 +1706,7 @@ const VendorPayments = () => {
                       Uploading...
                     </>
                   ) : (
-                    'Record Payment'
+                    editingPayment ? 'Update Payment' : 'Record Payment'
                   )}
                 </button>
               </div>
@@ -1577,19 +1765,58 @@ const VendorPayments = () => {
               <div className="border-t pt-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Amount</label>
-                    <p className="text-2xl font-bold text-gray-900">₹{selectedPayment.amount?.toLocaleString()}</p>
-                    {selectedPayment.isGST && (
-                      <p className="text-sm text-gray-500">GST: ₹{selectedPayment.gstAmount?.toLocaleString()}</p>
-                    )}
-                    {selectedPayment.tdsAmount > 0 && (
-                      <p className="text-sm text-gray-500">TDS: ₹{selectedPayment.tdsAmount?.toLocaleString()}</p>
-                    )}
-                    {selectedPayment.netAmount && (
-                      <p className="text-sm font-medium text-green-600">Net: ₹{selectedPayment.netAmount?.toLocaleString()}</p>
-                    )}
-                  </div>
+                  {selectedPayment.totalAmount > 0 && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">Total Amount</label>
+                        <p className="text-xl font-bold text-gray-900">₹{selectedPayment.totalAmount?.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">Initial Paid</label>
+                        <p className="text-lg font-semibold text-gray-900">₹{selectedPayment.amount?.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">Total Paid</label>
+                        {(() => {
+                          const historyTotal = selectedPayment.paymentHistory?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+                          const totalPaid = (selectedPayment.amount || 0) + historyTotal;
+                          return (
+                            <p className="text-lg font-bold text-green-600">₹{totalPaid.toLocaleString()}</p>
+                          );
+                        })()}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">Outstanding Due</label>
+                        <p className={`text-lg font-bold ${selectedPayment.dueAmount > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                          ₹{selectedPayment.dueAmount?.toLocaleString() || '0'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {!selectedPayment.totalAmount && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">Amount</label>
+                      <p className="text-2xl font-bold text-gray-900">₹{selectedPayment.amount?.toLocaleString()}</p>
+                    </div>
+                  )}
+                  {selectedPayment.isGST && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">GST</label>
+                      <p className="text-sm text-gray-500">₹{selectedPayment.gstAmount?.toLocaleString()}</p>
+                    </div>
+                  )}
+                  {selectedPayment.tdsAmount > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">TDS</label>
+                      <p className="text-sm text-gray-500">₹{selectedPayment.tdsAmount?.toLocaleString()}</p>
+                    </div>
+                  )}
+                  {selectedPayment.netAmount && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">Net Amount</label>
+                      <p className="text-sm font-medium text-green-600">₹{selectedPayment.netAmount?.toLocaleString()}</p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Payment Date</label>
                     <p className="text-gray-900">{format(new Date(selectedPayment.paymentDate), 'dd MMM yyyy, hh:mm a')}</p>
@@ -1608,6 +1835,80 @@ const VendorPayments = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Payment History */}
+              {selectedPayment.paymentHistory && selectedPayment.paymentHistory.length > 0 && (
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment History</h3>
+                  <div className="space-y-3">
+                    {/* Initial Payment */}
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-500">Initial Payment</span>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-500">{format(new Date(selectedPayment.paymentDate), 'dd MMM yyyy, hh:mm a')}</span>
+                        </div>
+                        <span className="text-sm font-bold text-gray-900">₹{selectedPayment.amount?.toLocaleString()}</span>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Mode: {selectedPayment.paymentMode?.replace('_', ' ').toUpperCase()}
+                        {selectedPayment.referenceNumber && ` • Ref: ${selectedPayment.referenceNumber}`}
+                      </div>
+                    </div>
+                    
+                    {/* Partial Payments */}
+                    {selectedPayment.paymentHistory.map((payment, index) => (
+                      <div key={index} className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-blue-700">Partial Payment #{index + 1}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">
+                              {format(new Date(payment.paymentDate || payment.createdAt), 'dd MMM yyyy, hh:mm a')}
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-blue-900">₹{payment.amount?.toLocaleString()}</span>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Mode: {payment.paymentMode?.replace('_', ' ').toUpperCase()}
+                          {payment.referenceNumber && ` • Ref: ${payment.referenceNumber}`}
+                          {payment.paidBy?.name && ` • Paid by: ${payment.paidBy.name}`}
+                        </div>
+                        {payment.notes && (
+                          <div className="text-xs text-gray-500 mt-1 italic">{payment.notes}</div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {/* Summary */}
+                    {selectedPayment.totalAmount > 0 && (
+                      <div className="bg-green-50 rounded-lg p-3 border border-green-200 mt-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-green-800">Total Paid:</span>
+                          {(() => {
+                            const historyTotal = selectedPayment.paymentHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
+                            const totalPaid = (selectedPayment.amount || 0) + historyTotal;
+                            return (
+                              <span className="text-lg font-bold text-green-900">₹{totalPaid.toLocaleString()}</span>
+                            );
+                          })()}
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-sm font-semibold text-gray-700">Total Amount:</span>
+                          <span className="text-sm font-semibold text-gray-900">₹{selectedPayment.totalAmount?.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-sm font-semibold text-orange-700">Outstanding Due:</span>
+                          <span className={`text-sm font-bold ${selectedPayment.dueAmount > 0 ? 'text-orange-700' : 'text-green-700'}`}>
+                            ₹{selectedPayment.dueAmount?.toLocaleString() || '0'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* PO Bill Details */}
               {(selectedPayment.poBillNumber || selectedPayment.poBillUrl) && (
@@ -1691,6 +1992,202 @@ const VendorPayments = () => {
                 </a>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Due Modal with History */}
+      {showPayDueModal && payDuePayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Pay Outstanding Due</h2>
+              <button
+                onClick={() => {
+                  setShowPayDueModal(false);
+                  setPayDuePayment(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            {/* Payment Summary */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Payment ID:</span>
+                  <p className="font-semibold text-gray-900">{payDuePayment.paymentId}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Vendor:</span>
+                  <p className="font-semibold text-gray-900">{payDuePayment.vendor?.name}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Total Amount:</span>
+                  <p className="font-semibold text-gray-900">₹{payDuePayment.totalAmount?.toLocaleString() || '0'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Outstanding Due:</span>
+                  <p className="font-bold text-orange-600 text-lg">₹{payDuePayment.dueAmount?.toFixed(2) || '0'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment History */}
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment History</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {/* Initial Payment */}
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-semibold text-gray-700">Initial Payment</span>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {format(new Date(payDuePayment.paymentDate), 'dd MMM yyyy, hh:mm a')} • {payDuePayment.paymentMode?.replace('_', ' ').toUpperCase()}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">₹{payDuePayment.amount?.toLocaleString()}</span>
+                  </div>
+                </div>
+                
+                {/* Partial Payments */}
+                {payDuePayment.paymentHistory && payDuePayment.paymentHistory.length > 0 ? (
+                  payDuePayment.paymentHistory.map((payment, index) => (
+                    <div key={index} className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-semibold text-blue-700">Partial Payment #{index + 1}</span>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {format(new Date(payment.paymentDate || payment.createdAt), 'dd MMM yyyy, hh:mm a')} • {payment.paymentMode?.replace('_', ' ').toUpperCase()}
+                            {payment.paidBy?.name && ` • By: ${payment.paidBy.name}`}
+                          </p>
+                        </div>
+                        <span className="text-sm font-bold text-blue-900">₹{payment.amount?.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-500 text-center py-2">No partial payments yet</p>
+                )}
+              </div>
+
+              {/* Total Paid Summary */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-green-800">Total Paid:</span>
+                  {(() => {
+                    const historyTotal = payDuePayment.paymentHistory?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+                    const totalPaid = (payDuePayment.amount || 0) + historyTotal;
+                    return (
+                      <span className="text-lg font-bold text-green-900">₹{totalPaid.toLocaleString()}</span>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Form */}
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmitPayDue(); }} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Amount *
+                </label>
+                <input
+                  type="number"
+                  value={payDueAmount}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    const maxAmount = payDuePayment.dueAmount || 0;
+                    setPayDueAmount(val > maxAmount ? maxAmount : val);
+                  }}
+                  max={payDuePayment.dueAmount}
+                  min="0"
+                  step="0.01"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder={`Max: ₹${payDuePayment.dueAmount?.toFixed(2) || '0'}`}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum: ₹{payDuePayment.dueAmount?.toFixed(2) || '0'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Mode *
+                </label>
+                <select
+                  value={payDueMode}
+                  onChange={(e) => setPayDueMode(e.target.value)}
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reference Number
+                </label>
+                <input
+                  type="text"
+                  value={payDueReference}
+                  onChange={(e) => setPayDueReference(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="Transaction ID, Cheque Number, etc."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={payDueNotes}
+                  onChange={(e) => setPayDueNotes(e.target.value)}
+                  rows="3"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="Additional notes for this payment..."
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPayDueModal(false);
+                    setPayDuePayment(null);
+                  }}
+                  disabled={submittingPayDue}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingPayDue || !payDueAmount || parseFloat(payDueAmount) <= 0}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submittingPayDue ? (
+                    <>
+                      <FiLoader className="animate-spin" size={16} />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      💰 Pay ₹{parseFloat(payDueAmount || 0).toFixed(2)}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -73,8 +73,11 @@ const employeeSchema = new mongoose.Schema({
   allowances: {
     hra: { type: Number, default: 0 },
     transport: { type: Number, default: 0 },
-    other: { type: Number, default: 0 }
+    ot: { type: Number, default: 0 }
   },
+  // OT (Overtime) fields - only for superior role employees
+  otHours: { type: Number, default: 0 },
+  hourlyRate: { type: Number, default: 0 },
   deductions: {
     pf: { type: Number, default: 0 },
     esi: { type: Number, default: 0 },

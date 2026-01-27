@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { FiDollarSign, FiPlus, FiEdit2, FiCheck, FiDownload, FiCalendar, FiSearch, FiUser } from 'react-icons/fi'
 import API from '../../api'
 import { toast } from 'react-toastify'
+import { useAuth } from '../../context/AuthContext'
 
 const SalaryManagement = () => {
+  const { user } = useAuth()
   const [employees, setEmployees] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState(null)
@@ -19,7 +21,7 @@ const SalaryManagement = () => {
     allowances: {
       hra: 0,
       transport: 0,
-      other: 0
+      ot: 0
     },
     deductions: {
       pf: 0,
@@ -27,9 +29,15 @@ const SalaryManagement = () => {
       tax: 0,
       other: 0
     },
+    otHours: 0,
+    hourlyRate: 0,
     paymentMode: 'bank_transfer',
     notes: ''
   })
+  
+  // Superior roles that can have OT hours
+  const superiorRoles = ['manager', 'admin', 'supervisor', 'engineer']
+  const isSuperiorRole = selectedEmployee && superiorRoles.includes(selectedEmployee.role?.toLowerCase())
 
   useEffect(() => {
     fetchEmployees()
@@ -73,15 +81,25 @@ const SalaryManagement = () => {
 
   const handleEmployeeSelect = (employee) => {
     setSelectedEmployee(employee)
+    // Migrate 'other' to 'ot' if needed for backward compatibility
+    const allowances = employee.allowances || { hra: 0, transport: 0, ot: 0 }
+    if (allowances.other !== undefined && !allowances.ot) {
+      allowances.ot = allowances.other
+      delete allowances.other
+    }
+    
     setFormData({
       ...formData,
       basicSalary: employee.basicSalary || 0,
-      allowances: employee.allowances || { hra: 0, transport: 0, other: 0 },
-      deductions: employee.deductions || { pf: 0, esi: 0, tax: 0, other: 0 }
+      allowances: allowances,
+      deductions: employee.deductions || { pf: 0, esi: 0, tax: 0, other: 0 },
+      otHours: employee.otHours || 0,
+      hourlyRate: employee.hourlyRate || 0
     })
     fetchSalaryHistory(employee._id)
     fetchPreview(employee._id, formData.month)
   }
+  
 
   const handleProcessSalary = async (e) => {
     e.preventDefault()
@@ -150,10 +168,17 @@ const SalaryManagement = () => {
       await API.employees.update(selectedEmployee._id, {
         basicSalary: formData.basicSalary,
         allowances: formData.allowances,
-        deductions: formData.deductions
+        deductions: formData.deductions,
+        otHours: isSuperiorRole ? formData.otHours : undefined,
+        hourlyRate: isSuperiorRole ? formData.hourlyRate : undefined
       })
       toast.success('Salary structure updated successfully')
       fetchEmployees()
+      // Refresh selected employee data
+      const updated = employees.find(e => e._id === selectedEmployee._id)
+      if (updated) {
+        setSelectedEmployee(updated)
+      }
     } catch (error) {
       toast.error('Failed to update salary structure')
     }
@@ -445,18 +470,74 @@ const SalaryManagement = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">Other</label>
+                          <label className="block text-sm text-gray-600 mb-1">OT (Overtime)</label>
                           <input
                             type="number"
-                            value={formData.allowances.other}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              allowances: { ...formData.allowances, other: e.target.value }
-                            })}
+                            value={formData.allowances.ot || 0}
+                            onChange={(e) => {
+                              const otValue = parseFloat(e.target.value) || 0
+                              setFormData({
+                                ...formData,
+                                allowances: { ...formData.allowances, ot: otValue }
+                              })
+                            }}
                             className="w-full px-3 py-2 border rounded-lg"
+                            readOnly={isSuperiorRole && formData.otHours > 0 && formData.hourlyRate > 0}
+                            style={isSuperiorRole && formData.otHours > 0 && formData.hourlyRate > 0 ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
                           />
+                          {isSuperiorRole && formData.otHours > 0 && formData.hourlyRate > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">Auto-calculated: {formData.otHours} hrs × ₹{formData.hourlyRate} = ₹{formData.allowances.ot?.toFixed(2) || 0}</p>
+                          )}
                         </div>
                       </div>
+                      
+                      {/* OT Hours and Hourly Rate (only for superior roles) */}
+                      {isSuperiorRole && (
+                        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">OT Hours</label>
+                            <input
+                              type="number"
+                              value={formData.otHours}
+                              onChange={(e) => {
+                                const hours = parseFloat(e.target.value) || 0
+                                const rate = parseFloat(formData.hourlyRate) || 0
+                                const otAmount = hours > 0 && rate > 0 ? hours * rate : 0
+                                setFormData(prev => ({
+                                  ...prev,
+                                  otHours: hours,
+                                  allowances: { ...prev.allowances, ot: otAmount }
+                                }))
+                              }}
+                              min="0"
+                              step="0.5"
+                              className="w-full px-3 py-2 border rounded-lg"
+                              placeholder="Enter OT hours"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Hourly Rate (₹)</label>
+                            <input
+                              type="number"
+                              value={formData.hourlyRate}
+                              onChange={(e) => {
+                                const rate = parseFloat(e.target.value) || 0
+                                const hours = parseFloat(formData.otHours) || 0
+                                const otAmount = hours > 0 && rate > 0 ? hours * rate : 0
+                                setFormData(prev => ({
+                                  ...prev,
+                                  hourlyRate: rate,
+                                  allowances: { ...prev.allowances, ot: otAmount }
+                                }))
+                              }}
+                              min="0"
+                              step="0.01"
+                              className="w-full px-3 py-2 border rounded-lg"
+                              placeholder="Enter hourly rate"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Deductions */}

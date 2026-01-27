@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import Customer from '../models/Customer.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { checkAndSendNewCustomerReminders } from '../utils/customerReminderService.js';
 
 // @desc    Get all customers
 // @route   GET /api/customers
@@ -201,4 +202,36 @@ export const getCustomerStats = asyncHandler(async (req, res) => {
       byStatus: stats
     }
   });
+});
+
+// @desc    Manually trigger customer reminder check (Admin only)
+// @route   POST /api/customers/reminders/check
+// @access  Private/Admin
+export const triggerCustomerReminders = asyncHandler(async (req, res) => {
+  // Check if user is admin
+  if (req.user.role !== 'main_admin' && req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admin only.' });
+  }
+
+  try {
+    const result = await checkAndSendNewCustomerReminders();
+    
+    res.json({
+      success: result.success,
+      message: result.message || 'Reminder check completed',
+      data: {
+        customersFound: result.count || 0,
+        emailsSent: result.emailsSent || 0,
+        emailsFailed: result.emailsFailed || 0,
+        recipients: result.recipients || []
+      }
+    });
+  } catch (error) {
+    console.error('Error triggering customer reminders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to trigger customer reminders',
+      error: error.message
+    });
+  }
 });

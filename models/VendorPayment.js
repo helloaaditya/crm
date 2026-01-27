@@ -122,6 +122,34 @@ const vendorPaymentSchema = new mongoose.Schema({
     default: false
   },
   
+  // Payment History - Track all partial payments for the same payment ID
+  paymentHistory: [{
+    amount: {
+      type: Number,
+      required: true
+    },
+    paymentDate: {
+      type: Date,
+      default: Date.now
+    },
+    paymentMode: {
+      type: String,
+      enum: ['cash', 'bank_transfer', 'cheque', 'upi', 'card'],
+      required: true
+    },
+    referenceNumber: String,
+    notes: String,
+    paidBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -180,10 +208,26 @@ vendorPaymentSchema.pre('save', function(next) {
   if (!this.netAmount) {
     this.netAmount = this.amount - (this.tdsAmount || 0);
   }
+  
+  // Calculate total paid from payment history + initial amount
+  const totalPaidFromHistory = this.paymentHistory && this.paymentHistory.length > 0
+    ? this.paymentHistory.reduce((sum, payment) => sum + (payment.amount || 0), 0)
+    : 0;
+  const totalPaid = (this.amount || 0) + totalPaidFromHistory;
+  
   // Auto-calculate due amount if totalAmount is provided
   if (this.totalAmount && this.totalAmount > 0) {
-    this.dueAmount = Math.max(0, this.totalAmount - this.amount);
+    this.dueAmount = Math.max(0, this.totalAmount - totalPaid);
+    
+    // Auto-update status: if total paid equals total amount, mark as completed
+    if (totalPaid >= this.totalAmount) {
+      this.status = 'completed';
+      this.dueAmount = 0;
+    } else if (totalPaid > 0) {
+      this.status = 'pending'; // Partial payment
+    }
   }
+  
   next();
 });
 

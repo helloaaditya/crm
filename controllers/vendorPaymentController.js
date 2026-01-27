@@ -180,6 +180,7 @@ export const getVendorPayments = asyncHandler(async (req, res) => {
     .populate('materials.material', 'name unit')
     .populate('createdBy', 'name')
     .populate('approvedBy', 'name')
+    .populate('paymentHistory.paidBy', 'name')
     .sort({ paymentDate: -1 });
 
   res.json({
@@ -198,7 +199,8 @@ export const getVendorPaymentById = asyncHandler(async (req, res) => {
     .populate('project', 'projectId description customer')
     .populate('materials.material', 'name unit')
     .populate('createdBy', 'name email')
-    .populate('approvedBy', 'name email');
+    .populate('approvedBy', 'name email')
+    .populate('paymentHistory.paidBy', 'name email');
 
   if (!payment) {
     res.status(404);
@@ -231,6 +233,136 @@ export const updateVendorPayment = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: payment
+  });
+});
+
+// @desc    Add partial payment to existing payment (Pay Due)
+// @route   POST /api/vendor-payments/:id/pay-due
+// @access  Private (Admin, Manager)
+export const addPartialPayment = asyncHandler(async (req, res) => {
+  const { amount, paymentMode, referenceNumber, notes } = req.body;
+
+  const payment = await VendorPayment.findById(req.params.id);
+  if (!payment) {
+    res.status(404);
+    throw new Error('Vendor payment not found');
+  }
+
+  if (!payment.totalAmount || payment.totalAmount <= 0) {
+    res.status(400);
+    throw new Error('This payment does not have a total amount set. Cannot add partial payment.');
+  }
+
+  // Validate amount
+  if (!amount || amount <= 0) {
+    res.status(400);
+    throw new Error('Payment amount must be greater than 0');
+  }
+
+  if (amount > payment.dueAmount) {
+    res.status(400);
+    throw new Error(`Payment amount (₹${amount}) cannot exceed outstanding due amount (₹${payment.dueAmount.toFixed(2)})`);
+  }
+
+  // Calculate current total paid
+  const totalPaidFromHistory = payment.paymentHistory && payment.paymentHistory.length > 0
+    ? payment.paymentHistory.reduce((sum, p) => sum + (p.amount || 0), 0)
+    : 0;
+  const currentTotalPaid = (payment.amount || 0) + totalPaidFromHistory;
+  const newTotalPaid = currentTotalPaid + amount;
+  const newDueAmount = Math.max(0, payment.totalAmount - newTotalPaid);
+
+  // Add to payment history
+  if (!payment.paymentHistory) {
+    payment.paymentHistory = [];
+  }
+
+  payment.paymentHistory.push({
+    amount,
+    paymentDate: new Date(),
+    paymentMode: paymentMode || payment.paymentMode,
+    referenceNumber: referenceNumber || '',
+    notes: notes || `Partial payment for outstanding due`,
+    paidBy: req.user._id
+  });
+
+  // Update due amount and status
+  payment.dueAmount = newDueAmount;
+  
+  // Auto-update status based on total paid
+  if (newTotalPaid >= payment.totalAmount) {
+    payment.status = 'completed';
+    payment.dueAmount = 0;
+    
+    // Remove reminder if all dues are cleared
+    if (payment.reminderId) {
+      try {
+        await Reminder.findByIdAndDelete(payment.reminderId);
+      } catch (error) {
+        console.error('Error deleting reminder:', error);
+      }
+      payment.reminderId = undefined;
+      payment.reminderCreated = false;
+      payment.reminderDate = undefined;
+      payment.reminderNotes = undefined;
+    }
+  } else if (newTotalPaid > 0) {
+    payment.status = 'pending'; // Still has outstanding
+  }
+
+  await payment.save();
+
+  // Update vendor outstanding balance (reduce when payment is made)
+  const vendor = await Vendor.findById(payment.vendor);
+  if (vendor) {
+    vendor.outstandingBalance = Math.max(0, (vendor.outstandingBalance || 0) - amount);
+    await vendor.save();
+  }
+
+  // If payment is linked to an invoice, update invoice paid amount
+  if (payment.vendorInvoice) {
+    const invoice = await VendorInvoice.findById(payment.vendorInvoice);
+    if (invoice) {
+      // Recalculate paid amount from all payments linked to this invoice
+      const totalPaid = await VendorPayment.aggregate([
+        { $match: { vendorInvoice: invoice._id } },
+        {
+          $project: {
+            amount: 1,
+            historyTotal: {
+              $sum: {
+                $map: {
+                  input: { $ifNull: ['$paymentHistory', []] },
+                  as: 'p',
+                  in: '$$p.amount'
+                }
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            total: { $add: ['$amount', '$historyTotal'] }
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$total' } } }
+      ]);
+      
+      invoice.paidAmount = totalPaid[0]?.total || 0;
+      await invoice.save();
+    }
+  }
+
+  // Populate payment history for response
+  const populatedPayment = await VendorPayment.findById(payment._id)
+    .populate('vendor', 'vendorId name contactPerson contactNumber')
+    .populate('paymentHistory.paidBy', 'name email')
+    .populate('createdBy', 'name');
+
+  res.status(200).json({
+    success: true,
+    message: `Partial payment of ₹${amount.toFixed(2)} added successfully. Outstanding due: ₹${newDueAmount.toFixed(2)}`,
+    data: populatedPayment
   });
 });
 

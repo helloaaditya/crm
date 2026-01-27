@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { autoGenerateAttendanceRecords } from './attendanceService.js';
+import { checkAndSendNewCustomerReminders } from './customerReminderService.js';
 
 /**
  * Initialize all cron jobs
@@ -19,8 +20,21 @@ export const initializeCronJobs = () => {
     }
   });
   
+  // Run every 6 hours to check for customers with status "new" older than 48 hours
+  // This sends reminders to admin users and aadityakum123@gmail.com
+  cron.schedule('0 */6 * * *', async () => {
+    console.log('⏰ Running customer reminder check...');
+    try {
+      const result = await checkAndSendNewCustomerReminders();
+      console.log('✅ Customer reminder check completed:', result);
+    } catch (error) {
+      console.error('❌ Customer reminder check failed:', error);
+    }
+  });
+  
   console.log('✅ Cron jobs initialized successfully');
   console.log('   - Auto-attendance: Daily at 1:00 AM');
+  console.log('   - Customer reminders: Every 6 hours (checks for "new" status > 48 hours)');
 };
 
 /**

@@ -7,7 +7,8 @@ import {
   deleteVendorPayment,
   cancelVendorPayment,
   getPaymentStats,
-  getVendorWisePayments
+  getVendorWisePayments,
+  addPartialPayment
 } from '../controllers/vendorPaymentController.js';
 import { protect, moduleAccess } from '../middleware/auth.js';
 
@@ -32,6 +33,7 @@ router.route('/:id')
   .delete(deleteVendorPayment);
 
 router.put('/:id/cancel', cancelVendorPayment);
+router.post('/:id/pay-due', addPartialPayment);
 
 export default router;
 

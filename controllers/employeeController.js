@@ -756,10 +756,10 @@ export const processSalary = asyncHandler(async (req, res) => {
   const leaveDeductions = Math.max(0, Math.round(((unpaidSickDays + otherApprovedLeaveDays + absents) * dailyRate + halfDays * (dailyRate/2)) * 100) / 100);
 
   // Hold (Retention) 5% by default
-  // Hold is calculated on payable net amount (after fixed and leave deductions)
+  // Hold is calculated on gross salary (5% of gross salary)
   const holdPercent = employee.holdPercent || 5;
+  const holdAmount = Math.max(0, Math.round((grossSalary * holdPercent / 100) * 100) / 100);
   const prelimNet = grossSalary - fixedDeductions - leaveDeductions;
-  const holdAmount = Math.max(0, Math.round((prelimNet * holdPercent / 100) * 100) / 100);
   const payableNet = Math.max(0, Math.round((prelimNet - holdAmount) * 100) / 100);
 
   employee.salaryHistory.push({
@@ -852,10 +852,10 @@ export const getSalaryPreview = asyncHandler(async (req, res) => {
   const leaveDeductions = Math.max(0, Math.round(((unpaidSickDays + otherApprovedLeaveDays + absents) * dailyRate + halfDays * (dailyRate/2)) * 100) / 100);
 
   // Hold (Retention) 5% by default
-  // Hold is calculated on payable net amount (after fixed and leave deductions)
+  // Hold is calculated on gross salary (5% of gross salary)
   const holdPercent = employee.holdPercent || 5;
+  const holdAmount = Math.max(0, Math.round((grossSalary * holdPercent / 100) * 100) / 100);
   const prelimNet = grossSalary - fixedDeductions - leaveDeductions;
-  const holdAmount = Math.max(0, Math.round((prelimNet * holdPercent / 100) * 100) / 100);
   const payableNet = Math.max(0, Math.round((prelimNet - holdAmount) * 100) / 100);
 
   res.json({
@@ -929,7 +929,7 @@ export const generatePayslip = asyncHandler(async (req, res) => {
     hra: employee.allowances?.hra || 0,
     conveyance: employee.allowances?.conveyance || 0,
     medical: employee.allowances?.medical || 0,
-    otherAllowances: employee.allowances?.other || 0,
+    otAllowances: employee.allowances?.ot || employee.allowances?.other || 0,
     pf: employee.deductions?.pf || 0,
     esi: employee.deductions?.esi || 0,
     professionalTax: employee.deductions?.professionalTax || 0,
@@ -2281,7 +2281,7 @@ export const generateMyPayslip = asyncHandler(async (req, res) => {
       hra: employee.allowances?.hra || 0,
       conveyance: employee.allowances?.conveyance || 0,
       medical: employee.allowances?.medical || 0,
-      otherAllowances: employee.allowances?.other || 0,
+      otAllowances: employee.allowances?.ot || employee.allowances?.other || 0,
       pf: employee.deductions?.pf || 0,
       esi: employee.deductions?.esi || 0,
       professionalTax: employee.deductions?.professionalTax || 0,

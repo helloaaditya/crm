@@ -81,7 +81,7 @@ export const register = asyncHandler(async (req, res) => {
         allowances: {
           hra: 0,
           transport: 0,
-          other: 0
+          ot: 0
         },
         deductions: {
           pf: 0,

@@ -8,7 +8,8 @@ import {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  getCustomerStats
+  getCustomerStats,
+  triggerCustomerReminders
 } from '../controllers/customerController.js';
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.use(moduleAccess('crm', 'inventory', 'all'));
 router.get('/bulk/sample', checkPermission('canCreate'), customerBulkSample);
 router.post('/bulk/upload', checkPermission('canCreate'), uploadMemory.single('file'), customerBulkUpload);
 router.get('/stats', getCustomerStats);
+router.post('/reminders/check', triggerCustomerReminders); // Manual trigger for reminders
 router.get('/', getCustomers);
 router.post('/', checkPermission('canCreate'), createCustomer);
 router.get('/:id', getCustomer);
