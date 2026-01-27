@@ -48,11 +48,13 @@ const createTransporter = () => {
 export const sendEmail = async (to, subject, text, html, attachments = []) => {
   try {
     // Validate email configuration
+    const fromAddress = process.env.EMAIL_FROM || `"Sanjana CRM" <${process.env.EMAIL_USER}>`;
     console.log('📧 Email Config Check:', {
       SERVICE: process.env.EMAIL_SERVICE || 'NOT SET',
       USER: process.env.EMAIL_USER ? '✓ Set' : '✗ Missing',
       PASSWORD: process.env.EMAIL_PASSWORD ? '✓ Set' : '✗ Missing',
-      PASSWORD_LENGTH: process.env.EMAIL_PASSWORD?.length || 0
+      PASSWORD_LENGTH: process.env.EMAIL_PASSWORD?.length || 0,
+      FROM_ADDRESS: fromAddress
     });
     
     const transporter = createTransporter();
@@ -65,8 +67,9 @@ export const sendEmail = async (to, subject, text, html, attachments = []) => {
       return { skipped: true, message: 'Email service not configured' };
     }
 
+    // fromAddress is already declared above - use it here
     const mailOptions = {
-      from: process.env.EMAIL_FROM || `"Sanjana CRM" <${process.env.EMAIL_USER}>`,
+      from: fromAddress,
       to: to,
       subject: subject,
       text: text,
@@ -74,7 +77,8 @@ export const sendEmail = async (to, subject, text, html, attachments = []) => {
       attachments: attachments
     };
 
-    console.log(`📤 Sending email to: ${to}`);
+    console.log(`📤 Sending email FROM: ${fromAddress}`);
+    console.log(`📤 Sending email TO: ${to}`);
     console.log(`📨 Subject: ${subject}`);
     
     const info = await transporter.sendMail(mailOptions);

@@ -41,7 +41,7 @@ export const checkAndSendNewCustomerReminders = async () => {
     // Collect all email addresses (admin users + fixed email)
     const emailRecipients = [
       ...adminUsers.map(admin => admin.email).filter(Boolean),
-      'aadityakum123@gmail.com'
+      'sanjana.waterproofing@gmail.com'
     ];
     
     // Remove duplicates
@@ -173,27 +173,66 @@ export const checkAndSendNewCustomerReminders = async () => {
     `;
     
     // Send email to all recipients
-    const emailPromises = uniqueEmails.map(email => 
-      sendEmail(email, emailSubject, '', emailHtml).catch(error => {
+    // IMPORTANT: All emails are sent FROM the configured email (EMAIL_USER/EMAIL_FROM)
+    // NOT from recipient addresses. Each admin receives email FROM the configured sender.
+    const fromAddress = process.env.EMAIL_FROM || `"Sanjana CRM" <${process.env.EMAIL_USER}>`;
+    console.log(`\n📧 Email Sending Configuration:`);
+    console.log(`   FROM Address: ${fromAddress}`);
+    console.log(`   TO Recipients: ${uniqueEmails.join(', ')}`);
+    console.log(`   Total recipients: ${uniqueEmails.length}`);
+    console.log(`   Note: All emails sent FROM configured email, not from recipient addresses\n`);
+
+    const emailPromises = uniqueEmails.map(async (email) => {
+      try {
+        const result = await sendEmail(email, emailSubject, '', emailHtml);
+        // Check if email was skipped due to missing configuration
+        if (result && result.skipped) {
+          return { error: true, email, message: 'Email service not configured', skipped: true };
+        }
+        return { error: false, email, message: 'Email sent successfully' };
+      } catch (error) {
         console.error(`❌ Failed to send email to ${email}:`, error.message);
-        return { error: true, email, message: error.message };
-      })
-    );
+        console.error(`   Error details:`, error);
+        return { error: true, email, message: error.message, errorCode: error.code };
+      }
+    });
     
     const results = await Promise.allSettled(emailPromises);
     
-    const successCount = results.filter(r => r.status === 'fulfilled' && !r.value.error).length;
-    const failureCount = results.length - successCount;
+    // Process results
+    const emailResults = results.map(r => {
+      if (r.status === 'fulfilled') {
+        return r.value;
+      } else {
+        return { error: true, email: 'unknown', message: r.reason?.message || 'Unknown error' };
+      }
+    });
+    
+    const successCount = emailResults.filter(r => !r.error).length;
+    const failureCount = emailResults.filter(r => r.error).length;
+    const failedEmails = emailResults.filter(r => r.error).map(r => ({
+      email: r.email,
+      message: r.message,
+      errorCode: r.errorCode
+    }));
     
     console.log(`✅ Reminder emails sent: ${successCount} successful, ${failureCount} failed`);
+    if (failedEmails.length > 0) {
+      console.error('❌ Failed email details:');
+      failedEmails.forEach(f => {
+        console.error(`   - ${f.email}: ${f.message}${f.errorCode ? ` (${f.errorCode})` : ''}`);
+      });
+    }
     
     return {
       success: true,
       count: staleCustomers.length,
       emailsSent: successCount,
       emailsFailed: failureCount,
-      recipients: uniqueEmails,
-      message: `Processed ${staleCustomers.length} stale customer(s), sent ${successCount} email(s)`
+      fromAddress: fromAddress, // Show which email address is used as FROM
+      recipients: uniqueEmails, // These are TO addresses, not FROM
+      failedEmails: failedEmails.length > 0 ? failedEmails : undefined,
+      message: `Processed ${staleCustomers.length} stale customer(s), sent ${successCount} email(s)${failureCount > 0 ? `, ${failureCount} failed` : ''}`
     };
     
   } catch (error) {

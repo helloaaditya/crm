@@ -223,7 +223,10 @@ export const triggerCustomerReminders = asyncHandler(async (req, res) => {
         customersFound: result.count || 0,
         emailsSent: result.emailsSent || 0,
         emailsFailed: result.emailsFailed || 0,
-        recipients: result.recipients || []
+        fromAddress: result.fromAddress || 'Not configured', // Email address used as FROM
+        recipients: result.recipients || [], // These are TO addresses (who receives the email)
+        failedEmails: result.failedEmails || [],
+        note: 'All emails are sent FROM the configured email address (EMAIL_USER/EMAIL_FROM), not from recipient addresses'
       }
     });
   } catch (error) {
