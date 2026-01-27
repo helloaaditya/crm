@@ -12,9 +12,17 @@ const vendorPaymentSchema = new mongoose.Schema({
   },
   
   // Payment Details
+  totalAmount: {
+    type: Number,
+    default: 0
+  },
   amount: {
     type: Number,
     required: true
+  },
+  dueAmount: {
+    type: Number,
+    default: 0
   },
   paymentDate: {
     type: Date,
@@ -108,6 +116,11 @@ const vendorPaymentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Reminder'
   },
+  // Pay Due Later option
+  payDueLater: {
+    type: Boolean,
+    default: false
+  },
   
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -162,10 +175,14 @@ vendorPaymentSchema.pre('validate', async function(next) {
   next();
 });
 
-// Calculate net amount before saving
+// Calculate net amount and due amount before saving
 vendorPaymentSchema.pre('save', function(next) {
   if (!this.netAmount) {
     this.netAmount = this.amount - (this.tdsAmount || 0);
+  }
+  // Auto-calculate due amount if totalAmount is provided
+  if (this.totalAmount && this.totalAmount > 0) {
+    this.dueAmount = Math.max(0, this.totalAmount - this.amount);
   }
   next();
 });

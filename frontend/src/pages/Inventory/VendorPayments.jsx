@@ -23,7 +23,9 @@ const VendorPayments = () => {
   const [totalOutstanding, setTotalOutstanding] = useState(0);
   const [formData, setFormData] = useState({
     vendor: '',
+    totalAmount: '',
     amount: '',
+    dueAmount: 0,
     paymentMode: 'bank_transfer',
     referenceNumber: '',
     poBillNumber: '',
@@ -38,7 +40,9 @@ const VendorPayments = () => {
     vendorInvoice: '',
     reminderDate: '',
     reminderAmount: '',
-    reminderNotes: ''
+    reminderNotes: '',
+    createReminder: false,
+    payDueLater: false
   });
   const [availableInvoices, setAvailableInvoices] = useState([]);
   const [poBillFile, setPoBillFile] = useState(null);
@@ -142,10 +146,40 @@ const VendorPayments = () => {
       setAvailableInvoices([]);
     }
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    // Auto-calculate due amount when totalAmount or amount changes
+    setFormData(prev => {
+      let updatedData = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+      
+      if (name === 'totalAmount' || name === 'amount') {
+        const totalAmount = name === 'totalAmount' ? parseFloat(value) || 0 : parseFloat(prev.totalAmount) || 0;
+        const paidAmount = name === 'amount' ? parseFloat(value) || 0 : parseFloat(prev.amount) || 0;
+        updatedData.dueAmount = Math.max(0, totalAmount - paidAmount);
+        
+        // Auto-enable createReminder if dueAmount > 0
+        if (updatedData.dueAmount > 0) {
+          updatedData.createReminder = true;
+          // Auto-set reminder amount to due amount if not already set
+          if (!updatedData.reminderAmount || parseFloat(updatedData.reminderAmount) === 0) {
+            updatedData.reminderAmount = updatedData.dueAmount.toFixed(2);
+          }
+        } else {
+          // If due amount becomes 0, disable createReminder
+          updatedData.createReminder = false;
+        }
+      }
+      
+      // Auto-set reminder amount when createReminder is checked and dueAmount > 0
+      if (name === 'createReminder' && checked && prev.dueAmount > 0) {
+        if (!prev.reminderAmount || parseFloat(prev.reminderAmount) === 0) {
+          updatedData.reminderAmount = prev.dueAmount.toFixed(2);
+        }
+      }
+      
+      return updatedData;
+    });
   };
 
   const handleFileChange = async (e) => {
@@ -211,13 +245,32 @@ const VendorPayments = () => {
         }
       }
 
+      // Calculate due amount if not already calculated
+      const totalAmt = parseFloat(formData.totalAmount) || 0;
+      const paidAmt = parseFloat(formData.amount) || 0;
+      const calculatedDue = Math.max(0, totalAmt - paidAmt);
+
+      // Validate: If createReminder is checked and due > 0, reminderDate is required
+      if (formData.createReminder && calculatedDue > 0 && !formData.reminderDate) {
+        toast.error('Please select a reminder date for the outstanding due amount');
+        setSubmittingPayment(false);
+        return;
+      }
+
       // Clean up formData: convert empty strings to undefined for optional ObjectId fields
       const submitData = {
         ...formData,
+        totalAmount: totalAmt > 0 ? totalAmt : undefined,
+        amount: paidAmt,
+        dueAmount: calculatedDue,
         poBillUrl,
         vendorInvoice: formData.vendorInvoice && formData.vendorInvoice.trim() !== '' ? formData.vendorInvoice : undefined,
         project: formData.project && formData.project.trim() !== '' ? formData.project : undefined,
-        materials: formData.materials && Array.isArray(formData.materials) && formData.materials.length > 0 ? formData.materials : undefined
+        materials: formData.materials && Array.isArray(formData.materials) && formData.materials.length > 0 ? formData.materials : undefined,
+        // Only send reminder data if createReminder is true
+        reminderDate: formData.createReminder && calculatedDue > 0 ? formData.reminderDate : (formData.reminderDate || undefined),
+        reminderAmount: formData.createReminder && calculatedDue > 0 ? (parseFloat(formData.reminderAmount) || calculatedDue) : (formData.reminderAmount || undefined),
+        reminderNotes: formData.createReminder && calculatedDue > 0 ? (formData.reminderNotes || `Outstanding due: ₹${calculatedDue.toFixed(2)}`) : (formData.reminderNotes || undefined)
       };
 
       await api.post('/vendor-payments', submitData);
@@ -227,7 +280,9 @@ const VendorPayments = () => {
       setSelectedVendorDetails(null);
       setFormData({
         vendor: '',
+        totalAmount: '',
         amount: '',
+        dueAmount: 0,
         paymentMode: 'bank_transfer',
         referenceNumber: '',
         poBillNumber: '',
@@ -239,7 +294,12 @@ const VendorPayments = () => {
         gstAmount: 0,
         tdsAmount: 0,
         notes: '',
-        vendorInvoice: ''
+        vendorInvoice: '',
+        reminderDate: '',
+        reminderAmount: '',
+        reminderNotes: '',
+        createReminder: false,
+        payDueLater: false
       });
       setAvailableInvoices([]);
       await fetchPayments();
@@ -257,7 +317,9 @@ const VendorPayments = () => {
     setPoBillFile(null);
     setFormData({
       vendor: '',
+      totalAmount: '',
       amount: '',
+      dueAmount: 0,
       paymentMode: 'bank_transfer',
       referenceNumber: '',
       poBillNumber: '',
@@ -272,7 +334,9 @@ const VendorPayments = () => {
       vendorInvoice: '',
       reminderDate: '',
       reminderAmount: '',
-      reminderNotes: ''
+      reminderNotes: '',
+      createReminder: false,
+      payDueLater: false
     });
   };
 
@@ -1020,7 +1084,23 @@ const VendorPayments = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Amount *
+                    Total Amount
+                  </label>
+                  <input
+                    type="number"
+                    name="totalAmount"
+                    value={formData.totalAmount}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter total bill amount"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Paid Amount *
                   </label>
                   <input
                     type="number"
@@ -1030,8 +1110,26 @@ const VendorPayments = () => {
                     required
                     min="0"
                     step="0.01"
+                    placeholder="Amount being paid now"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Due Amount
+                  </label>
+                  <input
+                    type="number"
+                    name="dueAmount"
+                    value={formData.dueAmount.toFixed(2)}
+                    readOnly
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-700 font-semibold"
+                    style={{ cursor: 'not-allowed' }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.dueAmount > 0 ? '⚠️ Outstanding amount remaining' : '✓ Fully paid'}
+                  </p>
                 </div>
 
                 <div>
@@ -1229,58 +1327,170 @@ const VendorPayments = () => {
                   />
                 </div>
 
-                {/* 🔔 Reminder Section */}
-                <div className="col-span-2 border-t pt-4 mt-2">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                    🔔 Payment Reminder (Optional)
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Set a reminder for the next payment date
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Reminder Date
-                      </label>
-                      <input
-                        type="date"
-                        name="reminderDate"
-                        value={formData.reminderDate}
-                        onChange={handleInputChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                      />
+                {/* 🔔 Reminder Section - Auto-create if due amount > 0 */}
+                {formData.dueAmount > 0 && (
+                  <div className="col-span-2 border-t pt-4 mt-2">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-yellow-800 flex items-center">
+                          ⚠️ Outstanding Due: ₹{formData.dueAmount.toFixed(2)}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Add due amount to current paid amount
+                            const currentPaid = parseFloat(formData.amount) || 0;
+                            const totalAmt = parseFloat(formData.totalAmount) || 0;
+                            const dueAmt = formData.dueAmount;
+                            const newPaidAmount = currentPaid + dueAmt;
+                            
+                            // Recalculate due amount
+                            const newDueAmount = totalAmt > 0 ? Math.max(0, totalAmt - newPaidAmount) : 0;
+                            
+                            setFormData(prev => ({
+                              ...prev,
+                              amount: newPaidAmount.toFixed(2),
+                              dueAmount: newDueAmount,
+                              createReminder: newDueAmount > 0
+                            }));
+                            toast.success(`Due amount of ₹${dueAmt.toFixed(2)} added to paid amount`);
+                          }}
+                          className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
+                        >
+                          💰 Pay Due
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            name="createReminder"
+                            checked={formData.createReminder}
+                            onChange={handleInputChange}
+                            className="rounded"
+                          />
+                          <span className="text-sm font-medium text-yellow-800">
+                            Create Reminder for Due Amount
+                          </span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            name="payDueLater"
+                            checked={formData.payDueLater}
+                            onChange={handleInputChange}
+                            className="rounded"
+                          />
+                          <span className="text-sm font-medium text-yellow-800">
+                            Pay Due Amount Later
+                          </span>
+                        </label>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Reminder Amount
-                      </label>
-                      <input
-                        type="number"
-                        name="reminderAmount"
-                        value={formData.reminderAmount}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="0.01"
-                        placeholder="Expected payment amount"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Reminder Notes
-                      </label>
-                      <textarea
-                        name="reminderNotes"
-                        value={formData.reminderNotes}
-                        onChange={handleInputChange}
-                        rows="2"
-                        placeholder="Add notes for the next payment..."
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                      />
+
+                    {formData.createReminder && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reminder Date *
+                          </label>
+                          <input
+                            type="date"
+                            name="reminderDate"
+                            value={formData.reminderDate}
+                            onChange={handleInputChange}
+                            min={new Date().toISOString().split('T')[0]}
+                            required={formData.createReminder}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reminder Amount
+                          </label>
+                          <input
+                            type="number"
+                            name="reminderAmount"
+                            value={formData.reminderAmount || formData.dueAmount}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            placeholder="Due amount"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reminder Notes
+                          </label>
+                          <textarea
+                            name="reminderNotes"
+                            value={formData.reminderNotes}
+                            onChange={handleInputChange}
+                            rows="2"
+                            placeholder={`Payment reminder for outstanding due of ₹${formData.dueAmount.toFixed(2)}`}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 🔔 Optional Reminder Section (if no due amount) */}
+                {formData.dueAmount === 0 && (
+                  <div className="col-span-2 border-t pt-4 mt-2">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                      🔔 Payment Reminder (Optional)
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Set a reminder for the next payment date
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Reminder Date
+                        </label>
+                        <input
+                          type="date"
+                          name="reminderDate"
+                          value={formData.reminderDate}
+                          onChange={handleInputChange}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Reminder Amount
+                        </label>
+                        <input
+                          type="number"
+                          name="reminderAmount"
+                          value={formData.reminderAmount}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.01"
+                          placeholder="Expected payment amount"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Reminder Notes
+                        </label>
+                        <textarea
+                          name="reminderNotes"
+                          value={formData.reminderNotes}
+                          onChange={handleInputChange}
+                          rows="2"
+                          placeholder="Add notes for the next payment..."
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">

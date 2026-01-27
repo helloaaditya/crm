@@ -11,7 +11,9 @@ import { deleteFromS3 } from '../utils/s3Service.js';
 export const createVendorPayment = asyncHandler(async (req, res) => {
   const {
     vendor,
+    totalAmount,
     amount,
+    dueAmount,
     paymentMode,
     referenceNumber,
     poBillNumber,
@@ -28,7 +30,9 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
     vendorInvoice,
     reminderDate,
     reminderAmount,
-    reminderNotes
+    reminderNotes,
+    createReminder,
+    payDueLater
   } = req.body;
 
   // Validate vendor exists
@@ -42,9 +46,16 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
   const finalVendorInvoice = vendorInvoice && vendorInvoice.trim() !== '' ? vendorInvoice : undefined;
   const finalProject = project && (typeof project === 'string' ? project.trim() !== '' : project) ? project : undefined;
 
+  // Calculate due amount if totalAmount is provided
+  const calculatedDueAmount = totalAmount && totalAmount > 0 
+    ? Math.max(0, totalAmount - amount) 
+    : (dueAmount || 0);
+
   const payment = await VendorPayment.create({
     vendor,
+    totalAmount: totalAmount || 0,
     amount,
+    dueAmount: calculatedDueAmount,
     paymentMode,
     referenceNumber,
     poBillNumber,
@@ -59,6 +70,7 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
     tdsAmount: tdsAmount || 0,
     notes,
     vendorInvoice: finalVendorInvoice,
+    payDueLater: payDueLater || false,
     createdBy: req.user._id,
     approvedBy: req.user._id,
     approvedDate: new Date()
@@ -88,27 +100,43 @@ export const createVendorPayment = asyncHandler(async (req, res) => {
   vendorDoc.outstandingBalance = Math.max(0, (vendorDoc.outstandingBalance || 0) - amount);
   await vendorDoc.save();
 
-  // 🔔 Create reminder if reminder date is provided
-  if (reminderDate) {
+  // 🔔 Create reminder if due amount exists and createReminder is true, or if reminderDate is provided
+  const shouldCreateReminder = (createReminder && calculatedDueAmount > 0) || reminderDate;
+  
+  if (shouldCreateReminder) {
     try {
+      // Use provided reminderDate or set a default (7 days from now) if due amount exists
+      let finalReminderDate = reminderDate;
+      if (!finalReminderDate && calculatedDueAmount > 0) {
+        const defaultDate = new Date();
+        defaultDate.setDate(defaultDate.getDate() + 7); // 7 days from now
+        finalReminderDate = defaultDate.toISOString().split('T')[0];
+      }
+
       const reminder = await Reminder.create({
-        title: `Vendor Payment Reminder - ${vendorDoc.name}`,
-        description: reminderNotes || `Next payment reminder for vendor ${vendorDoc.name}${description ? ` - ${description}` : ''}`,
+        title: `Vendor Payment Reminder - ${vendorDoc.name}${calculatedDueAmount > 0 ? ` (Due: ₹${calculatedDueAmount.toFixed(2)})` : ''}`,
+        description: reminderNotes || 
+          (calculatedDueAmount > 0 
+            ? `Outstanding due amount of ₹${calculatedDueAmount.toFixed(2)} for vendor ${vendorDoc.name}${description ? ` - ${description}` : ''}`
+            : `Next payment reminder for vendor ${vendorDoc.name}${description ? ` - ${description}` : ''}`),
         reminderType: 'vendor_payment',
-        reminderDate: new Date(reminderDate),
+        reminderDate: new Date(finalReminderDate),
         relatedTo: {
           entityType: 'vendor',
           entityId: vendor
         },
-        amount: reminderAmount || amount,
-        priority: 'high',
+        amount: reminderAmount || calculatedDueAmount || amount,
+        priority: calculatedDueAmount > 0 ? 'high' : 'medium',
         status: 'pending',
         createdBy: req.user._id
       });
 
       // Update payment with reminder info
-      payment.reminderDate = reminderDate;
-      payment.reminderNotes = reminderNotes;
+      payment.reminderDate = finalReminderDate;
+      payment.reminderNotes = reminderNotes || 
+        (calculatedDueAmount > 0 
+          ? `Outstanding due: ₹${calculatedDueAmount.toFixed(2)}`
+          : '');
       payment.reminderCreated = true;
       payment.reminderId = reminder._id;
       await payment.save();
