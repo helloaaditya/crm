@@ -9,7 +9,7 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "init:settings": "node scripts/initSettings.js",
-    "build": "cd frontend && npm run build"
+    "build": "cd frontend && npm install && npm run build"
   },
   "keywords": [
     "crm",
