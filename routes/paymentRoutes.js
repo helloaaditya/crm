@@ -5,7 +5,8 @@ import {
   getPayment,
   createPaymentOrder,
   verifyPayment,
-  recordManualPayment
+  recordManualPayment,
+  deletePayment
 } from '../controllers/invoicePaymentController.js';
 
 const router = express.Router();
@@ -26,5 +27,8 @@ router.get('/', getPayments);
 
 // Get payment by ID
 router.get('/:id', getPayment);
+
+// Delete payment
+router.delete('/:id', deletePayment);
 
 export default router;

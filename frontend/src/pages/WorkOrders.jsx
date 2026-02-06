@@ -574,6 +574,96 @@ const WorkOrders = () => {
                 </div>
               )}
 
+              {/* Documents Section */}
+              {viewingOrder.documents && viewingOrder.documents.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Attached Documents ({viewingOrder.documents.length})
+                  </label>
+                  <div className="space-y-2">
+                    {viewingOrder.documents.map((doc, index) => {
+                      // Determine file type icon based on file extension or mime type
+                      const getFileIcon = (fileName, mimeType) => {
+                        const ext = fileName?.split('.').pop()?.toLowerCase() || '';
+                        if (['pdf'].includes(ext) || mimeType?.includes('pdf')) {
+                          return (
+                            <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10.5,11C10.5,10.18 11.18,9.5 12,9.5C12.82,9.5 13.5,10.18 13.5,11C13.5,11.82 12.82,12.5 12,12.5C11.18,12.5 10.5,11.82 10.5,11M12,14C14.33,14 16,15.67 16,18H8C8,15.67 9.67,14 12,14Z"/>
+                            </svg>
+                          );
+                        }
+                        if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext) || mimeType?.includes('image')) {
+                          return (
+                            <svg className="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z"/>
+                            </svg>
+                          );
+                        }
+                        if (['doc', 'docx'].includes(ext) || mimeType?.includes('word')) {
+                          return (
+                            <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M15.2,20H13.8L12,13.2L10.2,20H8.8L6.6,11H8.1L9.5,17.8L11.3,11H12.6L14.4,17.8L15.8,11H17.3L15.2,20M13,9V3.5L18.5,9H13Z"/>
+                            </svg>
+                          );
+                        }
+                        if (['xls', 'xlsx'].includes(ext) || mimeType?.includes('spreadsheet') || mimeType?.includes('excel')) {
+                          return (
+                            <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M15.8,20H14L12,16.6L10,20H8.2L11.1,15.5L8.2,11H10L12,14.4L14,11H15.8L12.9,15.5L15.8,20M13,9V3.5L18.5,9H13Z"/>
+                            </svg>
+                          );
+                        }
+                        // Default file icon
+                        return (
+                          <svg className="w-8 h-8 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                          </svg>
+                        );
+                      };
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            {getFileIcon(doc.name, doc.mimeType)}
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 truncate max-w-[200px] sm:max-w-[300px]">
+                                {doc.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(2)} KB` : ''}
+                                {doc.uploadDate && ` • ${format(new Date(doc.uploadDate), 'MMM dd, yyyy')}`}
+                              </p>
+                            </div>
+                          </div>
+                          {doc.url && (
+                            <button
+                              onClick={() => window.open(doc.url, '_blank')}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              <FiEye size={16} />
+                              <span className="hidden sm:inline">View</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* No Documents Message */}
+              {(!viewingOrder.documents || viewingOrder.documents.length === 0) && (
+                <div className="text-center py-4 bg-gray-50 rounded-lg">
+                  <svg className="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-sm text-gray-500">No documents attached</p>
+                </div>
+              )}
+
               <div className="flex justify-end pt-4">
                 <button
                   onClick={() => setShowViewModal(false)}

@@ -226,7 +226,8 @@ export const paymentAPI = {
   getByInvoice: (invoiceId) => api.get(`/payments/invoice/${invoiceId}`),
   createOrder: (data) => api.post('/payments/create-order', data),
   verifyPayment: (data) => api.post('/payments/verify', data),
-  recordManual: (data) => api.post('/payments/manual', data)
+  recordManual: (data) => api.post('/payments/manual', data),
+  delete: (id) => api.delete(`/payments/${id}`)
 };
 
 // ============= REMINDERS =============

@@ -1206,6 +1206,56 @@ export const recordManualPayment = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Delete payment
+// @route   DELETE /api/payments/:id
+// @access  Private/Admin
+export const deletePayment = asyncHandler(async (req, res) => {
+  const payment = await Payment.findById(req.params.id);
+
+  if (!payment) {
+    return res.status(404).json({ message: 'Payment not found' });
+  }
+
+  // Check permission - only main_admin, admin, or accounts can delete payments
+  const allowedRoles = ['main_admin', 'admin'];
+  const hasAccountsPermission = req.user.permissions?.canHandleAccounts;
+  
+  if (!allowedRoles.includes(req.user.role) && !hasAccountsPermission) {
+    return res.status(403).json({ message: 'Not authorized to delete payments' });
+  }
+
+  // Find the related invoice and update it
+  if (payment.invoice) {
+    const invoice = await Invoice.findById(payment.invoice);
+    if (invoice) {
+      // Subtract the payment amount from paidAmount
+      invoice.paidAmount = Math.max(0, invoice.paidAmount - payment.amount);
+      
+      // Remove payment from invoice's payments array
+      invoice.payments = invoice.payments.filter(p => p.toString() !== payment._id.toString());
+      
+      // Update invoice status based on new paidAmount
+      if (invoice.paidAmount === 0) {
+        invoice.status = invoice.dueDate < new Date() ? 'overdue' : 'pending';
+      } else if (invoice.paidAmount >= invoice.totalAmount) {
+        invoice.status = 'paid';
+      } else {
+        invoice.status = 'partial';
+      }
+      
+      await invoice.save();
+    }
+  }
+
+  // Delete the payment
+  await Payment.findByIdAndDelete(req.params.id);
+
+  res.json({
+    success: true,
+    message: 'Payment deleted successfully'
+  });
+});
+
 // @desc    Convert quotation to invoice
 // @route   POST /api/invoices/:id/convert-to-invoice
 // @access  Private
