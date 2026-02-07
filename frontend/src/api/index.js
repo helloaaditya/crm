@@ -380,6 +380,16 @@ export const apkAPI = {
   })
 };
 
+// ============= SALARY SHEET =============
+export const salarySheetAPI = {
+  get: (params) => api.get('/salary-sheet', { params }),
+  update: (employeeId, data) => api.put(`/salary-sheet/${employeeId}`, data),
+  bulkSave: (data) => api.post('/salary-sheet/bulk', data),
+  markPaid: (employeeId, data) => api.put(`/salary-sheet/${employeeId}/mark-paid`, data),
+  markUnpaid: (employeeId, data) => api.put(`/salary-sheet/${employeeId}/mark-unpaid`, data),
+  delete: (employeeId, params) => api.delete(`/salary-sheet/${employeeId}`, { params })
+};
+
 // Export all APIs
 export default {
   dashboard: dashboardAPI,
@@ -400,5 +410,6 @@ export default {
   funds: fundAPI,
   todos: todoAPI,
   vendorInvoices: vendorInvoiceAPI,
-  apk: apkAPI
+  apk: apkAPI,
+  salarySheet: salarySheetAPI
 };

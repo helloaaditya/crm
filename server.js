@@ -35,6 +35,7 @@ import workOrderRoutes from './routes/workOrderRoutes.js';
 import companyDocumentRoutes from './routes/companyDocumentRoutes.js';
 import todoRoutes from './routes/todoRoutes.js';
 import apkRoutes from './routes/apkRoutes.js';
+import salarySheetRoutes from './routes/salarySheetRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -190,6 +191,7 @@ app.use('/api/work-orders', workOrderRoutes);
 app.use('/api/company-documents', companyDocumentRoutes);
 app.use('/api/todos', todoRoutes);
 app.use('/api/apk', apkRoutes);
+app.use('/api/salary-sheet', salarySheetRoutes);
 
 // Log route registration for debugging
 console.log('✅ Todo routes registered at /api/todos');

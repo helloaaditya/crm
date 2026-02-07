@@ -108,6 +108,7 @@ const Payments = () => {
 
   const handleModalSuccess = () => {
     fetchPayments()
+    fetchInvoices() // Refresh invoices to update balance info
     handleModalClose()
   }
 
@@ -124,8 +125,11 @@ const Payments = () => {
   const getStatusBadge = (status) => {
     const badges = {
       paid: 'bg-green-100 text-green-800',
+      success: 'bg-green-100 text-green-800',
       partial: 'bg-yellow-100 text-yellow-800',
-      pending: 'bg-red-100 text-red-800'
+      pending: 'bg-orange-100 text-orange-800',
+      failed: 'bg-red-100 text-red-800',
+      refunded: 'bg-purple-100 text-purple-800'
     }
     return badges[status] || 'bg-gray-100 text-gray-800'
   }
@@ -311,7 +315,7 @@ const Payments = () => {
       </div>
 
       {/* Payments Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-auto">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -328,6 +332,7 @@ const Payments = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Mode</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference / Txn</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -359,6 +364,16 @@ const Payments = () => {
                       ) : (
                         payment.transactionId || payment.referenceNumber || '-'
                       )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {payment.invoice ? (
+                        <div>
+                          <div className="font-medium text-sm text-gray-800">{payment.invoice.status || '-'}</div>
+                          {payment.invoice.status === 'partial' && payment.invoice.totalAmount != null && (
+                            <div className="text-xs text-orange-600">Due: ₹{Math.max(0, (payment.invoice.totalAmount || 0) - (payment.invoice.paidAmount || 0)).toLocaleString()}</div>
+                          )}
+                        </div>
+                      ) : <span className="text-xs text-gray-400">-</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(payment.status)}`}>
@@ -420,6 +435,19 @@ const Payments = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Amount:</span>
                       <span className="font-semibold text-gray-900">₹{payment.amount?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Invoice Status:</span>
+                      <span className="text-sm font-medium text-gray-800">
+                        {payment.invoice ? (
+                          <>
+                            {payment.invoice.status || '-'}
+                            {payment.invoice.status === 'partial' && payment.invoice.totalAmount != null && (
+                              <span className="text-xs text-orange-600 ml-2">Due: ₹{Math.max(0, (payment.invoice.totalAmount || 0) - (payment.invoice.paidAmount || 0)).toLocaleString()}</span>
+                            )}
+                          </>
+                        ) : '-'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Payment Mode:</span>

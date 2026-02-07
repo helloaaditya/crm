@@ -95,13 +95,17 @@ const employeeSchema = new mongoose.Schema({
     paidDate: Date,
     paymentMode: {
       type: String,
-      enum: ['cash', 'bank_transfer', 'cheque']
+      enum: ['cash', 'bank_transfer', 'cheque', 'upi']
     },
     status: {
       type: String,
       enum: ['pending', 'paid'],
       default: 'pending'
     },
+    referenceNumber: String,
+    transactionId: String,
+    chequeNumber: String,
+    bankName: String,
     notes: String
   }],
   

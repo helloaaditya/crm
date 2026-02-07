@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Project from '../models/Project.js';
 import Customer from '../models/Customer.js';
 import CalendarReminder from '../models/CalendarReminder.js';
+import SalarySheet from '../models/SalarySheet.js';
 import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, generateMissingAttendanceForMonth, validateAndUpdateAttendance, deduplicateAttendance, updateSundaysToWeekoff } from '../utils/attendanceService.js';
@@ -711,7 +712,7 @@ export const processSalary = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Employee not found' });
   }
 
-  const { month, paymentMode, notes } = req.body;
+  const { month, paymentMode, paidDate, notes, referenceNumber, transactionId, chequeNumber, bankName } = req.body;
 
   // Check if salary already processed for the month
   const existingSalary = employee.salaryHistory.find(s => s.month === month);
@@ -768,9 +769,13 @@ export const processSalary = asyncHandler(async (req, res) => {
     totalAllowances,
     totalDeductions: fixedDeductions + leaveDeductions + holdAmount,
     netSalary: payableNet,
-    paidDate: new Date(),
+    paidDate: paidDate ? new Date(paidDate) : new Date(),
     paymentMode,
     status: 'paid',
+    referenceNumber: referenceNumber || undefined,
+    transactionId: transactionId || undefined,
+    chequeNumber: chequeNumber || undefined,
+    bankName: bankName || undefined,
     notes
   });
 
@@ -1363,6 +1368,7 @@ export const getMySalary = asyncHandler(async (req, res) => {
 
   // Format salary history for frontend
   const formattedHistory = employee.salaryHistory.map(record => ({
+    _id: record._id,
     month: record.month,
     grossAmount: record.basicSalary + record.totalAllowances,
     deductions: record.totalDeductions,
@@ -1370,8 +1376,36 @@ export const getMySalary = asyncHandler(async (req, res) => {
     status: record.status,
     paymentDate: record.paidDate,
     paymentMode: record.paymentMode,
+    referenceNumber: record.referenceNumber,
+    transactionId: record.transactionId,
+    chequeNumber: record.chequeNumber,
+    bankName: record.bankName,
     notes: record.notes
   })).sort((a, b) => b.month.localeCompare(a.month));
+
+  // Fetch salary sheet data for current and recent months
+  const salarySheets = await SalarySheet.find({
+    employee: employee._id
+  }).sort({ year: -1, month: -1 }).limit(12);
+
+  const formattedSheets = salarySheets.map(s => ({
+    month: s.month,
+    year: s.year,
+    totalDays: s.totalDays,
+    totalAbsent: s.totalAbsent,
+    presentDays: s.presentDays,
+    extraDaysWorking: s.extraDaysWorking,
+    extraDaysDetails: s.extraDaysDetails || [],
+    advance: s.advance,
+    timingsDeduction: s.timingsDeduction,
+    fixedSalary: s.fixedSalary,
+    perDaySalary: s.perDaySalary,
+    fivePercentDeduction: s.fivePercentDeduction,
+    salaryPayable: s.salaryPayable,
+    afterDeduction: s.afterDeduction,
+    status: s.status,
+    paidDate: s.paidDate
+  }));
 
   res.json({
     success: true,
@@ -1384,7 +1418,8 @@ export const getMySalary = asyncHandler(async (req, res) => {
       netSalary,
       leaveDeductions,
       currentMonth: currentMonthData,
-      history: formattedHistory
+      history: formattedHistory,
+      salarySheets: formattedSheets
     }
   });
 });

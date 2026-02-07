@@ -77,9 +77,12 @@ const paymentSchema = new mongoose.Schema({
 // Generate payment ID before saving
 paymentSchema.pre('save', async function(next) {
   if (!this.paymentId) {
-    const count = await mongoose.model('Payment').countDocuments();
+    // Use year + timestamp + random suffix to avoid collisions in concurrent inserts.
+    // This is simpler and more reliable than counting documents which can collide.
     const year = new Date().getFullYear().toString().slice(-2);
-    this.paymentId = `PAY${year}${String(count + 1).padStart(6, '0')}`;
+    const ts = Date.now().toString().slice(-8); // last 8 digits of timestamp
+    const rand = Math.floor(1000 + Math.random() * 9000); // 4 digit random suffix
+    this.paymentId = `PAY${year}${ts}${rand}`;
   }
   next();
 });

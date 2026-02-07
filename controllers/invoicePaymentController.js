@@ -972,9 +972,10 @@ export const getPayments = asyncHandler(async (req, res) => {
   // Query paginated results
   const [payments, totalCount, totals] = await Promise.all([
     Payment.find(query)
-      .populate({
+    .populate({
         path: 'invoice',
-        select: 'invoiceNumber customer',
+        // include status, totalAmount and paidAmount so frontend can display invoice status and due
+        select: 'invoiceNumber customer status totalAmount paidAmount',
         populate: { path: 'customer', select: 'name contactNumber' }
       })
       .populate('customer', 'name contactNumber')
@@ -1139,23 +1140,31 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 // @route   POST /api/payments/manual
 // @access  Private
 export const recordManualPayment = asyncHandler(async (req, res) => {
-  const { invoiceId, amount, paymentMethod, transactionId, referenceNumber, notes, chequeNumber, bankName, chequeDate } = req.body;
+  const { invoiceId, amount, paymentMethod, transactionId, referenceNumber, notes, chequeNumber, bankName, chequeDate, status: reqStatus, paymentDate } = req.body;
 
   const invoice = await Invoice.findById(invoiceId);
   if (!invoice) {
     return res.status(404).json({ message: 'Invoice not found' });
   }
 
+  // Calculate what the new paidAmount will be
+  const newPaidAmount = (invoice.paidAmount || 0) + parseFloat(amount);
+  const balanceAfter = Math.max(0, invoice.totalAmount - newPaidAmount);
+
+  // Determine payment status: use provided or auto-calculate
+  const paymentStatus = reqStatus || 'success';
+
   // Record payment
   const paymentData = {
     invoice: invoiceId,
     customer: invoice.customer,
-    amount,
+    amount: parseFloat(amount),
     paymentMethod,
+    paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
     transactionId: transactionId || referenceNumber || undefined,
     referenceNumber: referenceNumber || transactionId || undefined,
     notes,
-    status: 'success',
+    status: paymentStatus,
     recordedBy: req.user._id
   };
   if (paymentMethod === 'cheque') {
@@ -1170,10 +1179,10 @@ export const recordManualPayment = asyncHandler(async (req, res) => {
   const payment = await Payment.create(paymentData);
 
   // Update invoice
-  invoice.paidAmount += amount;
+  invoice.paidAmount = newPaidAmount;
   invoice.payments.push(payment._id);
   
-  // Automatically update invoice status based on payment status
+  // Automatically update invoice status based on payment amounts
   if (invoice.paidAmount >= invoice.totalAmount) {
     invoice.status = 'paid';
   } else if (invoice.paidAmount > 0) {
@@ -1201,8 +1210,12 @@ export const recordManualPayment = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Manual payment recorded successfully',
-    data: payment
+    message: balanceAfter > 0
+      ? `Payment of ₹${parseFloat(amount).toLocaleString('en-IN')} recorded. ₹${balanceAfter.toLocaleString('en-IN')} balance remaining.`
+      : `Payment of ₹${parseFloat(amount).toLocaleString('en-IN')} recorded. Invoice fully paid.`,
+    data: payment,
+    invoiceStatus: invoice.status,
+    balanceAfter
   });
 });
 
