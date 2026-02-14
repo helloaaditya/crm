@@ -9,6 +9,11 @@ build
 coverage
 *.pem
 
+# Environment variables (ignore all)
+.env
+.env.*
+.env.example
+
 # Capacitor
 android/
 ios/
