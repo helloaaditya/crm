@@ -36,10 +36,10 @@ export const initializeCronJobs = () => {
   // (employees with no check-in / activity for the day)
   try {
     cron.schedule(
-      '20 30 * * *',
+      '17 10 * * *',
       async () => {
         const now = new Date();
-        console.log(`⏰ [${now.toISOString()}] Running employee inactivity report (8:20 PM IST)...`);
+        console.log(`⏰ [${now.toISOString()}] Running employee inactivity report (5:10 PM IST)...`);
         try {
           const result = await checkAndSendEmployeeInactivityReport();
           console.log('✅ Employee inactivity report completed:', JSON.stringify(result));
