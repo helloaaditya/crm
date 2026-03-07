@@ -34,7 +34,7 @@ export const initializeCronJobs = () => {
 
   // Run daily at 7:00 PM – send inactivity report to kulalp447@gmail.com
   // (employees with no check-in / activity for the day)
-  cron.schedule('0 17 * * *', async () => {
+  cron.schedule('0 22 * * *', async () => {
     console.log('⏰ Running employee inactivity report...');
     try {
       const result = await checkAndSendEmployeeInactivityReport();
