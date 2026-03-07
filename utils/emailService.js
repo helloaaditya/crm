@@ -77,8 +77,9 @@ export const sendEmail = async (to, subject, text, html, attachments = []) => {
     });
 
     // Prefer Resend when API key is set (works on Render; SMTP is often blocked)
+    // Always use Resend's default sender - gmail.com cannot be verified on Resend
     if (process.env.RESEND_API_KEY) {
-      const resendFrom = process.env.EMAIL_FROM || '"Sanjana CRM" <onboarding@resend.dev>';
+      const resendFrom = '"Sanjana CRM" <onboarding@resend.dev>';
       console.log('📤 Sending via Resend (HTTPS)...');
       console.log(`📤 FROM: ${resendFrom} TO: ${to} | Subject: ${subject}`);
       const info = await sendEmailViaResend(to, subject, text, html, resendFrom);

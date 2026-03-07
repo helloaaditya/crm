@@ -8,15 +8,13 @@ This feature sends a daily email to **kulalp447@gmail.com** listing employees wh
 
 **On Render (or any host that blocks SMTP):** Use **Resend** so email goes over HTTPS instead of SMTP.
 
-In Render **Environment** tab, add:
+In Render **Environment** tab, add only:
 
 ```env
 RESEND_API_KEY=re_xxxxxxxxxxxx
-# Optional – defaults to "Sanjana CRM" <onboarding@resend.dev>
-# EMAIL_FROM=Sanjana CRM <onboarding@resend.dev>
 ```
 
-Get a key at [resend.com/api-keys](https://resend.com/api-keys). No other email vars needed when using Resend.
+Get a key at [resend.com/api-keys](https://resend.com/api-keys). Emails will be sent from **Sanjana CRM** (`onboarding@resend.dev`). That address is Resend’s default—no domain verification needed. You cannot use your Gmail as “from” with Resend unless you verify your own domain at resend.com/domains.
 
 **Local / hosts that allow SMTP:** You can use Gmail instead:
 
