@@ -55,6 +55,7 @@ import {
   listHoldRequests,
   approveHoldRequest,
   rejectHoldRequest,
+  sendEmployeeInactivityReport,
   // Documents
   addEmployeeDocument,
   deleteEmployeeDocument
@@ -159,6 +160,7 @@ router.post('/bulk/upload', checkPermission('canCreate'), uploadMemory.single('f
 // Employees
 router.get('/', getEmployees);
 router.post('/', checkPermission('canCreate'), createEmployee);
+router.post('/inactivity-report/send', sendEmployeeInactivityReport);
 router.get('/:id', getEmployee);
 router.get('/:id/projects', getEmployeeProjects);
 router.get('/:id/team', getSupervisorTeam);

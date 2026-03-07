@@ -7,6 +7,7 @@ import SalarySheet from '../models/SalarySheet.js';
 import { createNotification, NotificationTemplates, sendToMultipleUsers } from './notificationController.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { autoGenerateAttendanceRecords, generateMissingAttendanceForEmployee, generateMissingAttendanceForMonth, validateAndUpdateAttendance, deduplicateAttendance, updateSundaysToWeekoff } from '../utils/attendanceService.js';
+import { checkAndSendEmployeeInactivityReport } from '../utils/employeeInactivityReminderService.js';
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -2399,5 +2400,31 @@ export const deleteEmployeeDocument = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Document deleted successfully'
+  });
+});
+
+// @desc    Trigger employee inactivity report (today) and send email to kulalp447@gmail.com
+// @route   POST /api/employees/inactivity-report/send
+// @access  Private (Admin)
+export const sendEmployeeInactivityReport = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'main_admin' && req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admin only.' });
+  }
+  const { date } = req.body; // optional: YYYY-MM-DD; default = today
+  const forDate = date ? new Date(date) : new Date();
+  const result = await checkAndSendEmployeeInactivityReport(forDate);
+  if (!result.success) {
+    return res.status(500).json({
+      success: false,
+      message: result.message,
+      error: result.error,
+      skipped: result.skipped
+    });
+  }
+  res.json({
+    success: true,
+    message: result.message,
+    count: result.count,
+    recipient: result.recipient
   });
 });
