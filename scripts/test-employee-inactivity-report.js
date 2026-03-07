@@ -16,9 +16,18 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/sanjana_crm';
 
+function maskUri(uri) {
+  if (!uri || uri.startsWith('mongodb://localhost')) return uri;
+  try {
+    const u = uri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
+    return u.replace(/(\.mongodb\.net\/[^?]*)/, '.mongodb.net/***');
+  } catch (_) { return '(set)'; }
+}
+
 async function run() {
   try {
     console.log('🔗 Connecting to MongoDB...');
+    console.log('   URI:', maskUri(MONGODB_URI));
     await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to MongoDB\n');
 
@@ -45,6 +54,13 @@ async function run() {
     process.exit(result.success ? 0 : 1);
   } catch (err) {
     console.error('\n❌ Error:', err.message);
+    if (err.message && (err.message.includes('ECONNREFUSED') || err.message.includes('querySrv'))) {
+      console.error('\n💡 This is a network/DNS error: this machine cannot reach MongoDB Atlas.');
+      console.error('   - Check internet connection and firewall (outbound DNS + TCP to Atlas).');
+      console.error('   - Run this script from the same network where your backend server runs.');
+      console.error('   - Or trigger the report via API while the server is running:');
+      console.error('     POST /api/employees/inactivity-report/send (with Admin JWT)');
+    }
     if (err.stack) console.error(err.stack);
     process.exit(1);
   }

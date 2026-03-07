@@ -32,22 +32,42 @@ export const initializeCronJobs = () => {
     }
   });
 
-  // Run daily at 8:20 PM – send inactivity report to kulalp447@gmail.com
+  // Run daily at 8:20 PM IST – send inactivity report to kulalp447@gmail.com
   // (employees with no check-in / activity for the day)
-  cron.schedule('20 20 * * *', async () => {
-    console.log('⏰ Running employee inactivity report...');
-    try {
-      const result = await checkAndSendEmployeeInactivityReport();
-      console.log('✅ Employee inactivity report completed:', result);
-    } catch (error) {
-      console.error('❌ Employee inactivity report failed:', error);
-    }
-  });
-  
+  try {
+    cron.schedule(
+      '20 30 * * *',
+      async () => {
+        const now = new Date();
+        console.log(`⏰ [${now.toISOString()}] Running employee inactivity report (8:20 PM IST)...`);
+        try {
+          const result = await checkAndSendEmployeeInactivityReport();
+          console.log('✅ Employee inactivity report completed:', JSON.stringify(result));
+        } catch (error) {
+          console.error('❌ Employee inactivity report failed:', error?.message || error);
+        }
+      },
+      { timezone: 'Asia/Kolkata' }
+    );
+  } catch (tzError) {
+    console.warn('⚠️ Inactivity report: timezone option not supported, using server time (20:20):', tzError?.message);
+    cron.schedule('20 20 * * *', async () => {
+      console.log(`⏰ [${new Date().toISOString()}] Running employee inactivity report...`);
+      try {
+        const result = await checkAndSendEmployeeInactivityReport();
+        console.log('✅ Employee inactivity report completed:', result);
+      } catch (error) {
+        console.error('❌ Employee inactivity report failed:', error);
+      }
+    });
+  }
+
+  const serverTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
   console.log('✅ Cron jobs initialized successfully');
-  console.log('   - Auto-attendance: Daily at 1:00 AM');
+  console.log('   - Auto-attendance: Daily at 1:00 AM (server time)');
   console.log('   - Customer reminders: Every 6 hours (checks for "new" status > 48 hours)');
-  console.log('   - Employee inactivity report: Daily at 8:20 PM (20:20) → kulalp447@gmail.com');
+  console.log('   - Employee inactivity report: Daily at 8:20 PM IST (Asia/Kolkata) → kulalp447@gmail.com');
+  console.log(`   - Server time now (IST): ${serverTime}`);
 };
 
 /**

@@ -44,37 +44,61 @@ const createTransporter = () => {
   });
 };
 
+// Send email via Resend API (HTTPS) - works on Render/Heroku where SMTP is blocked
+const sendEmailViaResend = async (to, subject, text, html, fromAddress) => {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`
+    },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html: html || text
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.statusCode || 'Resend API error');
+  return { messageId: data.id };
+};
+
 // Send Email
 export const sendEmail = async (to, subject, text, html, attachments = []) => {
   try {
-    // Validate email configuration
     const fromAddress = process.env.EMAIL_FROM || `"Sanjana CRM" <${process.env.EMAIL_USER}>`;
     console.log('📧 Email Config Check:', {
       SERVICE: process.env.EMAIL_SERVICE || 'NOT SET',
       USER: process.env.EMAIL_USER ? '✓ Set' : '✗ Missing',
       PASSWORD: process.env.EMAIL_PASSWORD ? '✓ Set' : '✗ Missing',
-      PASSWORD_LENGTH: process.env.EMAIL_PASSWORD?.length || 0,
+      RESEND: process.env.RESEND_API_KEY ? '✓ Set (will use Resend)' : '✗ Not set',
       FROM_ADDRESS: fromAddress
     });
-    
+
+    // Prefer Resend when API key is set (works on Render; SMTP is often blocked)
+    if (process.env.RESEND_API_KEY) {
+      const resendFrom = process.env.EMAIL_FROM || '"Sanjana CRM" <onboarding@resend.dev>';
+      console.log('📤 Sending via Resend (HTTPS)...');
+      console.log(`📤 FROM: ${resendFrom} TO: ${to} | Subject: ${subject}`);
+      const info = await sendEmailViaResend(to, subject, text, html, resendFrom);
+      console.log('✅ Email sent successfully via Resend:', info.messageId);
+      return info;
+    }
+
     const transporter = createTransporter();
-    
-    // If no transporter (email not configured), log warning and skip
     if (!transporter) {
-      console.warn('⚠️  Email service not configured. Skipping email send.');
-      console.warn('Missing: EMAIL_USER or EMAIL_PASSWORD');
-      console.warn('For Gmail: Also set EMAIL_SERVICE=gmail');
+      console.warn('⚠️  Email service not configured. Set RESEND_API_KEY (for Render) or EMAIL_USER/EMAIL_PASSWORD.');
       return { skipped: true, message: 'Email service not configured' };
     }
 
-    // fromAddress is already declared above - use it here
     const mailOptions = {
       from: fromAddress,
-      to: to,
-      subject: subject,
-      text: text,
-      html: html,
-      attachments: attachments
+      to,
+      subject,
+      text,
+      html,
+      attachments: attachments || []
     };
 
     console.log(`📤 Sending email FROM: ${fromAddress}`);
@@ -90,11 +114,9 @@ export const sendEmail = async (to, subject, text, html, attachments = []) => {
     
     // Provide helpful error messages
     if (error.message.includes('timeout') || error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
-      console.error('💡 Possible causes:');
-      console.error('   1. Wrong Gmail App Password (must be 16 chars, no spaces)');
-      console.error('   2. Gmail 2FA not enabled');
-      console.error('   3. Network firewall blocking Gmail SMTP');
-      console.error('   4. EMAIL_PASSWORD not set in environment variables');
+      console.error('💡 SMTP connection timeout (common on Render/Heroku). Use Resend instead:');
+      console.error('   Set RESEND_API_KEY in env and optionally EMAIL_FROM e.g. "Sanjana CRM <onboarding@resend.dev>"');
+      console.error('   Get key: https://resend.com/api-keys');
     } else if (error.message.includes('Invalid login')) {
       console.error('💡 Gmail App Password is incorrect or 2FA not enabled');
       console.error('   Generate new: https://myaccount.google.com/apppasswords');
