@@ -81,12 +81,19 @@ app.use(helmet({
 app.use(compression());
 
 // CORS configuration
+// Parse comma-separated URLs from environment variables
+const parseEnvUrls = (envVar) => {
+  if (!envVar) return [];
+  return envVar.split(',').map(url => url.trim()).filter(Boolean);
+};
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://prod.sanjanawaterproofing.com',
   'https://crm-chi-rouge.vercel.app',
-  'https://crm-1ej7.onrender.com',  // Render backend URL
+  'https://crm-156r.onrender.com',  // Current Render frontend URL
+  'https://crm-1ej7.onrender.com',  // Legacy Render URLs
   'https://localhost',  // Capacitor Android/iOS
   'capacitor://localhost',  // Capacitor iOS
   'ionic://localhost',  // Ionic

@@ -193,7 +193,7 @@ const useLocationTracking = (shouldTrack = false) => {
     [sendLocationToServer]
   );
 
-  // Error callback for geolocation
+  // Error callback for geolocation (no toast - would repeat and disturb employees)
   const handleLocationError = (error) => {
     console.error('❌ Location error:', error);
     let errorMessage = 'Failed to get location';
@@ -213,7 +213,7 @@ const useLocationTracking = (shouldTrack = false) => {
     }
 
     setError(errorMessage);
-    toast.error(errorMessage);
+    // No toast here - callback can fire repeatedly during tracking
   };
 
   // Request wake lock to prevent device sleep
@@ -249,7 +249,7 @@ const useLocationTracking = (shouldTrack = false) => {
   // Start tracking
   const startTracking = useCallback(async () => {
     if (!('geolocation' in navigator)) {
-      toast.error('Geolocation is not supported by your browser');
+      toast.error('Geolocation is not supported by your browser', { autoClose: 5000 });
       return;
     }
 
@@ -258,7 +258,7 @@ const useLocationTracking = (shouldTrack = false) => {
       const permission = await navigator.permissions.query({ name: 'geolocation' });
 
       if (permission.state === 'denied') {
-        toast.error('Location permission denied. Please enable it in browser settings.');
+        toast.error('Location permission denied. Enable it in browser settings.', { autoClose: 5000 });
         return;
       }
 
@@ -380,7 +380,7 @@ const useLocationTracking = (shouldTrack = false) => {
       // Show persistent notification to keep app active
       await showPersistentNotification();
       
-      toast.success('Location tracking started - continuous tracking active (works in background)');
+      // No toast on start - avoids disturbing employees with popups
       console.log('✅ All tracking mechanisms started:');
       console.log('  - watchPosition (continuous)');
       console.log('  - 30s update interval');
@@ -389,7 +389,7 @@ const useLocationTracking = (shouldTrack = false) => {
       console.log('  - Persistent notification active');
     } catch (error) {
       console.error('❌ Failed to start tracking:', error);
-      toast.error('Failed to start location tracking');
+      toast.error('Failed to start location tracking', { autoClose: 4000 });
       setError(error.message);
     }
   }, [handleLocationSuccess, sendLocationToServer]);
@@ -460,11 +460,11 @@ const useLocationTracking = (shouldTrack = false) => {
         }
       }
 
-      toast.info('Location tracking stopped');
+      // No toast on stop - avoids disturbing employees
       console.log('✅ All tracking stopped successfully');
     } catch (error) {
       console.error('❌ Failed to stop tracking:', error);
-      toast.error('Failed to stop tracking properly');
+      toast.error('Failed to stop tracking properly', { autoClose: 4000 });
     }
   }, [sessionId]);
 
