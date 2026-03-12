@@ -71,10 +71,6 @@ const MyDashboard = () => {
     const requestPermission = async () => {
       const permission = await checkLocationPermission()
       if (permission === 'prompt' || permission === 'default') {
-        // Show info toast and request permission
-        toast.info('Location access is required for attendance tracking. Please allow location access when prompted.', {
-          autoClose: 2000
-        })
         const result = await requestLocationPermission()
         if (!result.granted) {
           if (result.reason === 'permission_denied') {
