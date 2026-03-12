@@ -42,6 +42,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 // Import utilities
 import { initializeCronJobs, stopCronJobs } from './utils/cronJobs.js';
+import { checkAndSendEmployeeInactivityReport } from './utils/employeeInactivityReminderService.js';
 
 // Load environment variables
 dotenv.config();
@@ -219,6 +220,31 @@ app.get('/api/ping', (req, res) => {
     timestamp: new Date().toISOString(),
     message: '🏓 Pong!'
   });
+});
+
+// External cron trigger for inactivity report (e.g. cron-job.org at 8:20 PM IST)
+// GET /api/cron/inactivity-report?secret=YOUR_CRON_SECRET
+// Set CRON_SECRET in env; if not set, this endpoint does nothing.
+app.get('/api/cron/inactivity-report', async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.query.secret !== secret) {
+    return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  }
+  try {
+    const forDate = req.query.date ? new Date(req.query.date) : new Date();
+    const result = await checkAndSendEmployeeInactivityReport(forDate);
+    return res.status(200).json({
+      ok: true,
+      success: result.success,
+      message: result.message,
+      count: result.count,
+      recipient: result.recipient,
+      skipped: result.skipped
+    });
+  } catch (error) {
+    console.error('Cron inactivity report error:', error);
+    return res.status(500).json({ ok: false, message: error?.message || 'Report failed' });
+  }
 });
 
 // Health check endpoints

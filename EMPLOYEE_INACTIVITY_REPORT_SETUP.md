@@ -31,11 +31,21 @@ For Gmail, use an [App Password](https://myaccount.google.com/apppasswords) (2FA
 
 ## 2. What runs automatically (cron)
 
-- **Schedule:** Every day at **7:00 PM** (19:00 server time).
+- **Schedule:** Every day at **8:20 PM IST** (Asia/Kolkata).
 - **Action:** Finds active employees with **no attendance check-in for that day** and sends the report to **kulalp447@gmail.com**.
 - **File:** `utils/cronJobs.js` (job runs after server start when DB is connected).
 
-No extra setup is needed for the cron; restart the server and it will run at 7 PM daily.
+**Important:** For email to be sent, set **`RESEND_API_KEY`** in your environment (Render dashboard → Environment). Otherwise the report runs but the email is skipped.
+
+**If you use Render free tier:** The server may sleep when idle, so the in-app cron might not run at 8:20 PM. Use an **external cron** to trigger the report and wake the server:
+
+1. In Render **Environment**, add: `CRON_SECRET=your_long_random_secret_string`
+2. In [cron-job.org](https://cron-job.org) (or similar), create a job:
+   - **URL:** `https://crm-1ej7.onrender.com/api/cron/inactivity-report?secret=YOUR_CRON_SECRET`
+   - **Schedule:** Daily at 8:20 PM (choose timezone Asia/Kolkata or 14:50 UTC for 8:20 PM IST)
+   - **Method:** GET
+
+The request will wake the server and run the report; the email is sent if `RESEND_API_KEY` is set.
 
 ---
 

@@ -34,32 +34,29 @@ export const initializeCronJobs = () => {
 
   // Run daily at 8:20 PM IST – send inactivity report to kulalp447@gmail.com
   // (employees with no check-in / activity for the day)
-  try {
-    cron.schedule(
-      '17 10 * * *',
-      async () => {
-        const now = new Date();
-        console.log(`⏰ [${now.toISOString()}] Running employee inactivity report (5:10 PM IST)...`);
-        try {
-          const result = await checkAndSendEmployeeInactivityReport();
-          console.log('✅ Employee inactivity report completed:', JSON.stringify(result));
-        } catch (error) {
-          console.error('❌ Employee inactivity report failed:', error?.message || error);
-        }
-      },
-      { timezone: 'Asia/Kolkata' }
-    );
-  } catch (tzError) {
-    console.warn('⚠️ Inactivity report: timezone option not supported, using server time (20:20):', tzError?.message);
-    cron.schedule('20 20 * * *', async () => {
-      console.log(`⏰ [${new Date().toISOString()}] Running employee inactivity report...`);
-      try {
-        const result = await checkAndSendEmployeeInactivityReport();
-        console.log('✅ Employee inactivity report completed:', result);
-      } catch (error) {
-        console.error('❌ Employee inactivity report failed:', error);
+  // node-cron: minute hour day month weekday → '20 20' = 20:20 = 8:20 PM
+  const inactivityCronRun = async () => {
+    const now = new Date();
+    console.log(`⏰ [${now.toISOString()}] Running employee inactivity report (8:20 PM IST)...`);
+    try {
+      if (!process.env.RESEND_API_KEY && !process.env.EMAIL_USER) {
+        console.warn('⚠️ Inactivity report: No RESEND_API_KEY or EMAIL_USER set – email will not be sent. Set RESEND_API_KEY on Render.');
       }
-    });
+      const result = await checkAndSendEmployeeInactivityReport();
+      console.log('✅ Employee inactivity report completed:', JSON.stringify(result));
+      if (result.skipped || (result.success === false && result.message?.includes('skipped'))) {
+        console.warn('⚠️ Inactivity report email was skipped (check RESEND_API_KEY or email config).');
+      }
+    } catch (error) {
+      console.error('❌ Employee inactivity report failed:', error?.message || error);
+    }
+  };
+
+  try {
+    cron.schedule('20 20 * * *', inactivityCronRun, { timezone: 'Asia/Kolkata' });
+  } catch (tzError) {
+    console.warn('⚠️ Inactivity report: timezone not supported, using server time 20:20:', tzError?.message);
+    cron.schedule('20 20 * * *', inactivityCronRun);
   }
 
   const serverTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
